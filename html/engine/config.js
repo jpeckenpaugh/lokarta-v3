@@ -35,7 +35,7 @@ export const CONFIG = {
   AMBIENT_LIGHT_RADIUS: 4,
 
   // Class Mastery
-  NATIVE_CLASS_MULTIPLIER: 2.5,
+  NATIVE_CLASS_MULTIPLIER: 1.0,
 
   // Abilities & Combat Base Values (Driven by ABILITIES_CATALOG)
   MAGICIAN_SPARK_DAMAGE_MIN: ABILITIES_CATALOG.magician_spark.damageMin,

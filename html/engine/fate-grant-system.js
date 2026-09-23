@@ -9,40 +9,17 @@ export class FateGrantSystem {
 
   static generateDraftOffer(vocation, level = 1) {
     const pool = [...FateGrantSystem.CARD_DATABASE];
-    const alignedCards = pool.filter(c => c.vocationAffinity === vocation);
-    const otherCards = pool.filter(c => !c.vocationAffinity || c.vocationAffinity !== vocation);
+    // Filter to include ONLY cards matching the player's class OR neutral cards
+    const eligibleCards = pool.filter(
+      c => !c.vocationAffinity || c.vocationAffinity === 'neutral' || c.vocationAffinity === vocation
+    );
 
-    FateGrantSystem.shuffle(alignedCards);
-    FateGrantSystem.shuffle(otherCards);
+    FateGrantSystem.shuffle(eligibleCards);
 
-    const chosenCards = [];
-
-    if (level === 1) {
-      const alignedCount = Math.min(2, alignedCards.length);
-      for (let i = 0; i < alignedCount; i++) {
-        chosenCards.push(alignedCards[i]);
-      }
-      const remainingPool = [...alignedCards.slice(alignedCount), ...otherCards];
-      FateGrantSystem.shuffle(remainingPool);
-      for (const card of remainingPool) {
-        if (chosenCards.length >= 5) break;
-        if (!chosenCards.some(c => c.id === card.id)) {
-          chosenCards.push(card);
-        }
-      }
-    } else {
-      const allShuffled = [...pool];
-      FateGrantSystem.shuffle(allShuffled);
-      for (const card of allShuffled) {
-        if (chosenCards.length >= 5) break;
-        if (!chosenCards.some(c => c.id === card.id)) {
-          chosenCards.push(card);
-        }
-      }
-    }
+    const chosenCards = eligibleCards.slice(0, 5);
 
     return {
-      cards: chosenCards.slice(0, 5),
+      cards: chosenCards,
       requiredSelections: { min: 1, max: 2 },
     };
   }

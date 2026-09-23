@@ -332,8 +332,8 @@ describe('CombatSystem & 2.5x Native Class Mastery', () => {
     assert.equal(CombatSystem.isNativeItem({ item_id: 'wooden_bow', type: 'weapon' }, 'fighter'), false);
   });
 
-  it('applies 2.5x native class mastery multiplier on spells and weapons', () => {
-    // Magician Wand Spark: Native (2.5x)
+  it('applies 1.0x native base damage on spells and weapons without legacy multiplier', () => {
+    // Magician Wand Spark: Native (1.0x base roll)
     const mag = createPlayer('magician');
     mag.x = 2;
     mag.y = 2;
@@ -341,9 +341,9 @@ describe('CombatSystem & 2.5x Native Class Mastery', () => {
 
     const magRes = CombatSystem.executeWandSpark(mag, monster, grid);
     assert.equal(magRes.success, true);
-    assert.ok(magRes.damageDealt >= Math.round(CONFIG.MAGICIAN_SPARK_DAMAGE_MIN * 2.5));
+    assert.ok(magRes.damageDealt >= CONFIG.MAGICIAN_SPARK_DAMAGE_MIN);
 
-    // Fighter Sword Slash: Native (2.5x)
+    // Fighter Sword Slash: Native (1.0x base roll)
     const fgt = createPlayer('fighter');
     fgt.x = 2;
     fgt.y = 2;
@@ -351,7 +351,7 @@ describe('CombatSystem & 2.5x Native Class Mastery', () => {
 
     const fgtRes = CombatSystem.executeSlash(fgt, adjMonster, grid);
     assert.equal(fgtRes.success, true);
-    assert.ok(fgtRes.damageDealt >= Math.round(CONFIG.FIGHTER_SLASH_DAMAGE_MIN * 2.5));
+    assert.ok(fgtRes.damageDealt >= CONFIG.FIGHTER_SLASH_DAMAGE_MIN);
   });
 
   it('executes Archer Bow Shot and consumes arrows from Action Bar or Backpack', () => {
@@ -381,7 +381,7 @@ describe('CombatSystem & 2.5x Native Class Mastery', () => {
     const target = { id: 'm1', name: 'Skeleton', type: 'crypt_skeleton', x: 3, y: 2, hp: 100, max_hp: 100 };
     const strikeRes = CombatSystem.executeHolyStrike(pal, target, grid);
     assert.equal(strikeRes.success, true);
-    assert.ok(strikeRes.damageDealt >= Math.round(CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MIN * 2.5));
+    assert.ok(strikeRes.damageDealt >= CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MIN);
   });
 });
 
@@ -449,7 +449,7 @@ describe('InventorySystem & Stacking', () => {
 // ============================================================================
 
 describe('FateGrantSystem', () => {
-  it('generates a 5-card draft offer containing vocation-aligned cards at Level 1', () => {
+  it('generates a 5-card draft offer containing vocation-aligned or neutral cards at Level 1', () => {
     const vocations = ['magician', 'archer', 'fighter', 'paladin'];
     for (const v of vocations) {
       const offer = FateGrantSystem.generateDraftOffer(v, 1);
@@ -457,8 +457,8 @@ describe('FateGrantSystem', () => {
       assert.equal(offer.requiredSelections.min, 1);
       assert.equal(offer.requiredSelections.max, 2);
 
-      const hasAligned = offer.cards.some(c => c.vocationAffinity === v);
-      assert.ok(hasAligned, `Level 1 draft offer for ${v} must contain vocation-aligned cards`);
+      const invalidOffClass = offer.cards.some(c => c.vocationAffinity && c.vocationAffinity !== 'neutral' && c.vocationAffinity !== v);
+      assert.equal(invalidOffClass, false, `Level 1 draft offer for ${v} must not contain off-class cards`);
     }
   });
 

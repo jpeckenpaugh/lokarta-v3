@@ -149,6 +149,12 @@ export class InventorySystem {
       return { success: false, message: `${item.name} cannot be equipped.` };
     }
 
+    const affinity = item.vocationAffinity || catalogItem?.vocationAffinity;
+    if (affinity && affinity !== 'neutral' && player?.vocation && affinity !== player.vocation) {
+      const capVoc = affinity.charAt(0).toUpperCase() + affinity.slice(1);
+      return { success: false, message: `Only a ${capVoc} can equip ${item.name}!` };
+    }
+
     if (!player.paperdoll) {
       player.paperdoll = { main_hand: null, off_hand: null, armor: null, relic: null };
     }
