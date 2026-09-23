@@ -2,8 +2,8 @@
  * Lokarta: Come Into The Light - Modals & Screen Overlays Manager
  */
 
-import { FateGrantSystem } from '../engine.js';
-import { soundFX } from '../audio.js';
+import { FateGrantSystem } from '../engine/index.js';
+import { soundFX } from '../audio/index.js';
 
 export class ModalManager {
   static showTitleScreen(modalOverlayEl, savedPlayer, callbacks) {

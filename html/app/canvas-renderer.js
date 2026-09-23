@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Viewport Canvas Renderer
  */
 
-import { CONFIG, LightingSystem } from '../engine.js';
+import { CONFIG, LightingSystem } from '../engine/index.js';
 import { SpriteRenderer } from './sprite-renderer.js';
 
 export class CanvasRenderer {

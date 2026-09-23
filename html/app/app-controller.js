@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Main Application Controller
  */
 
-import { GameClient } from '../game-client.js';
+import { GameClient } from '../worker/game-client.js';
 import {
   CONFIG,
   GridMap,
@@ -13,8 +13,8 @@ import {
   InventorySystem,
   GestureEngine,
   createPlayer,
-} from '../engine.js';
-import { soundFX } from '../audio.js';
+} from '../engine/index.js';
+import { soundFX } from '../audio/index.js';
 import { CanvasRenderer } from './canvas-renderer.js';
 import { HUDManager } from './hud-manager.js';
 import { ModalManager } from './modal-manager.js';
@@ -22,7 +22,7 @@ import { InputController } from './input-controller.js';
 
 export class LokartaApp {
   constructor() {
-    this.gameClient = new GameClient(new Worker('./game-worker.js', { type: 'module' }));
+    this.gameClient = new GameClient();
     this.player = createPlayer('magician');
     this.gridMap = new GridMap();
     this.monsters = [];

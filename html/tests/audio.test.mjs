@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { AudioSystem } from '../audio.js';
+import { AudioSystem } from '../audio/index.js';
 
 test('AudioSystem & JSON Sound Catalog', async (t) => {
   await t.test('loads all 19 required sound definitions from sounds.json', () => {

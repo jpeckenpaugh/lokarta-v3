@@ -2,8 +2,8 @@
  * Lokarta: Come Into The Light - HUD & Interface Manager
  */
 
-import { CombatSystem, GestureEngine, InventorySystem, LightingSystem } from '../engine.js';
-import { soundFX } from '../audio.js';
+import { CombatSystem, GestureEngine, InventorySystem, LightingSystem } from '../engine/index.js';
+import { soundFX } from '../audio/index.js';
 
 export class HUDManager {
   static updateHUD(elements, app) {

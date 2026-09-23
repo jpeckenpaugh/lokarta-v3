@@ -19,7 +19,7 @@ import {
   generateFloor,
   getBiomeForFloor,
   BIOMES,
-} from '../floor-generator.js';
+} from '../services/floor-generator.js';
 
 import {
   CONFIG,
@@ -34,9 +34,9 @@ import {
   InventorySystem,
   FateGrantSystem,
   GestureEngine,
-} from '../engine.js';
+} from '../engine/index.js';
 
-import { GameClient } from '../game-client.js';
+import { GameClient } from '../worker/game-client.js';
 
 // ============================================================================
 // 1. Floor Generator (1-20)

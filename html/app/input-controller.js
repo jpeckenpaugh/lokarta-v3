@@ -2,8 +2,8 @@
  * Lokarta: Come Into The Light - Input Controller Subsystem
  */
 
-import { GestureEngine } from '../engine.js';
-import { soundFX } from '../audio.js';
+import { GestureEngine } from '../engine/index.js';
+import { soundFX } from '../audio/index.js';
 
 export class InputController {
   constructor(app) {

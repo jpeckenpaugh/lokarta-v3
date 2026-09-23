@@ -6,11 +6,11 @@
 export class GameClient {
   /**
    * Initializes the GameClient and spawns the Dedicated Web Worker.
-   * @param {string|Worker} [workerOrUrl='./game-worker.js'] - Worker URL or existing Worker instance
+   * @param {string|URL|Worker} [workerOrUrl] - Worker URL or existing Worker instance
    * @param {object} [options={}] - Client configuration options
    * @param {number} [options.timeout=10000] - Default request timeout in milliseconds
    */
-  constructor(workerOrUrl = './game-worker.js', options = {}) {
+  constructor(workerOrUrl = new URL('./game-worker.js', import.meta.url), options = {}) {
     this.options = {
       timeout: 10000,
       ...options,

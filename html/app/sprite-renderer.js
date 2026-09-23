@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Sprite & Tile Canvas Renderer
  */
 
-import { CONFIG, TILE_TYPES } from '../engine.js';
+import { CONFIG, TILE_TYPES } from '../engine/index.js';
 
 export class SpriteRenderer {
   static drawTile(ctx, type, screenX, screenY, size = CONFIG.GRID_SIZE) {

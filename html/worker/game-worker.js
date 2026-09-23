@@ -4,9 +4,9 @@
  * character progression, and settings storage.
  */
 
-import { openStorage, transaction, read, put, getAll, clearStore, now, STORES } from './storage.js';
-import { generateFloor } from './floor-generator.js';
-import { GridMap, LightingSystem, CombatSystem, EntityAI, InventorySystem, ProgressionSystem, createPlayer } from './engine.js';
+import { openStorage, read, put, getAll, clearStore, now, STORES } from '../services/storage.js';
+import { generateFloor } from '../services/floor-generator.js';
+import { createPlayer } from '../engine/index.js';
 
 /**
  * Bootstraps game storage, retrieves or creates profile settings,
@@ -140,7 +140,7 @@ async function handleGetFloor(payload = {}) {
  * to next floor's spawn_coords, persisting character, and returning player & floor.
  * @param {object} payload
  * @param {object} payload.player
- * @param {number} [payload.nextFloorNumber]
+ * @param {number} [nextFloorNumber]
  * @returns {Promise<{ player: object, floor: object }>}
  */
 async function handleAdvanceFloor(payload = {}) {
@@ -235,27 +235,29 @@ const COMMAND_HANDLERS = {
  * Incoming: { id: string|number, command: string, payload: object }
  * Outgoing: { id: string|number, ok: boolean, data?: any, error?: string }
  */
-self.onmessage = async ({ data }) => {
-  const { id, command, payload = {} } = data || {};
+if (typeof self !== 'undefined') {
+  self.onmessage = async ({ data }) => {
+    const { id, command, payload = {} } = data || {};
 
-  if (id === undefined || id === null) {
-    console.error('game-worker: received message without request ID:', data);
-    return;
-  }
-
-  try {
-    const handler = COMMAND_HANDLERS[command];
-    if (!handler) {
-      throw new Error(`Unknown worker command: '${command}'`);
+    if (id === undefined || id === null) {
+      console.error('game-worker: received message without request ID:', data);
+      return;
     }
 
-    const result = await handler(payload);
-    self.postMessage({ id, ok: true, data: result });
-  } catch (err) {
-    self.postMessage({
-      id,
-      ok: false,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-};
+    try {
+      const handler = COMMAND_HANDLERS[command];
+      if (!handler) {
+        throw new Error(`Unknown worker command: '${command}'`);
+      }
+
+      const result = await handler(payload);
+      self.postMessage({ id, ok: true, data: result });
+    } catch (err) {
+      self.postMessage({
+        id,
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+}
