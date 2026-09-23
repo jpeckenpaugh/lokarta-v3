@@ -19,26 +19,17 @@ export class FateGrantSystem {
       return c.vocationAffinity === vocation;
     });
 
-    // Prioritize existing upgradable items if player possesses them and itemLevel < 5
-    const upgradable = eligibleCards.filter(c => {
-      const itemId = c.item?.item_id;
-      if (!itemId) return false;
-      const allSlots = [...(player?.action_bar || []), ...(player?.paperdoll ? Object.values(player.paperdoll) : []), ...(player?.backpack || [])];
-      const existing = allSlots.find(item => item && (item.item_id === itemId || (itemId === 'apprentice_wand' && item.item_id === 'spell_wand_spark') || (itemId === 'spell_wand_spark' && item.item_id === 'apprentice_wand') || (itemId === 'astral_scepter' && item.item_id === 'spell_energy_beam') || (itemId === 'spell_energy_beam' && item.item_id === 'astral_scepter')));
-      return existing && (existing.itemLevel || 1) < 5;
-    });
+    const orderedPool = [...eligibleCards];
+    FateGrantSystem.shuffle(orderedPool);
 
-    const otherCards = eligibleCards.filter(c => !upgradable.includes(c));
-    FateGrantSystem.shuffle(upgradable);
-    FateGrantSystem.shuffle(otherCards);
-
-    const orderedPool = [...upgradable, ...otherCards];
-
-    // Helper to find player's existing item of an item_id
-    const findExistingItem = (itemId) => {
+    // Helper to find player's existing item matching item_id or actionKey
+    const findExistingItem = (itemId, cardItem) => {
       if (!player) return null;
+      const catalogEntry = ITEMS_CATALOG[itemId];
+      if (!catalogEntry?.upgradeSpec) return null;
+      const cardActionKey = cardItem?.actionKey || catalogEntry?.actionKey;
       const allSlots = [...(player.action_bar || []), ...(player.paperdoll ? Object.values(player.paperdoll) : []), ...(player.backpack || [])];
-      return allSlots.find(item => item && (item.item_id === itemId || (itemId === 'apprentice_wand' && item.item_id === 'spell_wand_spark') || (itemId === 'spell_wand_spark' && item.item_id === 'apprentice_wand') || (itemId === 'astral_scepter' && item.item_id === 'spell_energy_beam') || (itemId === 'spell_energy_beam' && item.item_id === 'astral_scepter')));
+      return allSlots.find(item => item && (item.item_id === itemId || (cardActionKey && (item.actionKey === cardActionKey || ITEMS_CATALOG[item.item_id]?.actionKey === cardActionKey))));
     };
 
     const chosenCards = [];
@@ -46,44 +37,48 @@ export class FateGrantSystem {
       if (chosenCards.length >= 5) break;
       const card = JSON.parse(JSON.stringify(c));
       const itemId = card.item?.item_id;
-      const existing = findExistingItem(itemId);
+      const catalogEntry = ITEMS_CATALOG[itemId] || {};
+      const existing = findExistingItem(itemId, card.item);
 
       if (existing) {
         const currentLevel = existing.itemLevel || 1;
-        if (currentLevel >= 5) {
-          // Max level reached, skip offering this item duplicate
-          continue;
-        }
+        if (currentLevel >= 5) continue;
 
-        // Convert card offer to a Level Up upgrade card
         card.isUpgrade = true;
         card.targetItemId = existing.item_id;
         card.targetItemLevel = currentLevel;
 
-        if (itemId === 'apprentice_wand' || itemId === 'spell_wand_spark') {
-          const dmgInc = Math.floor(Math.random() * (6 - 4 + 1)) + 4; // +4-6 damage
-          card.upgradeDmgInc = dmgInc;
-          card.name = `LEVEL UP: ${existing.name || 'Spark Wand'} (Rank ${currentLevel + 1})`;
-          card.description = `Level Up ${existing.name || 'Spark Wand'} (Rank ${currentLevel} ➔ ${currentLevel + 1}): +${dmgInc} Damage, +1 Targeting Range, +1 MP Cost.`;
-          card.statBonusText = `+${dmgInc} Dmg, +1 Range (+1 MP)`;
-        } else if (itemId === 'astral_scepter' || itemId === 'spell_energy_beam') {
-          card.name = `LEVEL UP: ${existing.name || 'Beam Staff'} (Rank ${currentLevel + 1})`;
-          card.description = `Level Up ${existing.name || 'Beam Staff'} (Rank ${currentLevel} ➔ ${currentLevel + 1}): +5 Wave Dmg, +1 Wave Range, +5 MP Cost.`;
-          card.statBonusText = `+5 Wave Dmg, +1 Range (+5 MP)`;
-        } else if (itemId === 'relic_luminous_amulet') {
-          card.name = `LEVEL UP: ${existing.name || 'Luminous Amulet'} (Rank ${currentLevel + 1})`;
-          card.description = `Level Up ${existing.name || 'Luminous Amulet'} (Rank ${currentLevel} ➔ ${currentLevel + 1}): +5 Max HP/MP, Auto-Prayer restores +2 combined HP/MP.`;
-          card.statBonusText = `+5 HP/MP, +2 Auto-Prayer`;
+        const spec = catalogEntry.upgradeSpec;
+        const prevRank = currentLevel;
+        const nextRank = currentLevel + 1;
+
+        if (spec) {
+          const dmgInc = spec.randomDamageInc ? (Math.floor(Math.random() * (spec.randomDamageInc[1] - spec.randomDamageInc[0] + 1)) + spec.randomDamageInc[0]) : (spec.stepDamageInc || 0);
+          if (dmgInc) card.upgradeDmgInc = dmgInc;
+
+          const cooldownSec = Math.max(12, 22 - 2 * nextRank);
+          card.name = `LEVEL UP: ${existing.name || card.name} (Rank ${nextRank})`;
+          card.description = (spec.descriptionPattern || '')
+            .replace('{prevRank}', prevRank)
+            .replace('{nextRank}', nextRank)
+            .replace('{dmgInc}', dmgInc)
+            .replace('{cooldownSec}', cooldownSec);
+          card.statBonusText = (spec.statBonusTextPattern || '')
+            .replace('{dmgInc}', dmgInc)
+            .replace('{nextRank}', nextRank)
+            .replace('{cooldownSec}', cooldownSec);
+        } else {
+          card.name = `LEVEL UP: ${existing.name || card.name} (Rank ${nextRank})`;
+          card.description = `Level Up ${existing.name || card.name} (Rank ${prevRank} ➔ ${nextRank}).`;
+          card.statBonusText = `Rank ${nextRank}`;
         }
       } else {
-        // First-time grant
-        if (card.item && (card.item.item_id === 'apprentice_wand' || card.item.item_id === 'spell_wand_spark')) {
-          const rolledDmg = Math.floor(Math.random() * (16 - 12 + 1)) + 12;
-          card.item.damage = rolledDmg;
-          card.item.itemLevel = 1;
-          card.description = `Cast radiant projectile for ${rolledDmg} magic damage (${card.item.manaCost || 1} MP).`;
-          card.statBonusText = `${rolledDmg} Dmg (${card.item.manaCost || 1} MP)`;
-        } else if (card.item && (card.item.item_id === 'astral_scepter' || card.item.item_id === 'spell_energy_beam' || card.item.item_id === 'relic_luminous_amulet')) {
+        if (catalogEntry.damageMin && catalogEntry.damageMax && !card.item?.damage) {
+          const rolledDmg = Math.floor(Math.random() * (catalogEntry.damageMax - catalogEntry.damageMin + 1)) + catalogEntry.damageMin;
+          if (card.item) card.item.damage = rolledDmg;
+          card.description = `${card.description} (${rolledDmg} Dmg)`;
+        }
+        if (card.item && !card.item.itemLevel) {
           card.item.itemLevel = 1;
         }
       }
@@ -106,44 +101,46 @@ export class FateGrantSystem {
 
     for (const card of cards) {
       const targetItemId = card.targetItemId || card.item?.item_id;
+      const catalogEntry = ITEMS_CATALOG[targetItemId] || {};
 
-      // Check if player already possesses this item to perform an in-place upgrade
       const allSlots = [
         ...(player.action_bar ? player.action_bar.map((it, idx) => ({ it, container: 'action_bar', idx })) : []),
         ...(player.paperdoll ? Object.entries(player.paperdoll).map(([key, it]) => ({ it, container: 'paperdoll', key })) : []),
         ...(player.backpack ? player.backpack.map((it, idx) => ({ it, container: 'backpack', idx })) : []),
       ];
 
-      const existingSlot = allSlots.find(s => s.it && (s.it.item_id === targetItemId || (targetItemId === 'apprentice_wand' && s.it.item_id === 'spell_wand_spark') || (targetItemId === 'spell_wand_spark' && s.it.item_id === 'apprentice_wand') || (targetItemId === 'astral_scepter' && s.it.item_id === 'spell_energy_beam') || (targetItemId === 'spell_energy_beam' && s.it.item_id === 'astral_scepter')));
+      const cardActionKey = card.item?.actionKey || catalogEntry?.actionKey;
+      const existingSlot = allSlots.find(s => s.it && (s.it.item_id === targetItemId || (cardActionKey && (s.it.actionKey === cardActionKey || ITEMS_CATALOG[s.it.item_id]?.actionKey === cardActionKey))));
 
       if (existingSlot || card.isUpgrade) {
         const item = existingSlot ? existingSlot.it : null;
         if (item) {
           item.itemLevel = Math.min(5, (item.itemLevel || 1) + 1);
-          const itemBaseId = item.item_id;
+          const spec = catalogEntry.upgradeSpec || {};
+          const rank = item.itemLevel;
 
-          if (itemBaseId === 'apprentice_wand' || itemBaseId === 'spell_wand_spark') {
-            const dmgInc = card.upgradeDmgInc || (Math.floor(Math.random() * (6 - 4 + 1)) + 4);
-            item.damage = (item.damage || 14) + dmgInc;
-            item.range = (item.range || 5) + 1;
-            item.manaCost = (item.manaCost || 1) + 1;
-            result.addedToHotbar.push(`${item.name || 'Spark Wand'} Upgraded to Rank ${item.itemLevel} (+${dmgInc} Dmg, +1 Range, +1 MP)`);
-          } else if (itemBaseId === 'astral_scepter' || itemBaseId === 'spell_energy_beam') {
-            item.stepDamageBonus = (item.stepDamageBonus || 0) + 5;
-            item.range = (item.range || 4) + 1;
-            item.manaCost = (item.manaCost || 5) + 5;
-            result.addedToHotbar.push(`${item.name || 'Beam Staff'} Upgraded to Rank ${item.itemLevel} (+5 Wave Dmg, +1 Range, +5 MP)`);
-          } else if (itemBaseId === 'relic_luminous_amulet') {
-            player.max_hp = (player.max_hp || 100) + 5;
-            player.max_mana = (player.max_mana || 100) + 5;
-            player.hp = Math.min(player.max_hp, (player.hp || 100) + 5);
-            player.mana = Math.min(player.max_mana, (player.mana || 100) + 5);
-            result.addedToHotbar.push(`${item.name || 'Luminous Amulet'} Upgraded to Rank ${item.itemLevel} (+5 Max HP/MP, Auto-Prayer +2)`);
-          } else if (itemBaseId === 'apprentice_cape') {
-            const rank = item.itemLevel;
-            const mpAmount = rank;
+          if (spec.randomDamageInc || spec.rangeInc || spec.manaCostInc) {
+            const dmgInc = card.upgradeDmgInc || (spec.randomDamageInc ? (Math.floor(Math.random() * (spec.randomDamageInc[1] - spec.randomDamageInc[0] + 1)) + spec.randomDamageInc[0]) : 0);
+            if (dmgInc) item.damage = (item.damage || catalogEntry.damageMin || 12) + dmgInc;
+            if (spec.rangeInc) item.range = (item.range || catalogEntry.range || 5) + spec.rangeInc;
+            if (spec.manaCostInc) item.manaCost = (item.manaCost || catalogEntry.manaCost || 1) + spec.manaCostInc;
+            result.addedToHotbar.push(`${item.name} Upgraded to Rank ${rank}`);
+          } else if (spec.stepDamageInc) {
+            item.stepDamageBonus = (item.stepDamageBonus || 0) + spec.stepDamageInc;
+            if (spec.rangeInc) item.range = (item.range || catalogEntry.range || 4) + spec.rangeInc;
+            if (spec.manaCostInc) item.manaCost = (item.manaCost || catalogEntry.manaCost || 5) + spec.manaCostInc;
+            result.addedToHotbar.push(`${item.name} Upgraded to Rank ${rank}`);
+          } else if (spec.maxHpInc || spec.maxMpInc) {
+            player.max_hp = (player.max_hp || 100) + (spec.maxHpInc || 0);
+            player.max_mana = (player.max_mana || 100) + (spec.maxMpInc || 0);
+            player.hp = Math.min(player.max_hp, (player.hp || 100) + (spec.maxHpInc || 0));
+            player.mana = Math.min(player.max_mana, (player.mana || 100) + (spec.maxMpInc || 0));
+            result.addedToHotbar.push(`${item.name} Upgraded to Rank ${rank}`);
+          } else if (spec.mpPulseInc) {
             const cooldownSec = Math.max(12, 22 - 2 * rank);
-            result.addedToHotbar.push(`${item.name || "Apprentice's Cape"} Upgraded to Rank ${rank} (Power Pulse: +${mpAmount} MP / ${cooldownSec}s)`);
+            result.addedToHotbar.push(`${item.name} Upgraded to Rank ${rank} (Power Pulse: +${rank} MP / ${cooldownSec}s)`);
+          } else {
+            result.addedToHotbar.push(`${item.name} Upgraded to Rank ${rank}`);
           }
           continue;
         }

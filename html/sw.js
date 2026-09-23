@@ -1,0 +1,1 @@
+// Dummy ServiceWorker for Lokarta

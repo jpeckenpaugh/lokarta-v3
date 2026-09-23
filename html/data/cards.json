@@ -323,22 +323,6 @@
     }
   },
   {
-    "id": "card_wooden_torch_x3",
-    "name": "Ever-Burning Torches",
-    "rarity": "common",
-    "icon": "🔥",
-    "description": "A bundle of 3 pitch-soaked dungeon torches illuminating 14 tiles when held.",
-    "statBonusText": "+14 Light Radius x 3",
-    "item": {
-      "item_id": "torch",
-      "name": "Wooden Torch",
-      "type": "offhand",
-      "quantity": 3,
-      "stat_bonus": 14,
-      "icon": "🔥"
-    }
-  },
-  {
     "id": "card_iron_buckler",
     "name": "Reinforced Buckler",
     "rarity": "common",

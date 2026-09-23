@@ -52,7 +52,14 @@
     "icon": "🪄",
     "svgCode": "1FA84",
     "actionKey": "wand_spark",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "randomDamageInc": [4, 6],
+      "rangeInc": 1,
+      "manaCostInc": 1,
+      "statBonusTextPattern": "+{dmgInc} Dmg, +1 Range (+1 MP)",
+      "descriptionPattern": "Level Up Spark Wand (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Damage, +1 Targeting Range, +1 MP Cost."
+    }
   },
   "astral_scepter": {
     "item_id": "astral_scepter",
@@ -66,7 +73,14 @@
     "icon": "🦯",
     "svgCode": "1F9AF",
     "actionKey": "energy_beam",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "stepDamageInc": 5,
+      "rangeInc": 1,
+      "manaCostInc": 5,
+      "statBonusTextPattern": "+5 Wave Dmg, +1 Range (+5 MP)",
+      "descriptionPattern": "Level Up Beam Staff (Rank {prevRank} ➔ {nextRank}): +5 Wave Dmg, +1 Wave Range, +5 MP Cost."
+    }
   },
   "wooden_bow": {
     "item_id": "wooden_bow",
@@ -148,7 +162,13 @@
     "vocationAffinity": "magician",
     "icon": "🧥",
     "svgCode": "1F9E5",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "mpPulseInc": 1,
+      "cooldownReductionSec": 2,
+      "statBonusTextPattern": "+{nextRank} MP / {cooldownSec}s",
+      "descriptionPattern": "Level Up Apprentice's Cape (Rank {prevRank} ➔ {nextRank}): Power Pulse restores +{nextRank} MP every {cooldownSec} seconds."
+    }
   },
   "relic_luminous_amulet": {
     "item_id": "relic_luminous_amulet",
@@ -161,7 +181,13 @@
     "prayerPulseSec": 10,
     "icon": "📿",
     "svgCode": "1F4FF",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "maxHpInc": 5,
+      "maxMpInc": 5,
+      "statBonusTextPattern": "+5 HP/MP, +2 Auto-Prayer",
+      "descriptionPattern": "Level Up Luminous Amulet (Rank {prevRank} ➔ {nextRank}): +5 Max HP/MP, Auto-Prayer restores +2 combined HP/MP."
+    }
   },
   "relic_champions_crest": {
     "item_id": "relic_champions_crest",
@@ -185,7 +211,14 @@
     "icon": "✨",
     "svgCode": "2728",
     "actionKey": "wand_spark",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "randomDamageInc": [4, 6],
+      "rangeInc": 1,
+      "manaCostInc": 1,
+      "statBonusTextPattern": "+{dmgInc} Dmg, +1 Range (+1 MP)",
+      "descriptionPattern": "Level Up Spark Wand (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Damage, +1 Targeting Range, +1 MP Cost."
+    }
   },
   "spell_light": {
     "item_id": "spell_light",
@@ -212,7 +245,14 @@
     "icon": "🦯",
     "svgCode": "1F9AF",
     "actionKey": "energy_beam",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "stepDamageInc": 5,
+      "rangeInc": 1,
+      "manaCostInc": 5,
+      "statBonusTextPattern": "+5 Wave Dmg, +1 Range (+5 MP)",
+      "descriptionPattern": "Level Up Beam Staff (Rank {prevRank} ➔ {nextRank}): +5 Wave Dmg, +1 Wave Range, +5 MP Cost."
+    }
   },
   "spell_bow_shot": {
     "item_id": "spell_bow_shot",
