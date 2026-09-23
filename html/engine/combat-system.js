@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
-import { ITEMS_CATALOG, MONSTERS_CATALOG } from '../data/index.js';
+import { ABILITIES_CATALOG, ITEMS_CATALOG, MONSTERS_CATALOG } from '../data/index.js';
 
 export class CombatSystem {
   static decrementCooldowns(player, deltaSec) {
@@ -107,8 +107,10 @@ export class CombatSystem {
     const damage = Math.round(baseDmg * mult);
     target.hp -= damage;
 
+    const abilitySpec = ABILITIES_CATALOG.magician_spark;
     const projectile = {
       id: `proj_${Date.now()}_${Math.random()}`,
+      abilityId: 'magician_spark',
       type: 'wand_spark',
       sourceX: player.x,
       sourceY: player.y,
@@ -118,7 +120,8 @@ export class CombatSystem {
       currentY: player.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2,
       durationMs: 250,
       elapsedMs: 0,
-      color: '#44ccff',
+      color: abilitySpec?.visual?.color || '#44ccff',
+      visual: abilitySpec?.visual || null,
     };
 
     let defeatedMonsterId;

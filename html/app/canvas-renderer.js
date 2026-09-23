@@ -29,7 +29,16 @@ export class CanvasRenderer {
     this.cameraY = Math.round(targetY);
   }
 
-  render(gridMap, player, monsters, ambientLights, projectiles, floatingTexts, selectedMonsterId) {
+  render(
+    gridMap,
+    player,
+    monsters,
+    ambientLights,
+    projectiles,
+    floatingTexts,
+    selectedMonsterId,
+    particles = []
+  ) {
     if (!this.canvas || !this.ctx) return;
     const { width, height } = this.canvas;
     const ctx = this.ctx;
@@ -95,11 +104,12 @@ export class CanvasRenderer {
     const playerScreenY = player.y * CONFIG.GRID_SIZE - this.cameraY;
     SpriteRenderer.drawPlayer(ctx, player, playerScreenX, playerScreenY);
 
-    // 5. Projectiles
+    // 5. Projectiles & Impact Particles
     this.renderProjectiles(ctx, projectiles);
+    this.renderParticles(ctx, particles);
 
     // 6. Dynamic Continuous Radial Darkness & Lighting
-    this.renderLightMask(ctx, gridMap, player, ambientLights, width, height);
+    this.renderLightMask(ctx, gridMap, player, ambientLights, width, height, projectiles);
 
     // 7. Floating Combat Damage & XP Numbers
     this.renderFloatingTexts(ctx, floatingTexts);
@@ -130,22 +140,103 @@ export class CanvasRenderer {
         const curX = startPixelX + (targetPixelX - startPixelX) * progress;
         const curY = startPixelY + (targetPixelY - startPixelY) * progress;
 
-        ctx.fillStyle = p.color;
+        const v = p.visual || {};
+        const trailType = v.trailType || 'solid';
+        const mainColor = p.color || '#44ccff';
+        const glowColor = v.glowColor || '#00eeff';
+        const headRadius = v.headRadius || 5;
+
+        ctx.save();
+
+        if (trailType === 'electric') {
+          const segments = v.trailSegments || 5;
+          const jitter = v.trailJitterPx || 4;
+          const trailWidth = v.trailWidth || 3;
+
+          // Outer Electric Glow Line
+          ctx.strokeStyle = glowColor;
+          ctx.lineWidth = trailWidth + 2;
+          ctx.globalAlpha = 0.4;
+          ctx.beginPath();
+          ctx.moveTo(startPixelX, startPixelY);
+
+          for (let i = 1; i <= segments; i++) {
+            const segRatio = i / segments;
+            const px = startPixelX + (curX - startPixelX) * segRatio;
+            const py = startPixelY + (curY - startPixelY) * segRatio;
+            const offsetX = i < segments ? (Math.random() - 0.5) * jitter * 2 : 0;
+            const offsetY = i < segments ? (Math.random() - 0.5) * jitter * 2 : 0;
+            ctx.lineTo(px + offsetX, py + offsetY);
+          }
+          ctx.stroke();
+
+          // Core Electric Spark Line
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = Math.max(1, trailWidth - 1);
+          ctx.globalAlpha = 0.95;
+          ctx.beginPath();
+          ctx.moveTo(startPixelX, startPixelY);
+
+          for (let i = 1; i <= segments; i++) {
+            const segRatio = i / segments;
+            const px = startPixelX + (curX - startPixelX) * segRatio;
+            const py = startPixelY + (curY - startPixelY) * segRatio;
+            const offsetX = i < segments ? (Math.random() - 0.5) * jitter * 1.5 : 0;
+            const offsetY = i < segments ? (Math.random() - 0.5) * jitter * 1.5 : 0;
+            ctx.lineTo(px + offsetX, py + offsetY);
+          }
+          ctx.stroke();
+        } else {
+          // Fallback solid trail
+          ctx.strokeStyle = mainColor;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(startPixelX, startPixelY);
+          ctx.lineTo(curX, curY);
+          ctx.stroke();
+        }
+
+        // Projectile Head Radial Glow
+        const glowRadius = v.glowRadiusPx || 14;
+        const headGrad = ctx.createRadialGradient(curX, curY, 1, curX, curY, glowRadius);
+        headGrad.addColorStop(0, '#ffffff');
+        headGrad.addColorStop(0.3, glowColor);
+        headGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.fillStyle = headGrad;
         ctx.beginPath();
-        ctx.arc(curX, curY, 4, 0, Math.PI * 2);
+        ctx.arc(curX, curY, glowRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.strokeStyle = p.color;
-        ctx.lineWidth = 2;
+        // Solid Core Head
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.moveTo(startPixelX, startPixelY);
-        ctx.lineTo(curX, curY);
-        ctx.stroke();
+        ctx.arc(curX, curY, Math.max(2, headRadius - 2), 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
       }
     }
   }
 
-  renderLightMask(ctx, gridMap, player, ambientLights, viewportWidth, viewportHeight) {
+  renderParticles(ctx, particles) {
+    if (!particles || particles.length === 0) return;
+    ctx.save();
+    for (const pt of particles) {
+      const screenX = pt.x - this.cameraX;
+      const screenY = pt.y - this.cameraY;
+      const alpha = Math.max(0, 1.0 - pt.elapsedMs / pt.durationMs);
+
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = pt.color;
+      ctx.beginPath();
+      ctx.arc(screenX, screenY, pt.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  renderLightMask(ctx, gridMap, player, ambientLights, viewportWidth, viewportHeight, projectiles = []) {
     ctx.save();
 
     // Smooth continuous radial darkness dissolve over player FOV
@@ -197,6 +288,31 @@ export class CanvasRenderer {
       ctx.beginPath();
       ctx.arc(playerScreenX, playerScreenY, auraRadius, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // 4. Subtle tile lighting illumination around in-flight projectiles
+    for (const p of projectiles) {
+      if (p.visual?.illuminateTiles) {
+        const progress = Math.min(1.0, p.elapsedMs / p.durationMs);
+        const startPixelX = p.sourceX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
+        const startPixelY = p.sourceY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
+        const targetPixelX = p.targetX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
+        const targetPixelY = p.targetY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
+
+        const curX = startPixelX + (targetPixelX - startPixelX) * progress;
+        const curY = startPixelY + (targetPixelY - startPixelY) * progress;
+        const projRadiusPx = (p.visual.lightRadiusTiles || 1.5) * CONFIG.GRID_SIZE;
+
+        const projGrad = ctx.createRadialGradient(curX, curY, 2, curX, curY, projRadiusPx);
+        projGrad.addColorStop(0, 'rgba(100, 220, 255, 0.35)');
+        projGrad.addColorStop(0.5, 'rgba(68, 204, 255, 0.15)');
+        projGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+
+        ctx.fillStyle = projGrad;
+        ctx.beginPath();
+        ctx.arc(curX, curY, projRadiusPx, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     ctx.restore();

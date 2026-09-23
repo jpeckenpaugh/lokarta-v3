@@ -36,6 +36,7 @@ export class LokartaApp {
     this.monsters = [];
     this.ambientLights = [];
     this.projectiles = [];
+    this.particles = [];
     this.floatingTexts = [];
     this.selectedMonsterId = null;
 
@@ -283,7 +284,38 @@ export class LokartaApp {
       const p = this.projectiles[i];
       p.elapsedMs += dtMs;
       if (p.elapsedMs >= p.durationMs) {
+        if (p.visual && p.visual.burstParticleCount > 0) {
+          const targetPxX = p.targetX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
+          const targetPxY = p.targetY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
+          const count = p.visual.burstParticleCount;
+          for (let k = 0; k < count; k++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 40 + Math.random() * 110;
+            this.particles.push({
+              x: targetPxX,
+              y: targetPxY,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              radius: 1.5 + Math.random() * 3,
+              color: p.visual.burstColor || p.color || '#44ccff',
+              elapsedMs: 0,
+              durationMs: 300 + Math.random() * 200,
+            });
+          }
+        }
         this.projectiles.splice(i, 1);
+      }
+    }
+
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const pt = this.particles[i];
+      pt.elapsedMs += dtMs;
+      pt.x += (pt.vx * dtMs) / 1000;
+      pt.y += (pt.vy * dtMs) / 1000;
+      pt.vx *= 0.92;
+      pt.vy *= 0.92;
+      if (pt.elapsedMs >= pt.durationMs) {
+        this.particles.splice(i, 1);
       }
     }
 
@@ -305,7 +337,8 @@ export class LokartaApp {
       this.ambientLights,
       this.projectiles,
       this.floatingTexts,
-      this.selectedMonsterId
+      this.selectedMonsterId,
+      this.particles
     );
   }
 

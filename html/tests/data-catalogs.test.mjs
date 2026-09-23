@@ -89,6 +89,9 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(Object.keys(ABILITIES_CATALOG).length, 9);
     assert.ok(ABILITIES_CATALOG.magician_spark);
     assert.equal(ABILITIES_CATALOG.magician_spark.vocation, 'magician');
+    assert.ok(ABILITIES_CATALOG.magician_spark.visual, 'magician_spark must specify visual config');
+    assert.equal(ABILITIES_CATALOG.magician_spark.visual.trailType, 'electric');
+    assert.ok(ABILITIES_CATALOG.magician_spark.visual.burstParticleCount > 0);
     assert.ok(ABILITIES_CATALOG.paladin_heal);
     assert.equal(ABILITIES_CATALOG.paladin_heal.vocation, 'paladin');
   });

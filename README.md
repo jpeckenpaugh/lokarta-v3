@@ -125,6 +125,8 @@ Complete technical documentation and specifications reverse-engineered from the 
 
 - **Concept Specification:** [`concept.md`](file:///Users/jarad/git/lokarta-v3/concept.md) — Product identity, target audience, stack summary, vocation specs, and biome catalog.
 - **Technical Architecture:** [`docs/architecture.md`](file:///Users/jarad/git/lokarta-v3/docs/architecture.md) — Detailed subsystem architecture, RPC protocols, IndexedDB schemas, rendering lerp formulas, and audio graphs.
+- **AI Agent Development Guidelines:** [`docs/agents.md`](file:///Users/jarad/git/lokarta-v3/docs/agents.md) — Mandatory architecture rules, data-driven constraints, hot-path performance budgets, and regression testing standards.
+- **Optimization & Performance Report:** [`docs/optimizations.md`](file:///Users/jarad/git/lokarta-v3/docs/optimizations.md) — Detailed runtime bottlenecks, GC profiling, overdraw culling, and proposed optimization solutions.
 - **Verification Report:** [`docs/verification-report.md`](file:///Users/jarad/git/lokarta-v3/docs/verification-report.md) — Stage 8 test execution evidence, verification matrix, and compliance audit.
 - **Environment & System Notes:** [`environment-notes.md`](file:///Users/jarad/git/lokarta-v3/environment-notes.md) — Browser API specifications, server setups, and test runner guidelines.
 - **Feature Briefs:** [`features/briefs/`](file:///Users/jarad/git/lokarta-v3/features/briefs/)
