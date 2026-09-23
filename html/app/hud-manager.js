@@ -198,8 +198,8 @@ export class HUDManager {
     HUDManager.bindHUDEvents({ paperdollEl }, app);
     const paperdoll = app.player.paperdoll || {};
     const slots = [
-      { key: 'main_hand', label: 'Main Hand', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/2694.svg" alt="Main Hand" />' },
-      { key: 'off_hand', label: 'Off Hand', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/1F6E1.svg" alt="Off Hand" />' },
+      { key: 'main_hand', label: 'Main Hand (Q)', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/2694.svg" alt="Main Hand" />' },
+      { key: 'off_hand', label: 'Off Hand (W)', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/1F6E1.svg" alt="Off Hand" />' },
       { key: 'armor', label: 'Armor', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/1F9BA.svg" alt="Armor" />' },
       { key: 'relic', label: 'Relic', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/1F4FF.svg" alt="Relic" />' },
     ];

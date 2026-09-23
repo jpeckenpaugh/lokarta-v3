@@ -395,14 +395,14 @@
     "name": "Luminous Relic Amulet",
     "rarity": "epic",
     "icon": "📿",
-    "description": "Sacred luminescent charm boosting max health, mana, and ambient glow.",
-    "statBonusText": "+20 Max HP/MP",
+    "description": "Sacred charm granting +5 Max HP/MP and auto-restoring 2 combined HP/MP every 10 seconds.",
+    "statBonusText": "+5 HP/MP, Auto-Prayer",
     "item": {
       "item_id": "relic_luminous_amulet",
       "name": "Luminous Amulet",
       "type": "relic",
       "quantity": 1,
-      "stat_bonus": 20,
+      "stat_bonus": 5,
       "icon": "📿"
     }
   },

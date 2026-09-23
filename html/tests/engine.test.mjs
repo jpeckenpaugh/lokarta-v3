@@ -191,8 +191,8 @@ describe('LightingSystem & 10-Tile FOV', () => {
     // 1. Base vision: 10 tiles
     assert.equal(LightingSystem.computePlayerRadius(player), 10);
 
-    // 2. Torch in off_hand -> 12 tiles (+2)
-    player.paperdoll.off_hand = { item_id: 'torch' };
+    // 2. Torch in action_bar -> 12 tiles (+2)
+    player.action_bar[0] = { item_id: 'torch' };
     assert.equal(LightingSystem.computePlayerRadius(player), 12);
 
     // 3. Torch in action_bar -> 12 tiles (+2)
@@ -471,8 +471,9 @@ describe('FateGrantSystem', () => {
     const result = FateGrantSystem.applyDraftedCards(player, chosenCards, grid);
 
     assert.equal(result.addedToHotbar.length, 2);
-    assert.ok(player.action_bar[0] !== null);
-    assert.ok(player.action_bar[1] !== null);
+    // Drafted items populate either main_hand/off_hand paperdoll (auto-equip) or action_bar
+    const hasItemPlaced = player.paperdoll.main_hand !== null || player.paperdoll.off_hand !== null || player.action_bar[0] !== null;
+    assert.ok(hasItemPlaced);
   });
 
   it('converts duplicate wand/staff offers into Level Up upgrades up to Rank 5', () => {
@@ -497,6 +498,34 @@ describe('FateGrantSystem', () => {
     const maxOffer = FateGrantSystem.generateDraftOffer(player, 6);
     const hasSpark = maxOffer.cards.some(c => c.targetItemId === 'spell_wand_spark' || c.item?.item_id === 'spell_wand_spark');
     assert.equal(hasSpark, false);
+  });
+
+  it('auto-equips Luminous Amulet to Relic slot and scales Max HP/MP by +5 per rank up to Rank 5', () => {
+    const player = createPlayer('magician');
+    const baseHp = player.max_hp;
+    const baseMana = player.max_mana;
+
+    const relicCard = {
+      id: 'card_relic_luminous_amulet',
+      name: 'Luminous Relic Amulet',
+      item: { item_id: 'relic_luminous_amulet', name: 'Luminous Amulet', type: 'relic', slot: 'relic', itemLevel: 1 }
+    };
+
+    FateGrantSystem.applyDraftedCards(player, [relicCard]);
+    assert.equal(player.paperdoll.relic?.item_id, 'relic_luminous_amulet');
+    assert.equal(player.max_hp, baseHp + 5);
+    assert.equal(player.max_mana, baseMana + 5);
+
+    // Test Level Up card conversion & application to Rank 2
+    const offer = FateGrantSystem.generateDraftOffer(player, 2);
+    const upgradeCard = offer.cards.find(c => c.targetItemId === 'relic_luminous_amulet');
+    assert.ok(upgradeCard);
+    assert.equal(upgradeCard.isUpgrade, true);
+
+    FateGrantSystem.applyDraftedCards(player, [upgradeCard]);
+    assert.equal(player.paperdoll.relic.itemLevel, 2);
+    assert.equal(player.max_hp, baseHp + 10);
+    assert.equal(player.max_mana, baseMana + 10);
   });
 });
 

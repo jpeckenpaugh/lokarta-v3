@@ -1,9 +1,9 @@
 {
   "movement": {
-    "up": ["KeyW", "ArrowUp"],
-    "left": ["KeyA", "ArrowLeft"],
-    "down": ["KeyS", "ArrowDown"],
-    "right": ["KeyD", "ArrowRight"]
+    "up": ["ArrowUp"],
+    "left": ["ArrowLeft"],
+    "down": ["ArrowDown"],
+    "right": ["ArrowRight"]
   },
   "actionBar": [
     "Digit1",

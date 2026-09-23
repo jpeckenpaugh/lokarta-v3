@@ -14,6 +14,20 @@ export class InputController {
     window.addEventListener('keydown', e => {
       this.app.keysDown.add(e.code);
 
+      if (e.code === 'KeyQ') {
+        e.preventDefault();
+        soundFX.init();
+        this.app.executeHandCombat('main_hand');
+        return;
+      }
+
+      if (e.code === 'KeyW') {
+        e.preventDefault();
+        soundFX.init();
+        this.app.executeHandCombat('off_hand');
+        return;
+      }
+
       const slotIdx = GestureEngine.keyToSlotIndex(e.key);
       if (slotIdx !== null) {
         e.preventDefault();

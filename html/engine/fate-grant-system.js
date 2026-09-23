@@ -17,7 +17,20 @@ export class FateGrantSystem {
       c => !c.vocationAffinity || c.vocationAffinity === 'neutral' || c.vocationAffinity === vocation
     );
 
-    FateGrantSystem.shuffle(eligibleCards);
+    // Prioritize existing upgradable items if player possesses them and itemLevel < 5
+    const upgradable = eligibleCards.filter(c => {
+      const itemId = c.item?.item_id;
+      if (!itemId) return false;
+      const allSlots = [...(player?.action_bar || []), ...(player?.paperdoll ? Object.values(player.paperdoll) : []), ...(player?.backpack || [])];
+      const existing = allSlots.find(item => item && (item.item_id === itemId || (itemId === 'apprentice_wand' && item.item_id === 'spell_wand_spark') || (itemId === 'spell_wand_spark' && item.item_id === 'apprentice_wand') || (itemId === 'astral_scepter' && item.item_id === 'spell_energy_beam') || (itemId === 'spell_energy_beam' && item.item_id === 'astral_scepter')));
+      return existing && (existing.itemLevel || 1) < 5;
+    });
+
+    const otherCards = eligibleCards.filter(c => !upgradable.includes(c));
+    FateGrantSystem.shuffle(upgradable);
+    FateGrantSystem.shuffle(otherCards);
+
+    const orderedPool = [...upgradable, ...otherCards];
 
     // Helper to find player's existing item of an item_id
     const findExistingItem = (itemId) => {
@@ -27,7 +40,7 @@ export class FateGrantSystem {
     };
 
     const chosenCards = [];
-    for (const c of eligibleCards) {
+    for (const c of orderedPool) {
       if (chosenCards.length >= 5) break;
       const card = JSON.parse(JSON.stringify(c));
       const itemId = card.item?.item_id;
@@ -55,6 +68,10 @@ export class FateGrantSystem {
           card.name = `LEVEL UP: ${existing.name || 'Beam Staff'} (Rank ${currentLevel + 1})`;
           card.description = `Level Up ${existing.name || 'Beam Staff'} (Rank ${currentLevel} ➔ ${currentLevel + 1}): +5 Wave Dmg, +1 Wave Range, +5 MP Cost.`;
           card.statBonusText = `+5 Wave Dmg, +1 Range (+5 MP)`;
+        } else if (itemId === 'relic_luminous_amulet') {
+          card.name = `LEVEL UP: ${existing.name || 'Luminous Amulet'} (Rank ${currentLevel + 1})`;
+          card.description = `Level Up ${existing.name || 'Luminous Amulet'} (Rank ${currentLevel} ➔ ${currentLevel + 1}): +5 Max HP/MP, Auto-Prayer restores +2 combined HP/MP.`;
+          card.statBonusText = `+5 HP/MP, +2 Auto-Prayer`;
         }
       } else {
         // First-time grant
@@ -64,7 +81,7 @@ export class FateGrantSystem {
           card.item.itemLevel = 1;
           card.description = `Cast radiant projectile for ${rolledDmg} magic damage (${card.item.manaCost || 1} MP).`;
           card.statBonusText = `${rolledDmg} Dmg (${card.item.manaCost || 1} MP)`;
-        } else if (card.item && (card.item.item_id === 'astral_scepter' || card.item.item_id === 'spell_energy_beam')) {
+        } else if (card.item && (card.item.item_id === 'astral_scepter' || card.item.item_id === 'spell_energy_beam' || card.item.item_id === 'relic_luminous_amulet')) {
           card.item.itemLevel = 1;
         }
       }
@@ -114,6 +131,12 @@ export class FateGrantSystem {
             item.range = (item.range || 4) + 1;
             item.manaCost = (item.manaCost || 5) + 5;
             result.addedToHotbar.push(`${item.name || 'Beam Staff'} Upgraded to Rank ${item.itemLevel} (+5 Wave Dmg, +1 Range, +5 MP)`);
+          } else if (itemBaseId === 'relic_luminous_amulet') {
+            player.max_hp = (player.max_hp || 100) + 5;
+            player.max_mana = (player.max_mana || 100) + 5;
+            player.hp = Math.min(player.max_hp, (player.hp || 100) + 5);
+            player.mana = Math.min(player.max_mana, (player.mana || 100) + 5);
+            result.addedToHotbar.push(`${item.name || 'Luminous Amulet'} Upgraded to Rank ${item.itemLevel} (+5 Max HP/MP, Auto-Prayer +2)`);
           }
           continue;
         }
@@ -125,6 +148,27 @@ export class FateGrantSystem {
       // Roll fixed damage stats for items with random ranges when offered/drafted
       if ((itemToPlace.item_id === 'apprentice_wand' || itemToPlace.item_id === 'spell_wand_spark') && !itemToPlace.damage) {
         itemToPlace.damage = Math.floor(Math.random() * (16 - 12 + 1)) + 12;
+      }
+
+      // Auto-assign staff to main_hand, wand to off_hand, or relic to relic slot if paperdoll slot is empty
+      const catalogItem = ITEMS_CATALOG[itemToPlace.item_id];
+      const targetSlot = itemToPlace.slot || catalogItem?.slot;
+      if (!player.paperdoll) {
+        player.paperdoll = { main_hand: null, off_hand: null, armor: null, relic: null };
+      }
+
+      if (targetSlot && (targetSlot === 'main_hand' || targetSlot === 'off_hand' || targetSlot === 'relic') && !player.paperdoll[targetSlot]) {
+        player.paperdoll[targetSlot] = itemToPlace;
+        if (targetSlot === 'relic' && itemToPlace.item_id === 'relic_luminous_amulet') {
+          const rank = itemToPlace.itemLevel || 1;
+          const hpMpBonus = rank * 5;
+          player.max_hp = (player.max_hp || 100) + hpMpBonus;
+          player.max_mana = (player.max_mana || 100) + hpMpBonus;
+          player.hp = Math.min(player.max_hp, (player.hp || 100) + hpMpBonus);
+          player.mana = Math.min(player.max_mana, (player.mana || 100) + hpMpBonus);
+        }
+        result.addedToHotbar.push(`${itemToPlace.name} (Equipped to ${targetSlot.replace('_', ' ')})`);
+        continue;
       }
 
       // 1. Try placing into lowest empty Action Slot (0..9)

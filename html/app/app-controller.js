@@ -221,7 +221,7 @@ export class LokartaApp {
   }
 
   tick() {
-    if (!this.isRunning || this.isGameOver) return;
+    if (!this.isRunning || this.isGameOver || this.isPaused) return;
     const deltaSec = CONFIG.TICK_INTERVAL_MS / 1000;
 
     // 1. Movement
@@ -245,6 +245,49 @@ export class LokartaApp {
       } else if (regenType === 'hp' && this.player.hp < this.player.max_hp) {
         this.player.hp = Math.min(this.player.max_hp, this.player.hp + amt);
         this.addFloatingText(`+${amt} HP`, this.player.x, this.player.y, '#22c55e');
+      }
+    }
+
+    // Auto-Prayer Pulse (Luminous Amulet every 10 seconds)
+    const equippedRelic = this.player.paperdoll?.relic;
+    if (equippedRelic && equippedRelic.item_id === 'relic_luminous_amulet') {
+      if (!this.prayerAccumulator) this.prayerAccumulator = 0;
+      this.prayerAccumulator += deltaSec;
+      if (this.prayerAccumulator >= 10.0) {
+        this.prayerAccumulator -= 10.0;
+        const rank = equippedRelic.itemLevel || 1;
+        const pointsPool = rank * 2; // Rank 1: 2, Rank 2: 4, Rank 3: 6, Rank 4: 8, Rank 5: 10
+
+        let hpNeeded = Math.max(0, this.player.max_hp - this.player.hp);
+        let manaNeeded = Math.max(0, this.player.max_mana - this.player.mana);
+
+        let hpRestored = 0;
+        let manaRestored = 0;
+        let poolRemaining = pointsPool;
+
+        if (hpNeeded > 0 && poolRemaining > 0) {
+          hpRestored = Math.min(hpNeeded, poolRemaining);
+          poolRemaining -= hpRestored;
+          this.player.hp += hpRestored;
+        }
+
+        if (manaNeeded > 0 && poolRemaining > 0) {
+          manaRestored = Math.min(manaNeeded, poolRemaining);
+          poolRemaining -= manaRestored;
+          this.player.mana += manaRestored;
+        }
+
+        if (hpRestored > 0 || manaRestored > 0) {
+          soundFX.play('holyChime');
+          let text = '';
+          if (hpRestored > 0 && manaRestored > 0) text = `+${hpRestored} HP / +${manaRestored} MP`;
+          else if (hpRestored > 0) text = `+${hpRestored} HP`;
+          else text = `+${manaRestored} MP`;
+
+          this.addFloatingText(text, this.player.x, this.player.y, '#f59e0b');
+          this.logCombat(`Luminous Amulet Prayer restored ${text}.`, 'spell');
+          this.updateHUD();
+        }
       }
     }
 
@@ -568,13 +611,7 @@ export class LokartaApp {
 
     soundFX.init();
 
-    // 1. Spells & Weapons executed from slot
-    if (item.type === 'spell' || item.type === 'weapon') {
-      this.executeActionSlotCombat(item, gesture);
-      return;
-    }
-
-    // 2. Consumable items (potions)
+    // 1. Consumable items (potions)
     if (item.type === 'consumable') {
       const res = InventorySystem.consumeItem(this.player, item, () => {
         if (item.quantity > 1) {
@@ -595,19 +632,29 @@ export class LokartaApp {
       return;
     }
 
-    // 3. Equippable offhand / armor / relic
-    if (item.type === 'offhand' || item.type === 'armor' || item.type === 'relic') {
-      const eqRes = InventorySystem.equipItem(this.player, 'action_bar', slotIndex);
-      if (eqRes.success) {
-        soundFX.play('equip');
-        this.logCombat(eqRes.message, 'loot');
-        LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
-        this.updateHUD();
-        this.persistSave();
-      } else {
-        this.logCombat(eqRes.message, 'warning');
-      }
+    // 2. Equippable items (spells, weapons, wands, staffs, offhand, armor, relic)
+    // Pressing hotkeys 1..0 equips / swaps the item to its designated hand (Main Hand or Off Hand)
+    const eqRes = InventorySystem.equipItem(this.player, 'action_bar', slotIndex);
+    if (eqRes.success) {
+      soundFX.play('equip');
+      this.logCombat(eqRes.message, 'loot');
+      LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+      this.updateHUD();
+      this.persistSave();
+    } else {
+      this.logCombat(eqRes.message, 'warning');
     }
+  }
+
+  executeHandCombat(hand = 'main_hand') {
+    const item = this.player.paperdoll?.[hand];
+    const handLabel = hand === 'main_hand' ? 'Main Hand (Q)' : 'Off Hand (W)';
+    if (!item) {
+      this.logCombat(`No weapon, staff, or wand equipped in ${handLabel}.`, 'warning');
+      return;
+    }
+
+    this.executeActionSlotCombat(item, 'tap');
   }
 
   executeActionSlotCombat(item, gesture) {

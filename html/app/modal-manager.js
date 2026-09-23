@@ -174,6 +174,8 @@ export class ModalManager {
   }
 
   static showFateGrantModal(modalOverlayEl, app, level = 1) {
+    if (app) app.isPaused = true;
+
     const offer = FateGrantSystem.generateDraftOffer(app.player, level);
     const selectedCards = new Set();
 
@@ -181,7 +183,7 @@ export class ModalManager {
     modalOverlayEl.innerHTML = `
       <div class="fate-grant-modal">
         <div class="modal-header">
-          <h2><img class="openmoji-icon title-icon" src="./assets/openmoji/1F56F.svg" alt="Candle" /> FATE GRANT DRAFT (Level ${level})</h2>
+          <h2><img class="openmoji-icon title-icon" src="./assets/openmoji/1F56F.svg" alt="Candle" /> FATE GRANT (Level ${level})</h2>
           <div class="subtitle">Select 1 or 2 cards to fortify your Action Slots and Backpack</div>
         </div>
         <div class="fate-cards-grid" id="fate-cards-grid">
@@ -252,6 +254,7 @@ export class ModalManager {
 
       modalOverlayEl.classList.add('hidden');
       modalOverlayEl.innerHTML = '';
+      if (app) app.isPaused = false;
       app.updateHUD();
       await app.persistSave();
     });
