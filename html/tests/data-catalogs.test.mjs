@@ -9,6 +9,8 @@ import {
   ITEMS_CATALOG,
   VOCATIONS_CATALOG,
   SOUNDS_CATALOG,
+  ABILITIES_CATALOG,
+  BIOMES_CATALOG,
 } from '../data/index.js';
 
 test('JSON Data Catalogs', async (t) => {
@@ -77,4 +79,22 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(SOUNDS_CATALOG.wandSpark);
     assert.ok(SOUNDS_CATALOG.victory);
   });
+
+  await t.test('loads and validates abilities.json catalog', () => {
+    assert.equal(Object.keys(ABILITIES_CATALOG).length, 9);
+    assert.ok(ABILITIES_CATALOG.magician_spark);
+    assert.equal(ABILITIES_CATALOG.magician_spark.vocation, 'magician');
+    assert.ok(ABILITIES_CATALOG.paladin_heal);
+    assert.equal(ABILITIES_CATALOG.paladin_heal.vocation, 'paladin');
+  });
+
+  await t.test('loads and validates biomes.json catalog', () => {
+    assert.equal(Object.keys(BIOMES_CATALOG).length, 4);
+    assert.ok(BIOMES_CATALOG.crypt);
+    assert.equal(BIOMES_CATALOG.crypt.minFloor, 1);
+    assert.equal(BIOMES_CATALOG.crypt.maxFloor, 5);
+    assert.ok(BIOMES_CATALOG.abyssal_sanctum);
+    assert.equal(BIOMES_CATALOG.abyssal_sanctum.maxFloor, 20);
+  });
 });
+

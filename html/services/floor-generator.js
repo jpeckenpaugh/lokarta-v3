@@ -3,7 +3,7 @@
  * Generates 40x40 procedural dungeon floors for Floors 1 to 20.
  */
 
-import { MONSTERS_CATALOG, ITEMS_CATALOG } from '../data/index.js';
+import { MONSTERS_CATALOG, ITEMS_CATALOG, BIOMES_CATALOG } from '../data/index.js';
 
 export const TILE_TYPES = {
   FLOOR: 0,
@@ -14,28 +14,28 @@ export const TILE_TYPES = {
 
 export const BIOMES = {
   CRYPT: {
-    name: 'Subterranean Crypt',
-    minFloor: 1,
-    maxFloor: 5,
-    lightColor: '#ff8800',
+    name: BIOMES_CATALOG.crypt.name,
+    minFloor: BIOMES_CATALOG.crypt.minFloor,
+    maxFloor: BIOMES_CATALOG.crypt.maxFloor,
+    lightColor: BIOMES_CATALOG.crypt.lightColor,
   },
   CATACOMBS: {
-    name: 'Catacombs of Whispers',
-    minFloor: 6,
-    maxFloor: 10,
-    lightColor: '#00d4ff',
+    name: BIOMES_CATALOG.catacombs.name,
+    minFloor: BIOMES_CATALOG.catacombs.minFloor,
+    maxFloor: BIOMES_CATALOG.catacombs.maxFloor,
+    lightColor: BIOMES_CATALOG.catacombs.lightColor,
   },
   SHADOW_VAULTS: {
-    name: 'Shadow Vaults',
-    minFloor: 11,
-    maxFloor: 15,
-    lightColor: '#a855f7',
+    name: BIOMES_CATALOG.shadow_vaults.name,
+    minFloor: BIOMES_CATALOG.shadow_vaults.minFloor,
+    maxFloor: BIOMES_CATALOG.shadow_vaults.maxFloor,
+    lightColor: BIOMES_CATALOG.shadow_vaults.lightColor,
   },
   ABYSSAL_SANCTUM: {
-    name: 'Abyssal Sanctum',
-    minFloor: 16,
-    maxFloor: 20,
-    lightColor: '#ef4444',
+    name: BIOMES_CATALOG.abyssal_sanctum.name,
+    minFloor: BIOMES_CATALOG.abyssal_sanctum.minFloor,
+    maxFloor: BIOMES_CATALOG.abyssal_sanctum.maxFloor,
+    lightColor: BIOMES_CATALOG.abyssal_sanctum.lightColor,
   },
 };
 
@@ -94,10 +94,10 @@ export function createPRNG(seed) {
  * @returns {{ name: string, lightColor: string }}
  */
 export function getBiomeForFloor(floorNumber) {
-  if (floorNumber <= 5) return { name: BIOMES.CRYPT.name, lightColor: BIOMES.CRYPT.lightColor };
-  if (floorNumber <= 10) return { name: BIOMES.CATACOMBS.name, lightColor: BIOMES.CATACOMBS.lightColor };
-  if (floorNumber <= 15) return { name: BIOMES.SHADOW_VAULTS.name, lightColor: BIOMES.SHADOW_VAULTS.lightColor };
-  return { name: BIOMES.ABYSSAL_SANCTUM.name, lightColor: BIOMES.ABYSSAL_SANCTUM.lightColor };
+  const biome = Object.values(BIOMES_CATALOG).find(
+    b => floorNumber >= b.minFloor && floorNumber <= b.maxFloor
+  ) || BIOMES_CATALOG.abyssal_sanctum;
+  return { name: biome.name, lightColor: biome.lightColor };
 }
 
 /**
