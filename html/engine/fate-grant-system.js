@@ -13,9 +13,11 @@ export class FateGrantSystem {
 
     const pool = [...FateGrantSystem.CARD_DATABASE];
     // Filter to include ONLY cards matching the player's class OR neutral cards
-    const eligibleCards = pool.filter(
-      c => !c.vocationAffinity || c.vocationAffinity === 'neutral' || c.vocationAffinity === vocation
-    );
+    const eligibleCards = pool.filter(c => {
+      if (!c.vocationAffinity || c.vocationAffinity === 'neutral') return true;
+      if (Array.isArray(c.vocationAffinity)) return c.vocationAffinity.includes(vocation);
+      return c.vocationAffinity === vocation;
+    });
 
     // Prioritize existing upgradable items if player possesses them and itemLevel < 5
     const upgradable = eligibleCards.filter(c => {
@@ -137,6 +139,11 @@ export class FateGrantSystem {
             player.hp = Math.min(player.max_hp, (player.hp || 100) + 5);
             player.mana = Math.min(player.max_mana, (player.mana || 100) + 5);
             result.addedToHotbar.push(`${item.name || 'Luminous Amulet'} Upgraded to Rank ${item.itemLevel} (+5 Max HP/MP, Auto-Prayer +2)`);
+          } else if (itemBaseId === 'apprentice_cape') {
+            const rank = item.itemLevel;
+            const mpAmount = rank;
+            const cooldownSec = Math.max(12, 22 - 2 * rank);
+            result.addedToHotbar.push(`${item.name || "Apprentice's Cape"} Upgraded to Rank ${rank} (Power Pulse: +${mpAmount} MP / ${cooldownSec}s)`);
           }
           continue;
         }
@@ -150,14 +157,14 @@ export class FateGrantSystem {
         itemToPlace.damage = Math.floor(Math.random() * (16 - 12 + 1)) + 12;
       }
 
-      // Auto-assign staff to main_hand, wand to off_hand, or relic to relic slot if paperdoll slot is empty
+      // Auto-assign staff to main_hand, wand to off_hand, armor to armor, or relic to relic slot if paperdoll slot is empty
       const catalogItem = ITEMS_CATALOG[itemToPlace.item_id];
       const targetSlot = itemToPlace.slot || catalogItem?.slot;
       if (!player.paperdoll) {
         player.paperdoll = { main_hand: null, off_hand: null, armor: null, relic: null };
       }
 
-      if (targetSlot && (targetSlot === 'main_hand' || targetSlot === 'off_hand' || targetSlot === 'relic') && !player.paperdoll[targetSlot]) {
+      if (targetSlot && (targetSlot === 'main_hand' || targetSlot === 'off_hand' || targetSlot === 'armor' || targetSlot === 'relic') && !player.paperdoll[targetSlot]) {
         player.paperdoll[targetSlot] = itemToPlace;
         if (targetSlot === 'relic' && itemToPlace.item_id === 'relic_luminous_amulet') {
           const rank = itemToPlace.itemLevel || 1;

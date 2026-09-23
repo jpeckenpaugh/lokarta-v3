@@ -291,6 +291,29 @@ export class LokartaApp {
       }
     }
 
+    // Power Pulse (Apprentice's Cape armor)
+    const equippedArmor = this.player.paperdoll?.armor;
+    if (equippedArmor && equippedArmor.item_id === 'apprentice_cape') {
+      if (!this.powerPulseAccumulator) this.powerPulseAccumulator = 0;
+      this.powerPulseAccumulator += deltaSec;
+      const rank = Math.min(5, Math.max(1, equippedArmor.itemLevel || 1));
+      const intervalSec = Math.max(12, 22 - 2 * rank); // Rank 1: 20s, Rank 2: 18s, Rank 3: 16s, Rank 4: 14s, Rank 5: 12s
+
+      if (this.powerPulseAccumulator >= intervalSec) {
+        this.powerPulseAccumulator -= intervalSec;
+        const mpRestored = rank; // +1 MP at Rank 1 up to +5 MP at Rank 5
+
+        if (this.player.mana < this.player.max_mana) {
+          const actualRestored = Math.min(mpRestored, this.player.max_mana - this.player.mana);
+          this.player.mana += actualRestored;
+          soundFX.play('manaRegen');
+          this.addFloatingText(`+${actualRestored} MP Pulse`, this.player.x, this.player.y, '#38bdf8');
+          this.logCombat(`Apprentice's Cape Power Pulse restored +${actualRestored} MP!`, 'spell');
+          this.updateHUD();
+        }
+      }
+    }
+
     // 3. Update lighting
     LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
 

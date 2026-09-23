@@ -457,7 +457,11 @@ describe('FateGrantSystem', () => {
       assert.equal(offer.requiredSelections.min, 1);
       assert.equal(offer.requiredSelections.max, 2);
 
-      const invalidOffClass = offer.cards.some(c => c.vocationAffinity && c.vocationAffinity !== 'neutral' && c.vocationAffinity !== v);
+      const invalidOffClass = offer.cards.some(c => {
+        if (!c.vocationAffinity || c.vocationAffinity === 'neutral') return false;
+        if (Array.isArray(c.vocationAffinity)) return !c.vocationAffinity.includes(v);
+        return c.vocationAffinity !== v;
+      });
       assert.equal(invalidOffClass, false, `Level 1 draft offer for ${v} must not contain off-class cards`);
     }
   });
@@ -470,9 +474,9 @@ describe('FateGrantSystem', () => {
     const chosenCards = offer.cards.slice(0, 2);
     const result = FateGrantSystem.applyDraftedCards(player, chosenCards, grid);
 
-    assert.equal(result.addedToHotbar.length, 2);
-    // Drafted items populate either main_hand/off_hand paperdoll (auto-equip) or action_bar
-    const hasItemPlaced = player.paperdoll.main_hand !== null || player.paperdoll.off_hand !== null || player.action_bar[0] !== null;
+    assert.equal(result.addedToHotbar.length + result.addedToBackpack.length, 2);
+    // Drafted items populate either main_hand/off_hand paperdoll (auto-equip), action_bar or backpack
+    const hasItemPlaced = player.paperdoll.main_hand !== null || player.paperdoll.off_hand !== null || player.action_bar[0] !== null || player.backpack[0] !== null;
     assert.ok(hasItemPlaced);
   });
 
@@ -526,6 +530,29 @@ describe('FateGrantSystem', () => {
     assert.equal(player.paperdoll.relic.itemLevel, 2);
     assert.equal(player.max_hp, baseHp + 10);
     assert.equal(player.max_mana, baseMana + 10);
+  });
+
+  it("auto-equips Apprentice's Cape to Armor slot and scales Power Pulse up to Rank 5", () => {
+    const player = createPlayer('magician');
+
+    const capeCard = {
+      id: 'card_apprentice_cape',
+      name: "Apprentice's Cape",
+      item: { item_id: 'apprentice_cape', name: "Apprentice's Cape", type: 'armor', slot: 'armor', itemLevel: 1 }
+    };
+
+    FateGrantSystem.applyDraftedCards(player, [capeCard]);
+    assert.equal(player.paperdoll.armor?.item_id, 'apprentice_cape');
+    assert.equal(player.paperdoll.armor?.itemLevel, 1);
+
+    // Test Level Up upgrade to Rank 2
+    const offer = FateGrantSystem.generateDraftOffer(player, 2);
+    const upgradeCard = offer.cards.find(c => c.targetItemId === 'apprentice_cape');
+    assert.ok(upgradeCard);
+    assert.equal(upgradeCard.isUpgrade, true);
+
+    FateGrantSystem.applyDraftedCards(player, [upgradeCard]);
+    assert.equal(player.paperdoll.armor.itemLevel, 2);
   });
 });
 

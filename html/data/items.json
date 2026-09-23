@@ -63,8 +63,8 @@
     "manaCost": 5,
     "range": 4,
     "vocationAffinity": "magician",
-    "icon": "🔮",
-    "svgCode": "1F52E",
+    "icon": "🦯",
+    "svgCode": "1F9AF",
     "actionKey": "energy_beam",
     "maxStack": 1
   },
@@ -138,6 +138,18 @@
     "svgCode": "1F9BA",
     "maxStack": 1
   },
+  "apprentice_cape": {
+    "item_id": "apprentice_cape",
+    "name": "Apprentice's Cape",
+    "type": "armor",
+    "slot": "armor",
+    "stat_bonus": 2,
+    "itemLevel": 1,
+    "vocationAffinity": "magician",
+    "icon": "🧥",
+    "svgCode": "1F9E5",
+    "maxStack": 1
+  },
   "relic_luminous_amulet": {
     "item_id": "relic_luminous_amulet",
     "name": "Luminous Amulet",
@@ -197,8 +209,8 @@
     "manaCost": 5,
     "cooldown": 3.0,
     "vocationAffinity": "magician",
-    "icon": "⚡",
-    "svgCode": "26A1",
+    "icon": "🦯",
+    "svgCode": "1F9AF",
     "actionKey": "energy_beam",
     "maxStack": 1
   },

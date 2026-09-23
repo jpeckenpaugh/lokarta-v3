@@ -20,7 +20,7 @@
     "id": "card_astral_scepter",
     "name": "Beam Staff",
     "rarity": "epic",
-    "icon": "⚡",
+    "icon": "🦯",
     "description": "Ancient staff unleashing an expanding wave of arcane energy.",
     "statBonusText": "20-5 Wave Dmg (5 MP)",
     "vocationAffinity": "magician",
@@ -30,7 +30,25 @@
       "type": "weapon",
       "quantity": 1,
       "stat_bonus": 8,
-      "icon": "⚡"
+      "icon": "🦯"
+    }
+  },
+  {
+    "id": "card_apprentice_cape",
+    "name": "Apprentice's Cape",
+    "rarity": "rare",
+    "icon": "🧥",
+    "description": "Woven silk cloak granting Power Pulse ability (+1 MP / 20s).",
+    "statBonusText": "+1 MP / 20s Power Pulse",
+    "vocationAffinity": "magician",
+    "item": {
+      "item_id": "apprentice_cape",
+      "name": "Apprentice's Cape",
+      "type": "armor",
+      "quantity": 1,
+      "stat_bonus": 2,
+      "itemLevel": 1,
+      "icon": "🧥"
     }
   },
   {
@@ -327,6 +345,7 @@
     "icon": "🛡️",
     "description": "A sturdy iron-rimmed off-hand buckler absorbing blows.",
     "statBonusText": "+4 Armor",
+    "vocationAffinity": ["fighter", "paladin"],
     "item": {
       "item_id": "buckler",
       "name": "Reinforced Buckler",
@@ -343,6 +362,7 @@
     "icon": "🦺",
     "description": "Heavy interlocking steel cuirass protecting vital organs from lethal damage.",
     "statBonusText": "+8 Armor",
+    "vocationAffinity": ["fighter", "paladin"],
     "item": {
       "item_id": "plate_armor",
       "name": "Knight Plate Armor",
@@ -375,6 +395,7 @@
     "icon": "👑",
     "description": "Ancient artifact of legend that enhances all combat damage by +20%.",
     "statBonusText": "+20% Damage, +15 Max HP",
+    "vocationAffinity": ["fighter", "paladin"],
     "item": {
       "item_id": "relic_champions_crest",
       "name": "Champion's Crest",
