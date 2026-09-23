@@ -131,14 +131,21 @@ export class CanvasRenderer {
         }
         ctx.restore();
       } else {
-        const progress = Math.min(1.0, p.elapsedMs / p.durationMs);
         const startPixelX = p.sourceX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
         const startPixelY = p.sourceY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
-        const targetPixelX = p.targetX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
-        const targetPixelY = p.targetY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
 
-        const curX = startPixelX + (targetPixelX - startPixelX) * progress;
-        const curY = startPixelY + (targetPixelY - startPixelY) * progress;
+        let curX, curY;
+        if (typeof p.currentPxX === 'number' && typeof p.currentPxY === 'number') {
+          curX = p.currentPxX - this.cameraX;
+          curY = p.currentPxY - this.cameraY;
+        } else {
+          const progress = Math.min(1.0, p.elapsedMs / p.durationMs);
+          const targetPixelX = p.targetX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
+          const targetPixelY = p.targetY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
+
+          curX = startPixelX + (targetPixelX - startPixelX) * progress;
+          curY = startPixelY + (targetPixelY - startPixelY) * progress;
+        }
 
         const v = p.visual || {};
         const trailType = v.trailType || 'solid';
@@ -146,52 +153,68 @@ export class CanvasRenderer {
         const glowColor = v.glowColor || '#00eeff';
         const headRadius = v.headRadius || 5;
 
+        // Capped Trail Tail Calculation (Max 5 tiles solid, fading over 2 tiles)
+        const maxSolidPx = (v.maxTrailLengthTiles || 5.0) * CONFIG.GRID_SIZE;
+        const fadePx = (v.trailFadeTiles || 2.0) * CONFIG.GRID_SIZE;
+        const maxTotalTrailPx = maxSolidPx + fadePx;
+
+        const totalDistPx = Math.hypot(curX - startPixelX, curY - startPixelY);
+        const effectiveTrailPx = Math.min(totalDistPx, maxTotalTrailPx);
+
+        let tailX = startPixelX;
+        let tailY = startPixelY;
+        if (totalDistPx > maxTotalTrailPx && totalDistPx > 0) {
+          const ratio = (totalDistPx - maxTotalTrailPx) / totalDistPx;
+          tailX = startPixelX + (curX - startPixelX) * ratio;
+          tailY = startPixelY + (curY - startPixelY) * ratio;
+        }
+
         ctx.save();
 
         if (trailType === 'electric') {
-          const segments = v.trailSegments || 5;
+          const segments = v.trailSegments || 6;
           const jitter = v.trailJitterPx || 4;
           const trailWidth = v.trailWidth || 3;
 
-          // Outer Electric Glow Line
-          ctx.strokeStyle = glowColor;
-          ctx.lineWidth = trailWidth + 2;
-          ctx.globalAlpha = 0.4;
-          ctx.beginPath();
-          ctx.moveTo(startPixelX, startPixelY);
+          for (let i = 0; i < segments; i++) {
+            const ratio1 = i / segments;
+            const ratio2 = (i + 1) / segments;
 
-          for (let i = 1; i <= segments; i++) {
-            const segRatio = i / segments;
-            const px = startPixelX + (curX - startPixelX) * segRatio;
-            const py = startPixelY + (curY - startPixelY) * segRatio;
-            const offsetX = i < segments ? (Math.random() - 0.5) * jitter * 2 : 0;
-            const offsetY = i < segments ? (Math.random() - 0.5) * jitter * 2 : 0;
-            ctx.lineTo(px + offsetX, py + offsetY);
+            const p1x = tailX + (curX - tailX) * ratio1;
+            const p1y = tailY + (curY - tailY) * ratio1;
+            const p2x = tailX + (curX - tailX) * ratio2;
+            const p2y = tailY + (curY - tailY) * ratio2;
+
+            const distFromHead1 = (1 - ratio1) * effectiveTrailPx;
+            const alpha1 = distFromHead1 <= maxSolidPx ? 1.0 : Math.max(0, 1.0 - (distFromHead1 - maxSolidPx) / fadePx);
+
+            const offsetX = i < segments - 1 ? (Math.random() - 0.5) * jitter * 2 : 0;
+            const offsetY = i < segments - 1 ? (Math.random() - 0.5) * jitter * 2 : 0;
+
+            // Outer Glow Segment
+            ctx.strokeStyle = glowColor;
+            ctx.lineWidth = trailWidth + 2;
+            ctx.globalAlpha = 0.4 * alpha1;
+            ctx.beginPath();
+            ctx.moveTo(p1x, p1y);
+            ctx.lineTo(p2x + offsetX, p2y + offsetY);
+            ctx.stroke();
+
+            // White Core Segment
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = Math.max(1, trailWidth - 1);
+            ctx.globalAlpha = 0.95 * alpha1;
+            ctx.beginPath();
+            ctx.moveTo(p1x, p1y);
+            ctx.lineTo(p2x + offsetX, p2y + offsetY);
+            ctx.stroke();
           }
-          ctx.stroke();
-
-          // Core Electric Spark Line
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = Math.max(1, trailWidth - 1);
-          ctx.globalAlpha = 0.95;
-          ctx.beginPath();
-          ctx.moveTo(startPixelX, startPixelY);
-
-          for (let i = 1; i <= segments; i++) {
-            const segRatio = i / segments;
-            const px = startPixelX + (curX - startPixelX) * segRatio;
-            const py = startPixelY + (curY - startPixelY) * segRatio;
-            const offsetX = i < segments ? (Math.random() - 0.5) * jitter * 1.5 : 0;
-            const offsetY = i < segments ? (Math.random() - 0.5) * jitter * 1.5 : 0;
-            ctx.lineTo(px + offsetX, py + offsetY);
-          }
-          ctx.stroke();
         } else {
           // Fallback solid trail
           ctx.strokeStyle = mainColor;
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(startPixelX, startPixelY);
+          ctx.moveTo(tailX, tailY);
           ctx.lineTo(curX, curY);
           ctx.stroke();
         }
@@ -293,14 +316,21 @@ export class CanvasRenderer {
     // 4. Subtle tile lighting illumination around in-flight projectiles
     for (const p of projectiles) {
       if (p.visual?.illuminateTiles) {
-        const progress = Math.min(1.0, p.elapsedMs / p.durationMs);
-        const startPixelX = p.sourceX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
-        const startPixelY = p.sourceY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
-        const targetPixelX = p.targetX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
-        const targetPixelY = p.targetY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
+        let curX, curY;
+        if (typeof p.currentPxX === 'number' && typeof p.currentPxY === 'number') {
+          curX = p.currentPxX - this.cameraX;
+          curY = p.currentPxY - this.cameraY;
+        } else {
+          const progress = Math.min(1.0, p.elapsedMs / p.durationMs);
+          const startPixelX = p.sourceX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
+          const startPixelY = p.sourceY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
+          const targetPixelX = p.targetX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
+          const targetPixelY = p.targetY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
 
-        const curX = startPixelX + (targetPixelX - startPixelX) * progress;
-        const curY = startPixelY + (targetPixelY - startPixelY) * progress;
+          curX = startPixelX + (targetPixelX - startPixelX) * progress;
+          curY = startPixelY + (targetPixelY - startPixelY) * progress;
+        }
+
         const projRadiusPx = (p.visual.lightRadiusTiles || 1.5) * CONFIG.GRID_SIZE;
 
         const projGrad = ctx.createRadialGradient(curX, curY, 2, curX, curY, projRadiusPx);

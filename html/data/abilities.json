@@ -10,6 +10,7 @@
     "manaCost": 0,
     "cooldownSec": 1.0,
     "soundId": "spell_spark",
+    "impactSoundId": "wandSpark",
     "actionKey": "wand_spark",
     "visual": {
       "color": "#44ccff",
@@ -24,7 +25,10 @@
       "burstColor": "#77e5ff",
       "illuminateTiles": true,
       "lightRadiusTiles": 1.5,
-      "lightIntensity": 0.8
+      "lightIntensity": 0.8,
+      "speedTilesPerSec": 10.0,
+      "maxTrailLengthTiles": 1.0,
+      "trailFadeTiles": 2.0
     }
   },
   "magician_light": {

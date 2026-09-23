@@ -163,39 +163,74 @@ export class AudioSystem {
   }
 
   /**
+   * Computes spatial attenuation volume scale based on tile distance from player.
+   * Distance <= 5 tiles: 1.0 (100% volume)
+   * Distance > 5 tiles: loses 10% volume per tile down to a minimum floor of 0.10 (10%).
+   * @param {number} x1 Origin tile X
+   * @param {number} y1 Origin tile Y
+   * @param {number} x2 Target tile X (e.g. player.x)
+   * @param {number} y2 Target tile Y (e.g. player.y)
+   * @returns {number} Volume scale factor between 0.10 and 1.0
+   */
+  computeDistanceScale(x1, y1, x2, y2) {
+    if (typeof x1 !== 'number' || typeof y1 !== 'number' || typeof x2 !== 'number' || typeof y2 !== 'number') {
+      return 1.0;
+    }
+    const dist = Math.hypot(x2 - x1, y2 - y1);
+    if (dist <= 5.0) return 1.0;
+    const attenuation = (dist - 5.0) * 0.10;
+    return Math.max(0.10, 1.0 - attenuation);
+  }
+
+  /**
    * Primary playback function to play a procedural sound defined in sounds.json.
    * @param {string} soundKey
+   * @param {number} [volumeScale=1.0]
    */
-  play(soundKey) {
+  play(soundKey, volumeScale = 1.0) {
     if (!this.canPlay() || !this.ctx || !this.masterGain) return;
     if (!this.sounds || !this.sounds[soundKey]) return;
 
     const config = this.sounds[soundKey];
     const now = this.ctx.currentTime;
+    const vScale = typeof volumeScale === 'number' ? Math.max(0.10, Math.min(1.0, volumeScale)) : 1.0;
 
     switch (config.type) {
       case 'sweep':
-        this._playSweep(config, now);
+        this._playSweep(config, now, vScale);
         break;
       case 'sequence':
-        this._playSequence(config, now);
+        this._playSequence(config, now, vScale);
         break;
       case 'composite':
-        this._playComposite(config, now);
+        this._playComposite(config, now, vScale);
         break;
     }
   }
 
+  /**
+   * Plays a sound spatially attenuated relative to player position.
+   * @param {string} soundKey
+   * @param {number} targetX
+   * @param {number} targetY
+   * @param {number} playerX
+   * @param {number} playerY
+   */
+  playAt(soundKey, targetX, targetY, playerX, playerY) {
+    const scale = this.computeDistanceScale(targetX, targetY, playerX, playerY);
+    this.play(soundKey, scale);
+  }
+
   /** Alias for play() */
-  playSound(soundKey) {
-    this.play(soundKey);
+  playSound(soundKey, volumeScale = 1.0) {
+    this.play(soundKey, volumeScale);
   }
 
   // ==========================================================================
   // Internal Sound Synthesizers
   // ==========================================================================
 
-  _playSweep(config, now) {
+  _playSweep(config, now, volumeScale = 1.0) {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     let lastNode = osc;
@@ -213,7 +248,8 @@ export class AudioSystem {
     osc.frequency.setValueAtTime(startFreq, now);
     osc.frequency.exponentialRampToValueAtTime(Math.max(0.001, config.endFreq), now + config.duration);
 
-    gain.gain.setValueAtTime(config.gain, now);
+    const effGain = Math.max(0.0001, (config.gain || 0.15) * volumeScale);
+    gain.gain.setValueAtTime(effGain, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + config.duration);
 
     lastNode.connect(gain);
@@ -224,9 +260,9 @@ export class AudioSystem {
     osc.stop(now + stopTime);
   }
 
-  _playSequence(config, now) {
+  _playSequence(config, now, volumeScale = 1.0) {
     const oscType = config.oscType || 'sine';
-    const masterVolume = config.gain || 0.15;
+    const masterVolume = Math.max(0.0001, (config.gain || 0.15) * volumeScale);
 
     config.notes.forEach(note => {
       const osc = this.ctx.createOscillator();
@@ -248,10 +284,12 @@ export class AudioSystem {
     });
   }
 
-  _playComposite(config, now) {
+  _playComposite(config, now, volumeScale = 1.0) {
+    const effGain = Math.max(0.0001, (config.gain || 0.20) * volumeScale);
+
     if (config.oscillators) {
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(config.gain, now);
+      gain.gain.setValueAtTime(effGain, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + config.duration);
       gain.connect(this.masterGain);
 
@@ -285,7 +323,7 @@ export class AudioSystem {
       filter.frequency.exponentialRampToValueAtTime(config.filter.endFreq, now + config.duration);
       filter.Q.setValueAtTime(config.filter.Q || 1, now);
 
-      gain.gain.setValueAtTime(config.gain, now);
+      gain.gain.setValueAtTime(effGain, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + config.duration);
 
       osc.connect(filter);

@@ -279,30 +279,86 @@ export class LokartaApp {
     this.updateHUD();
   }
 
+  triggerImpactBurst(pxX, pxY, visual, color) {
+    const count = visual?.burstParticleCount || 14;
+    const burstColor = visual?.burstColor || color || '#77e5ff';
+    for (let k = 0; k < count; k++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 40 + Math.random() * 110;
+      this.particles.push({
+        x: pxX,
+        y: pxY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: 1.5 + Math.random() * 3,
+        color: burstColor,
+        elapsedMs: 0,
+        durationMs: 300 + Math.random() * 200,
+      });
+    }
+  }
+
   updateAnimations(dtMs) {
+    const dtSec = dtMs / 1000;
+
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
-      p.elapsedMs += dtMs;
-      if (p.elapsedMs >= p.durationMs) {
-        if (p.visual && p.visual.burstParticleCount > 0) {
-          const targetPxX = p.targetX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
-          const targetPxY = p.targetY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
-          const count = p.visual.burstParticleCount;
-          for (let k = 0; k < count; k++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = 40 + Math.random() * 110;
-            this.particles.push({
-              x: targetPxX,
-              y: targetPxY,
-              vx: Math.cos(angle) * speed,
-              vy: Math.sin(angle) * speed,
-              radius: 1.5 + Math.random() * 3,
-              color: p.visual.burstColor || p.color || '#44ccff',
-              elapsedMs: 0,
-              durationMs: 300 + Math.random() * 200,
-            });
-          }
+
+      // Handle legacy duration-based projectiles (e.g. non-physics spells)
+      if (!p.dirX && !p.dirY) {
+        p.elapsedMs += dtMs;
+        if (p.elapsedMs >= p.durationMs) {
+          this.projectiles.splice(i, 1);
         }
+        continue;
+      }
+
+      // Real-time continuous projectile physics
+      p.currentPxX += p.dirX * p.speedPxPerSec * dtSec;
+      p.currentPxY += p.dirY * p.speedPxPerSec * dtSec;
+
+      const tileX = Math.floor(p.currentPxX / CONFIG.GRID_SIZE);
+      const tileY = Math.floor(p.currentPxY / CONFIG.GRID_SIZE);
+
+      // 1. Map Boundary check
+      if (tileX < 0 || tileX >= this.gridMap.width || tileY < 0 || tileY >= this.gridMap.height) {
+        this.triggerImpactBurst(p.currentPxX, p.currentPxY, p.visual, p.color);
+        soundFX.playAt('wandSpark', tileX, tileY, this.player.x, this.player.y);
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // 2. Wall Collision check
+      if (this.gridMap.isWall(tileX, tileY)) {
+        this.triggerImpactBurst(p.currentPxX, p.currentPxY, p.visual, p.color);
+        soundFX.playAt('wandSpark', tileX, tileY, this.player.x, this.player.y);
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // 3. Living Monster Collision check
+      const hitMonster = this.monsters.find(m => m.hp > 0 && m.x === tileX && m.y === tileY);
+      if (hitMonster) {
+        const payload = p.damagePayload || {};
+        const dmg = payload.damage || 10;
+        hitMonster.hp -= dmg;
+
+        soundFX.playAt('wandSpark', tileX, tileY, this.player.x, this.player.y);
+        this.triggerImpactBurst(p.currentPxX, p.currentPxY, p.visual, p.color);
+
+        let combatMsg = `Wand Spark struck ${hitMonster.name} for ${dmg} magic damage!`;
+        if (hitMonster.hp <= 0) {
+          combatMsg += ` ${hitMonster.name} was slain!`;
+          const loot = CombatSystem.generateMonsterLoot(hitMonster);
+          this.handleCombatResult({
+            success: true,
+            defeatedMonsterId: hitMonster.id,
+            droppedLoot: loot,
+          }, tileX, tileY);
+        }
+
+        this.logCombat(combatMsg, 'combat');
+        this.addFloatingText(`-${dmg}`, tileX, tileY, '#38bdf8');
         this.projectiles.splice(i, 1);
       }
     }
@@ -461,10 +517,9 @@ export class LokartaApp {
     const handlers = {
       wand_spark: () => {
         const target = this.getTargetMonster(CONFIG.MAGICIAN_SPARK_RANGE);
-        if (!target) return this.logCombat('No enemy in range for Wand Spark (click enemy to target).', 'warning');
         soundFX.play('wandSpark');
         const res = CombatSystem.executeWandSpark(this.player, target, this.gridMap);
-        this.handleCombatResult(res, target.x, target.y);
+        this.handleCombatResult(res, this.player.x, this.player.y);
       },
       energy_beam: () => {
         const res = CombatSystem.executeEnergyBeam(this.player, this.player.facing, this.gridMap, this.monsters);

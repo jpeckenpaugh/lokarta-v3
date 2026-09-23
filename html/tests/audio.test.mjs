@@ -39,4 +39,19 @@ test('AudioSystem & JSON Sound Catalog', async (t) => {
     audio.toggleMute();
     assert.equal(audio.getMuted(), false);
   });
+
+  await t.test('computes spatial distance volume attenuation scale correctly', () => {
+    const audio = AudioSystem.getInstance();
+
+    // Distance <= 5 tiles -> 100% (1.0)
+    assert.equal(audio.computeDistanceScale(2, 2, 2, 2), 1.0);
+    assert.equal(audio.computeDistanceScale(2, 2, 7, 2), 1.0); // 5 tiles away
+
+    // Distance > 5 tiles -> loses 10% per tile
+    assert.equal(audio.computeDistanceScale(2, 2, 8, 2), 0.9); // 6 tiles away -> 90%
+    assert.equal(audio.computeDistanceScale(2, 2, 12, 2), 0.5); // 10 tiles away -> 50%
+
+    // Distance floor -> minimum 10% (0.10)
+    assert.equal(audio.computeDistanceScale(2, 2, 25, 2), 0.1); // 23 tiles away -> floors at 10%
+  });
 });

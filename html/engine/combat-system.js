@@ -88,59 +88,71 @@ export class CombatSystem {
       return { success: false, message: 'Wand Spark is on cooldown.' };
     }
 
-    const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'magician' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
-    const bonusRng = player.skillBoosts?.bonusRange || 0;
+    let dirX = 0;
+    let dirY = 0;
 
-    const dist = Math.hypot(target.x - player.x, target.y - player.y);
-    if (dist > (CONFIG.MAGICIAN_SPARK_RANGE + bonusRng) + 0.5) {
-      return { success: false, message: 'Target is out of range for Wand Spark.' };
+    if (target) {
+      const dx = target.x - player.x;
+      const dy = target.y - player.y;
+      const len = Math.hypot(dx, dy);
+      if (len > 0) {
+        dirX = dx / len;
+        dirY = dy / len;
+      }
     }
 
-    if (!LightingSystem.hasLineOfSight(gridMap, player.x, player.y, target.x, target.y)) {
-      return { success: false, message: 'Line of sight to target is blocked.' };
+    if (dirX === 0 && dirY === 0) {
+      const facingVectors = {
+        up: { x: 0, y: -1 },
+        down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 },
+        right: { x: 1, y: 0 },
+      };
+      const vec = facingVectors[player.facing] || facingVectors.right;
+      dirX = vec.x;
+      dirY = vec.y;
     }
 
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.wand_spark = CONFIG.MAGICIAN_SPARK_COOLDOWN_SEC;
 
+    const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'magician' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
     const baseDmg = CombatSystem.randomBetween(CONFIG.MAGICIAN_SPARK_DAMAGE_MIN, CONFIG.MAGICIAN_SPARK_DAMAGE_MAX);
     const damage = Math.round(baseDmg * mult);
-    target.hp -= damage;
 
     const abilitySpec = ABILITIES_CATALOG.magician_spark;
+    const speedTilesPerSec = abilitySpec?.visual?.speedTilesPerSec || 10.0;
+    const speedPxPerSec = speedTilesPerSec * CONFIG.GRID_SIZE;
+
+    const startPxX = player.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
+    const startPxY = player.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
+
     const projectile = {
       id: `proj_${Date.now()}_${Math.random()}`,
       abilityId: 'magician_spark',
       type: 'wand_spark',
       sourceX: player.x,
       sourceY: player.y,
-      targetX: target.x,
-      targetY: target.y,
-      currentX: player.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2,
-      currentY: player.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2,
-      durationMs: 250,
-      elapsedMs: 0,
+      currentPxX: startPxX,
+      currentPxY: startPxY,
+      dirX,
+      dirY,
+      speedPxPerSec,
+      damagePayload: {
+        damage,
+        vocation: player.vocation,
+        casterId: player.id || 'player',
+      },
       color: abilitySpec?.visual?.color || '#44ccff',
       visual: abilitySpec?.visual || null,
+      active: true,
     };
-
-    let defeatedMonsterId;
-    let droppedLoot;
-    let message = `You hit ${target.name} with Wand Spark for ${damage} magic damage${player.vocation === 'magician' ? ' (2.5x Class Mastery!)' : ''}.`;
-
-    if (target.hp <= 0) {
-      defeatedMonsterId = target.id;
-      droppedLoot = CombatSystem.generateMonsterLoot(target);
-      message += ` ${target.name} was slain!`;
-    }
 
     return {
       success: true,
-      message,
+      message: 'You cast Wand Spark!',
       damageDealt: damage,
       projectiles: [projectile],
-      defeatedMonsterId,
-      droppedLoot,
     };
   }
 
