@@ -185,28 +185,34 @@ describe('GridMap & Tile Bounds', () => {
 // ============================================================================
 
 describe('LightingSystem & 10-Tile FOV', () => {
-  it('computes player vision radius correctly (base: 10, torch: 14, light spell: 12)', () => {
+  it('computes player vision radius correctly (base: 10, torch: +2, degrading light spell: +3 -> +2 -> +1)', () => {
     const player = createPlayer('magician');
 
     // 1. Base vision: 10 tiles
-    assert.equal(LightingSystem.computePlayerRadius(player), CONFIG.BASE_LIGHT_RADIUS); // 10
+    assert.equal(LightingSystem.computePlayerRadius(player), 10);
 
-    // 2. Torch in off_hand -> 14 tiles
+    // 2. Torch in off_hand -> 12 tiles (+2)
     player.paperdoll.off_hand = { item_id: 'torch' };
-    assert.equal(LightingSystem.computePlayerRadius(player), CONFIG.TORCH_LIGHT_RADIUS); // 14
+    assert.equal(LightingSystem.computePlayerRadius(player), 12);
 
-    // 3. Torch in action_bar -> 14 tiles
+    // 3. Torch in action_bar -> 12 tiles (+2)
     player.paperdoll.off_hand = null;
     player.action_bar[0] = { item_id: 'torch' };
-    assert.equal(LightingSystem.computePlayerRadius(player), CONFIG.TORCH_LIGHT_RADIUS); // 14
+    assert.equal(LightingSystem.computePlayerRadius(player), 12);
 
-    // 4. Light spell active -> 12 tiles
+    // 4. Light spell active degrading (+3 -> +2 -> +1)
     player.action_bar[0] = null;
-    player.lightSpellTimer = 20;
-    assert.equal(LightingSystem.computePlayerRadius(player), CONFIG.LIGHT_SPELL_RADIUS); // 12
+    player.lightSpellTimer = 25; // 30-20s -> 13 tiles
+    assert.equal(LightingSystem.computePlayerRadius(player), 13);
+
+    player.lightSpellTimer = 15; // 19-10s -> 12 tiles
+    assert.equal(LightingSystem.computePlayerRadius(player), 12);
+
+    player.lightSpellTimer = 5;  // <10s -> 11 tiles
+    assert.equal(LightingSystem.computePlayerRadius(player), 11);
   });
 
-  it('casts light circle and detects wall occlusion', () => {
+  it('casts light circle without wall occlusion', () => {
     const matrix = [
       [0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0],
@@ -221,7 +227,7 @@ describe('LightingSystem & 10-Tile FOV', () => {
     assert.equal(grid.getTile(1, 2).isLit, true);
     assert.equal(grid.getTile(2, 2).isLit, true);
     assert.equal(grid.getTile(3, 2).isLit, true); // Wall illuminated
-    assert.equal(grid.getTile(4, 2).isLit, false); // Occluded behind wall
+    assert.equal(grid.getTile(4, 2).isLit, true); // Illuminated through wall (no occlusion)
   });
 
   it('checks line of sight with Bresenham line', () => {

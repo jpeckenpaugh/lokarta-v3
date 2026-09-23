@@ -106,7 +106,7 @@ export class HUDManager {
           player.lightSpellTimer > 0
             ? `<div class="active-buff-badge">
                 <span class="buff-icon">✨</span>
-                <span class="buff-text">Light Aura: <strong>${Math.ceil(player.lightSpellTimer)}s</strong> (12 tiles)</span>
+                <span class="buff-text">Light Aura: <strong>${Math.ceil(player.lightSpellTimer)}s</strong> (${LightingSystem.computePlayerRadius(player)} tiles)</span>
               </div>`
             : ''
         }

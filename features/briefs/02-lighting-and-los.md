@@ -14,12 +14,12 @@ Active vision radius is computed synchronously by `LightingSystem.computePlayerR
 - **Torch Boost Radius:** `CONFIG.TORCH_LIGHT_RADIUS = 14` tiles when a Torch (`item_id: 'torch'`) is equipped in `main_hand`, `off_hand`, or present in the active `action_bar`.
 - **Light Spell Radius:** `CONFIG.LIGHT_SPELL_RADIUS = 12` tiles when `player.lightSpellTimer > 0` (takes priority over torch). Spell duration is `30` seconds (`CONFIG.LIGHT_SPELL_DURATION_SEC`).
 
-### 2.2 Raycasted Field-of-View & Occlusion Algorithm
-- **Radial Raycasting:** `LightingSystem.castLightCircle` samples 360 rays at degree increments around origin `(originX, originY)` using integer Bresenham line casting (`castLightRay`).
-- **Tile Intensity & Falloff:** Intensity for a tile at distance $d$ from player is calculated as:
-  $$\text{intensity} = \max\left(0, 1 - \frac{d}{\text{radius}}\right)$$
+### 2.2 Circular Radius Illumination Engine
+- **Spatial Circle Calculation:** `LightingSystem.castLightCircle` evaluates all tiles within bounding box coordinates around origin `(originX, originY)` based on active vision radius.
+- **Tile Intensity & Falloff:** Intensity for a tile at distance $d = \sqrt{\Delta x^2 + \Delta y^2}$ from player is calculated as:
+  $$\text{intensity} = \max\left(0, 1 - \frac{d}{\text{radius} + 1}\right)$$
   Origin tile receives intensity `1.0` and `isLit = true`.
-- **Wall Blocking:** Rays terminate immediately upon encountering a Wall tile (`WALL=1`). Closed doors block ray transmission, whereas open doors allow light propagation.
+- **Wall Occlusion Removed:** Illumination spreads in a uniform circular radius around the player regardless of intervening walls or obstacles.
 
 ### 2.3 Three-State Fog-of-War Memory Engine
 1. **Unexplored (State 0):** Completely dark `#000000` canvas shroud. Entities, items, and terrain are completely hidden.

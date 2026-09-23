@@ -3,25 +3,34 @@
  */
 
 import { CONFIG } from './config.js';
+import { ABILITIES_CATALOG, ITEMS_CATALOG } from '../data/index.js';
 
 export class LightingSystem {
   /**
-   * Computes the player's active field of view radius.
-   * Base vision: 10 tiles, Torch: 14 tiles, Light Spell: 12 tiles.
+   * Computes the player's active field of view radius dynamically from JSON catalog specs.
    * @param {object} player
    * @returns {number}
    */
   static computePlayerRadius(player) {
+    let spellBonus = 0;
     if (player.lightSpellTimer > 0) {
-      return CONFIG.LIGHT_SPELL_RADIUS;
+      const stages = ABILITIES_CATALOG.magician_light?.radiusStages || [];
+      const activeStage = stages.find(s => player.lightSpellTimer >= s.minRemainingSec);
+      spellBonus = activeStage ? activeStage.radiusBonus : 0;
     }
+
     const offHand = player.paperdoll?.off_hand || player.paperdoll?.left_hand;
     const mainHand = player.paperdoll?.main_hand || player.paperdoll?.right_hand;
-    const hasTorchInAction = player.action_bar?.some(item => item?.item_id === 'torch');
-    if ((offHand && offHand.item_id === 'torch') || (mainHand && mainHand.item_id === 'torch') || hasTorchInAction) {
-      return CONFIG.TORCH_LIGHT_RADIUS;
-    }
-    return CONFIG.BASE_LIGHT_RADIUS;
+    const actionItems = player.action_bar || [];
+    const equippedOrCarried = [offHand, mainHand, ...actionItems].filter(Boolean);
+
+    const itemBonus = equippedOrCarried.reduce((maxBonus, item) => {
+      const catalogItem = ITEMS_CATALOG[item.item_id];
+      const bonus = catalogItem?.lightRadiusBonus || 0;
+      return Math.max(maxBonus, bonus);
+    }, 0);
+
+    return CONFIG.BASE_LIGHT_RADIUS + Math.max(spellBonus, itemBonus);
   }
 
   /**
@@ -64,7 +73,7 @@ export class LightingSystem {
   }
 
   /**
-   * Casts FOV rays in a circle from origin (originX, originY).
+   * Illuminates tiles in a circle from origin (originX, originY) based on distance, without wall occlusion.
    * @param {import('./grid-map.js').GridMap} gridMap
    * @param {number} originX
    * @param {number} originY
@@ -76,44 +85,17 @@ export class LightingSystem {
     const minY = Math.max(0, originY - radius);
     const maxY = Math.min(gridMap.height - 1, originY + radius);
 
-    // Light origin tile
-    const originTile = gridMap.getTile(originX, originY);
-    if (originTile) {
-      originTile.isLit = true;
-      originTile.lightIntensity = Math.max(originTile.lightIntensity, 1.0);
-    }
-
-    // Cast rays to the bounding box perimeter
-    for (let x = minX; x <= maxX; x++) {
-      LightingSystem.castRay(gridMap, originX, originY, x, minY, radius);
-      LightingSystem.castRay(gridMap, originX, originY, x, maxY, radius);
-    }
     for (let y = minY; y <= maxY; y++) {
-      LightingSystem.castRay(gridMap, originX, originY, minX, y, radius);
-      LightingSystem.castRay(gridMap, originX, originY, maxX, y, radius);
-    }
-  }
-
-  /**
-   * Casts a single ray using Bresenham line algorithm with wall occlusion.
-   */
-  static castRay(gridMap, x0, y0, x1, y1, maxRadius) {
-    const points = LightingSystem.getBresenhamLine(x0, y0, x1, y1);
-
-    for (const pt of points) {
-      const dist = Math.hypot(pt.x - x0, pt.y - y0);
-      if (dist > maxRadius + 0.5) break;
-
-      const tile = gridMap.getTile(pt.x, pt.y);
-      if (!tile) break;
-
-      tile.isLit = true;
-      const intensity = Math.max(0, 1 - dist / (maxRadius + 1));
-      tile.lightIntensity = Math.max(tile.lightIntensity, intensity);
-
-      // Wall occlusion: illuminates the wall tile, but blocks further ray penetration
-      if (gridMap.isWall(pt.x, pt.y) && (pt.x !== x0 || pt.y !== y0)) {
-        break;
+      for (let x = minX; x <= maxX; x++) {
+        const dist = Math.hypot(x - originX, y - originY);
+        if (dist <= radius + 0.5) {
+          const tile = gridMap.getTile(x, y);
+          if (tile) {
+            tile.isLit = true;
+            const intensity = Math.max(0, 1 - dist / (radius + 1));
+            tile.lightIntensity = Math.max(tile.lightIntensity, intensity);
+          }
+        }
       }
     }
   }

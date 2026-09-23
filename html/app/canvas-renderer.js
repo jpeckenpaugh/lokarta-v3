@@ -189,9 +189,7 @@ export class CanvasRenderer {
     darkGrad.addColorStop(1.0, 'rgba(5, 6, 8, 1.0)');
 
     ctx.fillStyle = darkGrad;
-    ctx.beginPath();
-    ctx.arc(playerScreenX, playerScreenY, maxRadiusPx, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(0, 0, viewportWidth, viewportHeight);
 
     // 3. Subtle aura for active spells / torches
     const hasActiveSpell = player.lightSpellTimer > 0;

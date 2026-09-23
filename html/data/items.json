@@ -4,7 +4,8 @@
     "name": "Wooden Torch",
     "type": "offhand",
     "slot": "off_hand",
-    "stat_bonus": 14,
+    "stat_bonus": 12,
+    "lightRadiusBonus": 2,
     "icon": "🔥",
     "svgCode": "1F525",
     "maxStack": 9

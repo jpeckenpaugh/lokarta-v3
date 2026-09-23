@@ -19,10 +19,15 @@
     "type": "buff",
     "manaCost": 15,
     "durationSec": 30,
-    "lightRadius": 12,
+    "lightRadius": 13,
     "cooldownSec": 5.0,
     "soundId": "spell_light",
-    "actionKey": "light_spell"
+    "actionKey": "light_spell",
+    "radiusStages": [
+      { "minRemainingSec": 20, "radiusBonus": 3 },
+      { "minRemainingSec": 10, "radiusBonus": 2 },
+      { "minRemainingSec": 0, "radiusBonus": 1 }
+    ]
   },
   "magician_beam": {
     "id": "magician_beam",
