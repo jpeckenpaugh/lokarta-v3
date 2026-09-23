@@ -62,6 +62,19 @@
     "actionKey": "energy_beam",
     "maxStack": 1
   },
+  "wooden_bow": {
+    "item_id": "wooden_bow",
+    "name": "Wooden Bow",
+    "type": "weapon",
+    "slot": "main_hand",
+    "stat_bonus": 4,
+    "vocationAffinity": "archer",
+    "icon": "🏹",
+    "svgCode": "1F3F9",
+    "actionKey": "bow_shot",
+    "grantedAmmo": { "item_id": "arrows", "quantity": 20 },
+    "maxStack": 1
+  },
   "composite_bow": {
     "item_id": "composite_bow",
     "name": "Composite Longbow",

@@ -5,6 +5,171 @@
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
 import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 
+const ITEM_RENDERERS = {
+  health_potion: (ctx, cx, cy) => {
+    ctx.fillStyle = '#e63946';
+    ctx.beginPath();
+    ctx.arc(cx, cy + 2, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f1faee';
+    ctx.fillRect(cx - 3, cy - 8, 6, 4);
+    ctx.fillStyle = '#d4a373';
+    ctx.fillRect(cx - 4, cy - 10, 8, 3);
+  },
+  mana_potion: (ctx, cx, cy) => {
+    ctx.fillStyle = '#3a86ff';
+    ctx.beginPath();
+    ctx.arc(cx, cy + 2, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f1faee';
+    ctx.fillRect(cx - 3, cy - 8, 6, 4);
+    ctx.fillStyle = '#d4a373';
+    ctx.fillRect(cx - 4, cy - 10, 8, 3);
+  },
+  torch: (ctx, cx, cy) => {
+    ctx.fillStyle = '#8b5a2b';
+    ctx.fillRect(cx - 3, cy - 4, 6, 14);
+    ctx.fillStyle = '#ffaa00';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 6, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff4400';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 5, 3, 0, Math.PI * 2);
+    ctx.fill();
+  },
+  arrows: (ctx, cx, cy) => {
+    ctx.strokeStyle = '#d4a373';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, cy + 6);
+    ctx.lineTo(cx + 6, cy - 6);
+    ctx.moveTo(cx - 4, cy + 8);
+    ctx.lineTo(cx + 8, cy - 4);
+    ctx.stroke();
+    ctx.fillStyle = '#e9d8a6';
+    ctx.fillRect(cx - 8, cy + 5, 4, 4);
+  },
+  weapon: (ctx, cx, cy, item) => {
+    if (item.item_id?.includes('bow')) {
+      ctx.strokeStyle = '#c68b59';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 9, -Math.PI / 3, Math.PI / 3);
+      ctx.stroke();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx + 5, cy - 8);
+      ctx.lineTo(cx + 5, cy + 8);
+      ctx.stroke();
+    } else if (item.item_id?.includes('warhammer') || item.item_id?.includes('hammer')) {
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(cx - 6, cy - 8, 12, 6);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(cx - 2, cy - 2, 4, 12);
+    } else {
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, cy + 6);
+      ctx.lineTo(cx + 6, cy - 6);
+      ctx.stroke();
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(cx - 8, cy + 4, 4, 4);
+    }
+  },
+  spell: (ctx, cx, cy) => {
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+    ctx.fill();
+  },
+  default: (ctx, cx, cy) => {
+    ctx.fillStyle = '#e0a96d';
+    ctx.fillRect(cx - 5, cy - 5, 10, 10);
+  },
+};
+
+const MONSTER_RENDERERS = {
+  giant_rat: (ctx, cx, cy) => {
+    ctx.fillStyle = '#5a3d28';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 2, 8, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ff2222';
+    ctx.beginPath();
+    ctx.arc(cx + 4, cy, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  },
+  crypt_skeleton: (ctx, cx, cy) => {
+    ctx.fillStyle = '#dcdde1';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 4, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#dcdde1';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 1);
+    ctx.lineTo(cx, cy + 10);
+    ctx.stroke();
+
+    ctx.fillStyle = '#00ffff';
+    ctx.beginPath();
+    ctx.arc(cx - 2, cy - 4, 1, 0, Math.PI * 2);
+    ctx.arc(cx + 2, cy - 4, 1, 0, Math.PI * 2);
+    ctx.fill();
+  },
+  shadow_cultist: (ctx, cx, cy, monster) => {
+    const isElite = monster.type === 'elite_cultist';
+    ctx.fillStyle = isElite ? '#3b0764' : '#1e1b4b';
+    ctx.beginPath();
+    ctx.moveTo(cx - 7, cy + 12);
+    ctx.lineTo(cx + 7, cy + 12);
+    ctx.lineTo(cx + 4, cy - 4);
+    ctx.lineTo(cx - 4, cy - 4);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = isElite ? '#6b21a8' : '#312e81';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 6, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#a855f7';
+    ctx.beginPath();
+    ctx.arc(cx - 2, cy - 6, 1.5, 0, Math.PI * 2);
+    ctx.arc(cx + 2, cy - 6, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  },
+  elite_cultist: (ctx, cx, cy, monster) => {
+    MONSTER_RENDERERS.shadow_cultist(ctx, cx, cy, monster);
+  },
+  abyssal_overlord: (ctx, cx, cy) => {
+    ctx.fillStyle = '#450a0a';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 4, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy - 12);
+    ctx.lineTo(cx - 12, cy - 18);
+    ctx.moveTo(cx + 8, cy - 12);
+    ctx.lineTo(cx + 12, cy - 18);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(cx - 4, cy - 4, 2.5, 0, Math.PI * 2);
+    ctx.arc(cx + 4, cy - 4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  },
+};
+
 export class SpriteRenderer {
   static drawTile(ctx, type, screenX, screenY, size = CONFIG.GRID_SIZE) {
     const theme = TILE_THEMES_CATALOG;
@@ -72,83 +237,8 @@ export class SpriteRenderer {
     const cx = screenX + size / 2;
     const cy = screenY + size / 2;
 
-    if (item.item_id === 'health_potion') {
-      ctx.fillStyle = '#e63946';
-      ctx.beginPath();
-      ctx.arc(cx, cy + 2, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#f1faee';
-      ctx.fillRect(cx - 3, cy - 8, 6, 4);
-      ctx.fillStyle = '#d4a373';
-      ctx.fillRect(cx - 4, cy - 10, 8, 3);
-    } else if (item.item_id === 'mana_potion') {
-      ctx.fillStyle = '#3a86ff';
-      ctx.beginPath();
-      ctx.arc(cx, cy + 2, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#f1faee';
-      ctx.fillRect(cx - 3, cy - 8, 6, 4);
-      ctx.fillStyle = '#d4a373';
-      ctx.fillRect(cx - 4, cy - 10, 8, 3);
-    } else if (item.item_id === 'torch') {
-      ctx.fillStyle = '#8b5a2b';
-      ctx.fillRect(cx - 3, cy - 4, 6, 14);
-      ctx.fillStyle = '#ffaa00';
-      ctx.beginPath();
-      ctx.arc(cx, cy - 6, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ff4400';
-      ctx.beginPath();
-      ctx.arc(cx, cy - 5, 3, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (item.item_id === 'arrows') {
-      ctx.strokeStyle = '#d4a373';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(cx - 6, cy + 6);
-      ctx.lineTo(cx + 6, cy - 6);
-      ctx.moveTo(cx - 4, cy + 8);
-      ctx.lineTo(cx + 8, cy - 4);
-      ctx.stroke();
-      ctx.fillStyle = '#e9d8a6';
-      ctx.fillRect(cx - 8, cy + 5, 4, 4);
-    } else if (item.type === 'weapon') {
-      if (item.item_id.includes('bow')) {
-        ctx.strokeStyle = '#c68b59';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 9, -Math.PI / 3, Math.PI / 3);
-        ctx.stroke();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(cx + 5, cy - 8);
-        ctx.lineTo(cx + 5, cy + 8);
-        ctx.stroke();
-      } else if (item.item_id.includes('warhammer') || item.item_id.includes('hammer')) {
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(cx - 6, cy - 8, 12, 6);
-        ctx.fillStyle = '#78350f';
-        ctx.fillRect(cx - 2, cy - 2, 4, 12);
-      } else {
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(cx - 6, cy + 6);
-        ctx.lineTo(cx + 6, cy - 6);
-        ctx.stroke();
-        ctx.fillStyle = '#e2e8f0';
-        ctx.fillRect(cx - 8, cy + 4, 4, 4);
-      }
-    } else if (item.type === 'spell') {
-      ctx.fillStyle = '#38bdf8';
-      ctx.beginPath();
-      ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.fillStyle = '#e0a96d';
-      ctx.fillRect(cx - 5, cy - 5, 10, 10);
-    }
+    const renderer = ITEM_RENDERERS[item.item_id] || ITEM_RENDERERS[item.type] || ITEM_RENDERERS.default;
+    renderer(ctx, cx, cy, item);
 
     if (item.quantity > 1) {
       ctx.fillStyle = '#000000';
@@ -203,83 +293,16 @@ export class SpriteRenderer {
     ctx.arc(cx, cy - 6, 6, 0, Math.PI * 2);
     ctx.fill();
 
-    const eyeColors = { magician: '#44ccff', archer: '#e9d8a6', fighter: '#f87171', paladin: '#38bdf8' };
-    SpriteRenderer.drawFacingEyes(ctx, cx, cy - 6, player.facing, eyeColors[vocKey] || '#ffffff');
+    const eyeColor = vocData.eyeColor || '#ffffff';
+    SpriteRenderer.drawFacingEyes(ctx, cx, cy - 6, player.facing, eyeColor);
   }
 
   static drawMonster(ctx, monster, screenX, screenY, size = CONFIG.GRID_SIZE) {
     const cx = screenX + size / 2;
     const cy = screenY + size / 2;
 
-    if (monster.type === 'giant_rat') {
-      ctx.fillStyle = '#5a3d28';
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 2, 8, 5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#ff2222';
-      ctx.beginPath();
-      ctx.arc(cx + 4, cy, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (monster.type === 'crypt_skeleton') {
-      ctx.fillStyle = '#dcdde1';
-      ctx.beginPath();
-      ctx.arc(cx, cy - 4, 5, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = '#dcdde1';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy + 1);
-      ctx.lineTo(cx, cy + 10);
-      ctx.stroke();
-
-      ctx.fillStyle = '#00ffff';
-      ctx.beginPath();
-      ctx.arc(cx - 2, cy - 4, 1, 0, Math.PI * 2);
-      ctx.arc(cx + 2, cy - 4, 1, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (monster.type === 'shadow_cultist' || monster.type === 'elite_cultist') {
-      ctx.fillStyle = monster.type === 'elite_cultist' ? '#3b0764' : '#1e1b4b';
-      ctx.beginPath();
-      ctx.moveTo(cx - 7, cy + 12);
-      ctx.lineTo(cx + 7, cy + 12);
-      ctx.lineTo(cx + 4, cy - 4);
-      ctx.lineTo(cx - 4, cy - 4);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = monster.type === 'elite_cultist' ? '#6b21a8' : '#312e81';
-      ctx.beginPath();
-      ctx.arc(cx, cy - 6, 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#a855f7';
-      ctx.beginPath();
-      ctx.arc(cx - 2, cy - 6, 1.5, 0, Math.PI * 2);
-      ctx.arc(cx + 2, cy - 6, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (monster.type === 'abyssal_overlord' || monster.isBoss) {
-      ctx.fillStyle = '#450a0a';
-      ctx.beginPath();
-      ctx.arc(cx, cy - 4, 12, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = '#dc2626';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(cx - 8, cy - 12);
-      ctx.lineTo(cx - 12, cy - 18);
-      ctx.moveTo(cx + 8, cy - 12);
-      ctx.lineTo(cx + 12, cy - 18);
-      ctx.stroke();
-
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath();
-      ctx.arc(cx - 4, cy - 4, 2.5, 0, Math.PI * 2);
-      ctx.arc(cx + 4, cy - 4, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    const renderer = MONSTER_RENDERERS[monster.type] || (monster.isBoss ? MONSTER_RENDERERS.abyssal_overlord : MONSTER_RENDERERS.giant_rat);
+    renderer(ctx, cx, cy, monster);
 
     // Health Bar
     if (monster.hp < monster.max_hp) {

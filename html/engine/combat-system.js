@@ -28,22 +28,14 @@ export class CombatSystem {
 
   static isNativeItem(item, vocation) {
     if (!item) return false;
+    const affinity = item.vocationAffinity || ITEMS_CATALOG[item.item_id]?.vocationAffinity;
+    if (affinity) return affinity === vocation;
+
     const itemId = item.item_id || '';
-    if (ITEMS_CATALOG[itemId] && ITEMS_CATALOG[itemId].vocationAffinity) {
-      return ITEMS_CATALOG[itemId].vocationAffinity === vocation;
-    }
-    if (vocation === 'magician') {
-      return itemId.includes('wand') || itemId.includes('spark') || itemId.includes('beam') || itemId.includes('scepter') || itemId.includes('robe') || item.type === 'spell';
-    }
-    if (vocation === 'archer') {
-      return itemId.includes('bow') || itemId.includes('arrow') || itemId.includes('shot');
-    }
-    if (vocation === 'fighter') {
-      return itemId.includes('sword') || itemId.includes('slash') || itemId.includes('cleave') || itemId.includes('broadsword') || itemId.includes('fortify');
-    }
-    if (vocation === 'paladin') {
-      return itemId.includes('warhammer') || itemId.includes('holy') || itemId.includes('prayer') || itemId.includes('radiance') || itemId.includes('hammer');
-    }
+    if (vocation === 'magician') return itemId.includes('wand') || itemId.includes('spark') || itemId.includes('beam') || itemId.includes('scepter') || item.type === 'spell';
+    if (vocation === 'archer') return itemId.includes('bow') || itemId.includes('arrow') || itemId.includes('shot');
+    if (vocation === 'fighter') return itemId.includes('sword') || itemId.includes('slash') || itemId.includes('cleave') || itemId.includes('broadsword') || itemId.includes('fortify');
+    if (vocation === 'paladin') return itemId.includes('warhammer') || itemId.includes('holy') || itemId.includes('prayer') || itemId.includes('radiance') || itemId.includes('hammer');
     return false;
   }
 

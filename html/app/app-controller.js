@@ -15,7 +15,7 @@ import {
   createPlayer,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
-import { ITEMS_CATALOG, ABILITIES_CATALOG, KEYBINDINGS_CATALOG } from '../data/index.js';
+import { ITEMS_CATALOG, ABILITIES_CATALOG, KEYBINDINGS_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 import { CanvasRenderer } from './canvas-renderer.js';
 import { HUDManager } from './hud-manager.js';
 import { ModalManager } from './modal-manager.js';
@@ -228,12 +228,13 @@ export class LokartaApp {
     this.regenAccumulator += deltaSec;
     if (this.regenAccumulator >= 5.0) {
       this.regenAccumulator -= 5.0;
-      if (this.player.vocation === 'magician' && this.player.mana < this.player.max_mana) {
-        const amt = 2 + bonusRegen;
+      const vocDef = VOCATIONS_CATALOG[this.player.vocation];
+      const regenType = vocDef?.regenResource || (this.player.vocation === 'magician' ? 'mana' : 'hp');
+      const amt = 2 + bonusRegen;
+      if (regenType === 'mana' && this.player.mana < this.player.max_mana) {
         this.player.mana = Math.min(this.player.max_mana, this.player.mana + amt);
         this.addFloatingText(`+${amt} MP`, this.player.x, this.player.y, '#3b82f6');
-      } else if (this.player.hp < this.player.max_hp) {
-        const amt = 2 + bonusRegen;
+      } else if (regenType === 'hp' && this.player.hp < this.player.max_hp) {
         this.player.hp = Math.min(this.player.max_hp, this.player.hp + amt);
         this.addFloatingText(`+${amt} HP`, this.player.x, this.player.y, '#22c55e');
       }

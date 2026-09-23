@@ -10,6 +10,8 @@
     "hpPerLevel": 8,
     "manaPerLevel": 16,
     "damageStep": 0.10,
+    "eyeColor": "#44ccff",
+    "regenResource": "mana",
     "description": "Master of radiant arcane energies and expansive illumination.",
     "renderTheme": {
       "primary": "#5c2d91",
@@ -28,6 +30,8 @@
     "hpPerLevel": 14,
     "manaPerLevel": 8,
     "damageStep": 0.12,
+    "eyeColor": "#e9d8a6",
+    "regenResource": "hp",
     "description": "Deadly long-range sniper utilizing fletched arrows and precision burst.",
     "renderTheme": {
       "primary": "#15803d",
@@ -46,6 +50,8 @@
     "hpPerLevel": 18,
     "manaPerLevel": 4,
     "damageStep": 0.15,
+    "eyeColor": "#f87171",
+    "regenResource": "hp",
     "description": "Resilient front-line warrior using heavy broadswords, cleaves, and defensive stances.",
     "renderTheme": {
       "primary": "#475569",
@@ -64,6 +70,8 @@
     "hpPerLevel": 15,
     "manaPerLevel": 10,
     "damageStep": 0.11,
+    "eyeColor": "#38bdf8",
+    "regenResource": "hp",
     "description": "Holy champion striking with sacred warhammers, area light, and restorative prayers.",
     "renderTheme": {
       "primary": "#0284c7",
