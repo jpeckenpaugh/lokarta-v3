@@ -37,7 +37,85 @@ const EMOJI_TO_SVG_MAP = {
 };
 
 export class HUDManager {
+  static bindHUDEvents(elements, app) {
+    if (!elements) return;
+    const { paperdollEl, backpackEl, hotbarEl } = elements;
+
+    if (hotbarEl && !hotbarEl._bound) {
+      hotbarEl._bound = true;
+
+      hotbarEl.addEventListener('pointerdown', e => {
+        const btn = e.target.closest('.action-slot-btn');
+        if (!btn) return;
+        e.preventDefault();
+        const slotIndex = parseInt(btn.getAttribute('data-slot-index') || '0', 10);
+        app.gestureEngine.handleInputDown(slotIndex);
+      });
+
+      hotbarEl.addEventListener('pointerup', e => {
+        const btn = e.target.closest('.action-slot-btn');
+        if (!btn) return;
+        e.preventDefault();
+        const slotIndex = parseInt(btn.getAttribute('data-slot-index') || '0', 10);
+        app.gestureEngine.handleInputUp(slotIndex);
+      });
+
+      hotbarEl.addEventListener('pointerleave', e => {
+        const btn = e.target.closest('.action-slot-btn');
+        if (!btn) return;
+        const slotIndex = parseInt(btn.getAttribute('data-slot-index') || '0', 10);
+        app.gestureEngine.handleInputUp(slotIndex);
+      });
+    }
+
+    if (backpackEl && !backpackEl._bound) {
+      backpackEl._bound = true;
+
+      backpackEl.addEventListener('click', e => {
+        const useBtn = e.target.closest('.use-btn');
+        if (useBtn) {
+          e.stopPropagation();
+          const idx = parseInt(useBtn.getAttribute('data-index') || '-1', 10);
+          if (idx >= 0) {
+            const res = InventorySystem.useBackpackItem(app.player, idx);
+            if (res.success) {
+              soundFX.play('equip');
+              app.logCombat(res.message, 'loot');
+              app.updateHUD();
+              app.persistSave();
+            } else {
+              app.logCombat(res.message, 'warning');
+            }
+          }
+          return;
+        }
+
+        const dropBtn = e.target.closest('.drop-btn');
+        if (dropBtn) {
+          e.stopPropagation();
+          const idx = parseInt(dropBtn.getAttribute('data-index') || '-1', 10);
+          if (idx >= 0) app.handleDropItem('backpack', idx);
+          return;
+        }
+      });
+    }
+
+    if (paperdollEl && !paperdollEl._bound) {
+      paperdollEl._bound = true;
+
+      paperdollEl.addEventListener('click', e => {
+        const unequipBtn = e.target.closest('.unequip-btn');
+        if (unequipBtn) {
+          e.stopPropagation();
+          const slotKey = unequipBtn.getAttribute('data-slot');
+          if (slotKey) app.handleUnequip(slotKey);
+        }
+      });
+    }
+  }
+
   static updateHUD(elements, app) {
+    HUDManager.bindHUDEvents(elements, app);
     const { statusBarsEl, paperdollEl, backpackEl, hotbarEl } = elements;
     HUDManager.renderStatusBars(statusBarsEl, app.player, app.currentFloorName);
     HUDManager.renderPaperdoll(paperdollEl, app);
@@ -116,6 +194,7 @@ export class HUDManager {
 
   static renderPaperdoll(paperdollEl, app) {
     if (!paperdollEl) return;
+    HUDManager.bindHUDEvents({ paperdollEl }, app);
     const paperdoll = app.player.paperdoll || {};
     const slots = [
       { key: 'main_hand', label: 'Main Hand', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/2694.svg" alt="Main Hand" />' },
@@ -149,19 +228,11 @@ export class HUDManager {
 
     html += `</div>`;
     paperdollEl.innerHTML = html;
-
-    const unequipButtons = paperdollEl.querySelectorAll('.unequip-btn');
-    unequipButtons.forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const slotKey = e.currentTarget.getAttribute('data-slot');
-        if (slotKey) app.handleUnequip(slotKey);
-      });
-    });
   }
 
   static renderBackpack(backpackEl, app) {
     if (!backpackEl) return;
+    HUDManager.bindHUDEvents({ backpackEl }, app);
     const backpack = app.player.backpack || [null, null, null, null, null, null];
     const occupiedCount = backpack.filter(Boolean).length;
 
@@ -202,47 +273,46 @@ export class HUDManager {
 
     html += `</div>`;
     backpackEl.innerHTML = html;
-
-    const useBtns = backpackEl.querySelectorAll('.use-btn');
-    useBtns.forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const idx = parseInt(e.currentTarget.getAttribute('data-index') || '-1', 10);
-        if (idx >= 0) {
-          const res = InventorySystem.useBackpackItem(app.player, idx);
-          if (res.success) {
-            soundFX.play('equip');
-            app.logCombat(res.message, 'loot');
-            app.updateHUD();
-            app.persistSave();
-          } else {
-            app.logCombat(res.message, 'warning');
-          }
-        }
-      });
-    });
-
-    const dropBtns = backpackEl.querySelectorAll('.drop-btn');
-    dropBtns.forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const idx = parseInt(e.currentTarget.getAttribute('data-index') || '-1', 10);
-        if (idx >= 0) app.handleDropItem('backpack', idx);
-      });
-    });
   }
 
   static renderHotbar(hotbarEl, app) {
     if (!hotbarEl) return;
+    HUDManager.bindHUDEvents({ hotbarEl }, app);
     const actionBar = app.player.action_bar || Array(10).fill(null);
 
-    let html = `
-      <div class="panel-header">ACTIONS & ABILITIES (KEYS 1-9, 0)</div>
-      <div class="action-slots-container">
-        <div class="action-slots-grid">
-    `;
+    let grid = hotbarEl.querySelector('.action-slots-grid');
+    if (!grid) {
+      let html = `
+        <div class="panel-header">ACTIONS & ABILITIES (KEYS 1-9, 0)</div>
+        <div class="action-slots-container">
+          <div class="action-slots-grid">
+      `;
 
-    for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 10; i++) {
+        const hotkey = GestureEngine.slotIndexToHotkey(i);
+        html += `
+          <button class="action-slot-btn" data-slot-index="${i}">
+            <div class="hotkey-badge">[${hotkey}]</div>
+            <div class="btn-icon">•</div>
+            <div class="btn-name">Empty</div>
+            <div class="btn-cost"></div>
+            <div class="cooldown-overlay" style="display:none;"></div>
+            <div class="charge-bar-track"><div class="charge-fill"></div></div>
+          </button>
+        `;
+      }
+
+      html += `
+          </div>
+        </div>
+      `;
+
+      hotbarEl.innerHTML = html;
+      grid = hotbarEl.querySelector('.action-slots-grid');
+    }
+
+    const actionSlotButtons = grid.querySelectorAll('.action-slot-btn');
+    actionSlotButtons.forEach((btn, i) => {
       const item = actionBar[i] || null;
       const hotkey = GestureEngine.slotIndexToHotkey(i);
       const isOccupied = item !== null;
@@ -255,42 +325,37 @@ export class HUDManager {
         ? `${item.name} [${hotkey}] (${item.type}) - Tap / Hold / Double-Tap${isNative ? ' [★ 2.5x Mastery]' : ''}`
         : `Slot [${hotkey}] (Empty)`;
 
-      html += `
-        <button class="action-slot-btn ${isOnCooldown ? 'on-cooldown' : ''}" data-slot-index="${i}" title="${title}">
-          <div class="hotkey-badge">[${hotkey}]</div>
-          <div class="btn-icon">${isOccupied ? HUDManager.renderItemIcon(item) : '•'}</div>
-          <div class="btn-name">${isOccupied ? item.name : 'Empty'}</div>
-          <div class="btn-cost">${isOccupied ? (item.quantity > 1 ? `x${item.quantity}` : (item.manaCost ? `${item.manaCost} MP` : 'Ready')) : ''}</div>
-          ${isOnCooldown ? `<div class="cooldown-overlay">${cd.toFixed(1)}s</div>` : ''}
-          <div class="charge-bar-track"><div class="charge-fill"></div></div>
-        </button>
-      `;
-    }
+      btn.title = title;
+      btn.classList.toggle('on-cooldown', isOnCooldown);
 
-    html += `
-        </div>
-      </div>
-    `;
+      const iconEl = btn.querySelector('.btn-icon');
+      if (iconEl) {
+        const newIconHtml = isOccupied ? HUDManager.renderItemIcon(item) : '•';
+        if (iconEl.innerHTML !== newIconHtml) iconEl.innerHTML = newIconHtml;
+      }
 
-    hotbarEl.innerHTML = html;
+      const nameEl = btn.querySelector('.btn-name');
+      if (nameEl) {
+        const newName = isOccupied ? item.name : 'Empty';
+        if (nameEl.textContent !== newName) nameEl.textContent = newName;
+      }
 
-    const actionSlotButtons = hotbarEl.querySelectorAll('.action-slot-btn');
-    actionSlotButtons.forEach(btn => {
-      const slotIndex = parseInt(btn.getAttribute('data-slot-index') || '0', 10);
+      const costEl = btn.querySelector('.btn-cost');
+      if (costEl) {
+        const newCost = isOccupied ? (item.quantity > 1 ? `x${item.quantity}` : (item.manaCost ? `${item.manaCost} MP` : 'Ready')) : '';
+        if (costEl.textContent !== newCost) costEl.textContent = newCost;
+      }
 
-      btn.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        app.gestureEngine.handleInputDown(slotIndex);
-      });
-
-      btn.addEventListener('pointerup', e => {
-        e.preventDefault();
-        app.gestureEngine.handleInputUp(slotIndex);
-      });
-
-      btn.addEventListener('pointerleave', () => {
-        app.gestureEngine.handleInputUp(slotIndex);
-      });
+      const cdEl = btn.querySelector('.cooldown-overlay');
+      if (cdEl) {
+        if (isOnCooldown) {
+          cdEl.style.display = '';
+          const newCd = `${cd.toFixed(1)}s`;
+          if (cdEl.textContent !== newCd) cdEl.textContent = newCd;
+        } else {
+          cdEl.style.display = 'none';
+        }
+      }
     });
   }
 
@@ -316,6 +381,12 @@ export class HUDManager {
     line.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-msg">${HUDManager.escapeHtml(message)}</span>`;
 
     combatLogScrollEl.appendChild(line);
+
+    const MAX_LOG_LINES = 100;
+    while (combatLogScrollEl.childElementCount > MAX_LOG_LINES) {
+      combatLogScrollEl.removeChild(combatLogScrollEl.firstElementChild);
+    }
+
     combatLogScrollEl.scrollTop = combatLogScrollEl.scrollHeight;
   }
 

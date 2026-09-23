@@ -634,9 +634,26 @@ export class LokartaApp {
     }
   }
 
-  async persistSave() {
+  persistSave(immediate = false) {
+    if (this.saveDebounceTimer) {
+      clearTimeout(this.saveDebounceTimer);
+      this.saveDebounceTimer = null;
+    }
+
+    if (immediate) {
+      return this._executeSave();
+    }
+
+    this.saveDebounceTimer = setTimeout(() => {
+      this._executeSave();
+    }, 500);
+  }
+
+  async _executeSave() {
     try {
-      await this.gameClient.saveCharacter(this.player);
+      if (this.player) {
+        await this.gameClient.saveCharacter(this.player);
+      }
     } catch (err) {
       console.warn('Auto-save error:', err);
     }
@@ -671,7 +688,7 @@ export class LokartaApp {
         this.isFloorCleared = false;
         LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
         this.updateHUD();
-        await this.persistSave();
+        await this.persistSave(true);
       } catch (err) {
         console.error('Floor transition error:', err);
       }

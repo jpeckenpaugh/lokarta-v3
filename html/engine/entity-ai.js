@@ -17,6 +17,78 @@ const AI_HANDLERS = {
   },
 };
 
+class MinHeap {
+  constructor() {
+    this.nodes = [];
+  }
+
+  get size() {
+    return this.nodes.length;
+  }
+
+  push(node) {
+    this.nodes.push(node);
+    this._bubbleUp(this.nodes.length - 1);
+  }
+
+  pop() {
+    if (this.nodes.length === 0) return null;
+    const top = this.nodes[0];
+    const bottom = this.nodes.pop();
+    if (this.nodes.length > 0) {
+      this.nodes[0] = bottom;
+      this._sinkDown(0);
+    }
+    return top;
+  }
+
+  updateItem(node) {
+    const idx = this.nodes.indexOf(node);
+    if (idx !== -1) {
+      this._bubbleUp(idx);
+      this._sinkDown(idx);
+    }
+  }
+
+  _bubbleUp(n) {
+    const element = this.nodes[n];
+    while (n > 0) {
+      const parentN = Math.floor((n - 1) / 2);
+      const parent = this.nodes[parentN];
+      if (element.f >= parent.f) break;
+      this.nodes[parentN] = element;
+      this.nodes[n] = parent;
+      n = parentN;
+    }
+  }
+
+  _sinkDown(n) {
+    const length = this.nodes.length;
+    const element = this.nodes[n];
+    while (true) {
+      const child2N = (n + 1) * 2;
+      const child1N = child2N - 1;
+      let swap = null;
+
+      if (child1N < length) {
+        const child1 = this.nodes[child1N];
+        if (child1.f < element.f) swap = child1N;
+      }
+      if (child2N < length) {
+        const child2 = this.nodes[child2N];
+        if ((swap === null ? element.f : this.nodes[child1N].f) > child2.f) {
+          swap = child2N;
+        }
+      }
+
+      if (swap === null) break;
+      this.nodes[n] = this.nodes[swap];
+      this.nodes[swap] = element;
+      n = swap;
+    }
+  }
+}
+
 export class EntityAI {
   /**
    * Updates all active monsters in the dungeon on a game simulation tick.
@@ -212,35 +284,40 @@ export class EntityAI {
   }
 
   static findNextStepAStar(start, goal, gridMap, otherMonsters = []) {
-    const openSet = [];
+    const width = gridMap.width;
+    const toHash = (x, y) => y * width + x;
+
+    const blockedMonsterSet = new Set();
+    for (let i = 0; i < otherMonsters.length; i++) {
+      const m = otherMonsters[i];
+      if (m) blockedMonsterSet.add(toHash(m.x, m.y));
+    }
+
+    const openHeap = new MinHeap();
+    const openMap = new Map();
     const closedSet = new Set();
 
+    const startHash = toHash(start.x, start.y);
+    const startH = Math.abs(start.x - goal.x) + Math.abs(start.y - goal.y);
     const startNode = {
       x: start.x,
       y: start.y,
       g: 0,
-      h: Math.abs(start.x - goal.x) + Math.abs(start.y - goal.y),
-      f: Math.abs(start.x - goal.x) + Math.abs(start.y - goal.y),
+      h: startH,
+      f: startH,
       parent: null,
     };
-    openSet.push(startNode);
 
-    const isBlocked = (x, y) => {
-      if (!gridMap.isWalkable(x, y)) return true;
-      if (otherMonsters.some(m => m.x === x && m.y === y)) return true;
-      return false;
-    };
+    openHeap.push(startNode);
+    openMap.set(startHash, startNode);
 
-    while (openSet.length > 0) {
-      let lowestIndex = 0;
-      for (let i = 1; i < openSet.length; i++) {
-        if (openSet[i].f < openSet[lowestIndex].f) {
-          lowestIndex = i;
-        }
-      }
-      const current = openSet.splice(lowestIndex, 1)[0];
-      const key = `${current.x},${current.y}`;
-      closedSet.add(key);
+    const goalHash = toHash(goal.x, goal.y);
+
+    while (openHeap.size > 0) {
+      const current = openHeap.pop();
+      const currentHash = toHash(current.x, current.y);
+      openMap.delete(currentHash);
+      closedSet.add(currentHash);
 
       if (current.x === goal.x && current.y === goal.y) {
         return EntityAI.reconstructFirstStep(current);
@@ -253,33 +330,38 @@ export class EntityAI {
         { x: current.x + 1, y: current.y },
       ];
 
-      for (const neighbor of neighbors) {
-        if (!gridMap.isInBounds(neighbor.x, neighbor.y)) continue;
-        const neighborKey = `${neighbor.x},${neighbor.y}`;
-        if (closedSet.has(neighborKey)) continue;
+      for (let i = 0; i < 4; i++) {
+        const nx = neighbors[i].x;
+        const ny = neighbors[i].y;
 
-        if (neighbor.x !== goal.x || neighbor.y !== goal.y) {
-          if (isBlocked(neighbor.x, neighbor.y)) continue;
+        if (!gridMap.isInBounds(nx, ny)) continue;
+        const nHash = toHash(nx, ny);
+        if (closedSet.has(nHash)) continue;
+
+        if (nHash !== goalHash) {
+          if (!gridMap.isWalkable(nx, ny) || blockedMonsterSet.has(nHash)) continue;
         }
 
         const gScore = current.g + 1;
-        let neighborNode = openSet.find(n => n.x === neighbor.x && n.y === neighbor.y);
+        let neighborNode = openMap.get(nHash);
 
         if (!neighborNode) {
-          const hScore = Math.abs(neighbor.x - goal.x) + Math.abs(neighbor.y - goal.y);
+          const hScore = Math.abs(nx - goal.x) + Math.abs(ny - goal.y);
           neighborNode = {
-            x: neighbor.x,
-            y: neighbor.y,
+            x: nx,
+            y: ny,
             g: gScore,
             h: hScore,
             f: gScore + hScore,
             parent: current,
           };
-          openSet.push(neighborNode);
+          openHeap.push(neighborNode);
+          openMap.set(nHash, neighborNode);
         } else if (gScore < neighborNode.g) {
           neighborNode.g = gScore;
           neighborNode.f = gScore + neighborNode.h;
           neighborNode.parent = current;
+          openHeap.updateItem(neighborNode);
         }
       }
     }

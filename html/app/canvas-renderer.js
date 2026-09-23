@@ -48,6 +48,7 @@ export class CanvasRenderer {
     for (let y = startTileY; y <= endTileY; y++) {
       for (let x = startTileX; x <= endTileX; x++) {
         const tile = gridMap.tiles[y][x];
+        if (!tile.isLit) continue;
         const screenX = x * CONFIG.GRID_SIZE - this.cameraX;
         const screenY = y * CONFIG.GRID_SIZE - this.cameraY;
         SpriteRenderer.drawTile(ctx, tile.type, screenX, screenY);
@@ -58,12 +59,11 @@ export class CanvasRenderer {
     for (let y = startTileY; y <= endTileY; y++) {
       for (let x = startTileX; x <= endTileX; x++) {
         const tile = gridMap.tiles[y][x];
-        if (tile.items.length > 0) {
-          const screenX = x * CONFIG.GRID_SIZE - this.cameraX;
-          const screenY = y * CONFIG.GRID_SIZE - this.cameraY;
-          const topItem = tile.items[tile.items.length - 1];
-          SpriteRenderer.drawItem(ctx, topItem, screenX, screenY);
-        }
+        if (!tile.isLit || tile.items.length === 0) continue;
+        const screenX = x * CONFIG.GRID_SIZE - this.cameraX;
+        const screenY = y * CONFIG.GRID_SIZE - this.cameraY;
+        const topItem = tile.items[tile.items.length - 1];
+        SpriteRenderer.drawItem(ctx, topItem, screenX, screenY);
       }
     }
 
@@ -148,26 +148,7 @@ export class CanvasRenderer {
   renderLightMask(ctx, gridMap, player, ambientLights, viewportWidth, viewportHeight) {
     ctx.save();
 
-    // 1. Render black darkness over unlit tiles
-    const startTileX = Math.max(0, Math.floor(this.cameraX / CONFIG.GRID_SIZE));
-    const endTileX = Math.min(gridMap.width - 1, Math.ceil((this.cameraX + viewportWidth) / CONFIG.GRID_SIZE));
-    const startTileY = Math.max(0, Math.floor(this.cameraY / CONFIG.GRID_SIZE));
-    const endTileY = Math.min(gridMap.height - 1, Math.ceil((this.cameraY + viewportHeight) / CONFIG.GRID_SIZE));
-
-    for (let y = startTileY; y <= endTileY; y++) {
-      for (let x = startTileX; x <= endTileX; x++) {
-        const tile = gridMap.tiles[y][x];
-        const screenX = x * CONFIG.GRID_SIZE - this.cameraX;
-        const screenY = y * CONFIG.GRID_SIZE - this.cameraY;
-
-        if (!tile.isLit) {
-          ctx.fillStyle = '#050608';
-          ctx.fillRect(screenX, screenY, CONFIG.GRID_SIZE, CONFIG.GRID_SIZE);
-        }
-      }
-    }
-
-    // 2. Smooth continuous radial darkness dissolve over player FOV
+    // Smooth continuous radial darkness dissolve over player FOV
     const playerRadius = LightingSystem.computePlayerRadius(player);
     const playerScreenX = player.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
     const playerScreenY = player.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
