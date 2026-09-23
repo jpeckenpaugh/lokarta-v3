@@ -60,9 +60,10 @@ export class HUDManager {
         app.gestureEngine.handleInputUp(slotIndex);
       });
 
-      hotbarEl.addEventListener('pointerleave', e => {
+      hotbarEl.addEventListener('pointerout', e => {
         const btn = e.target.closest('.action-slot-btn');
         if (!btn) return;
+        if (e.relatedTarget && btn.contains(e.relatedTarget)) return;
         const slotIndex = parseInt(btn.getAttribute('data-slot-index') || '0', 10);
         app.gestureEngine.handleInputUp(slotIndex);
       });
