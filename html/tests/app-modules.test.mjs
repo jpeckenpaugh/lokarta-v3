@@ -28,7 +28,7 @@ test('App Submodules & Root Re-exports', async (t) => {
   });
 
   await t.test('verifies HUDManager helper functions', () => {
-    assert.equal(HUDManager.renderItemIcon({ item_id: 'health_potion' }), '🧪');
+    assert.equal(HUDManager.renderItemIcon({ item_id: 'health_potion', name: 'Health Potion' }), '<img class="openmoji-icon" src="./assets/openmoji/1F9EA.svg" alt="Health Potion" />');
     assert.equal(HUDManager.escapeHtml('<test>'), '&lt;test&gt;');
   });
 

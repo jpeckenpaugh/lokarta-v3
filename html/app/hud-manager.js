@@ -87,10 +87,10 @@ export class HUDManager {
     if (!paperdollEl) return;
     const paperdoll = app.player.paperdoll || {};
     const slots = [
-      { key: 'main_hand', label: 'Main Hand', iconPlaceholder: '⚔️' },
-      { key: 'off_hand', label: 'Off Hand', iconPlaceholder: '🛡️' },
-      { key: 'armor', label: 'Armor', iconPlaceholder: '🦺' },
-      { key: 'relic', label: 'Relic', iconPlaceholder: '📿' },
+      { key: 'main_hand', label: 'Main Hand', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/2694.svg" alt="Main Hand" />' },
+      { key: 'off_hand', label: 'Off Hand', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/1F6E1.svg" alt="Off Hand" />' },
+      { key: 'armor', label: 'Armor', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/1F9BA.svg" alt="Armor" />' },
+      { key: 'relic', label: 'Relic', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/1F4FF.svg" alt="Relic" />' },
     ];
 
     let html = `
@@ -263,25 +263,63 @@ export class HUDManager {
     });
   }
 
+  static emojiToOpenMojiCode(emoji) {
+    if (!emoji) return '1F4E6';
+    if (emoji === '🧪') return '1F9EA';
+    if (emoji === '⚗️') return '2697';
+    if (emoji === '🔷') return '1F539';
+    if (emoji === '🔥') return '1F525';
+    if (emoji === '🏹') return '1F3F9';
+    if (emoji === '🪄') return '1FA84';
+    if (emoji === '🔮') return '1F52E';
+    if (emoji === '🗡️') return '1F5E1';
+    if (emoji === '⚔️') return '2694';
+    if (emoji === '⚒️') return '2692';
+    if (emoji === '🔨') return '1F528';
+    if (emoji === '🛡️') return '1F6E1';
+    if (emoji === '🦺') return '1F9BA';
+    if (emoji === '📿') return '1F4FF';
+    if (emoji === '👑') return '1F451';
+    if (emoji === '✨') return '2728';
+    if (emoji === '💡') return '1F4A1';
+    if (emoji === '⚡') return '26A1';
+    if (emoji === '🎯') return '1F3AF';
+    if (emoji === '🌪️') return '1F32A';
+    if (emoji === '💖') return '1F496';
+    if (emoji === '☀️') return '2600';
+    if (emoji === '📦') return '1F4E6';
+    if (emoji === '🕯️') return '1F56F';
+    if (emoji === '🧙‍♂️') return '1F9D9';
+    if (emoji === '📖') return '1F4D6';
+    if (emoji === '⭐') return '2B50';
+    return '1F4E6';
+  }
+
   static renderItemIcon(item) {
     if (!item) return '•';
-    if (item.icon) return item.icon;
-    if (item.item_id === 'health_potion') return '🧪';
-    if (item.item_id === 'mana_potion') return '⚗️';
-    if (item.item_id === 'torch') return '🔥';
-    if (item.item_id === 'arrows') return '🏹';
-    if (item.item_id.includes('wand') || item.item_id.includes('scepter')) return '🪄';
-    if (item.item_id.includes('spark')) return '✨';
-    if (item.item_id.includes('beam')) return '⚡';
-    if (item.item_id.includes('light')) return '💡';
-    if (item.item_id.includes('bow')) return '🏹';
-    if (item.item_id.includes('sword') || item.item_id.includes('slash')) return '⚔️';
-    if (item.item_id.includes('warhammer') || item.item_id.includes('hammer')) return '🔨';
-    if (item.item_id.includes('prayer') || item.item_id.includes('heal')) return '💖';
-    if (item.item_id.includes('armor') || item.item_id.includes('plate')) return '🦺';
-    if (item.item_id.includes('buckler') || item.item_id.includes('shield')) return '🛡️';
-    if (item.item_id.includes('relic') || item.item_id.includes('amulet') || item.item_id.includes('crest')) return '👑';
-    return '📦';
+    let code = '1F4E6';
+    const rawIcon = item.icon;
+    if (rawIcon) {
+      code = HUDManager.emojiToOpenMojiCode(rawIcon);
+    } else {
+      if (item.item_id === 'health_potion') code = '1F9EA';
+      else if (item.item_id === 'mana_potion') code = '2697';
+      else if (item.item_id === 'torch') code = '1F525';
+      else if (item.item_id === 'arrows') code = '1F3F9';
+      else if (item.item_id?.includes('wand')) code = '1FA84';
+      else if (item.item_id?.includes('scepter')) code = '1F52E';
+      else if (item.item_id?.includes('spark')) code = '2728';
+      else if (item.item_id?.includes('beam')) code = '26A1';
+      else if (item.item_id?.includes('light')) code = '1F4A1';
+      else if (item.item_id?.includes('bow')) code = '1F3F9';
+      else if (item.item_id?.includes('sword') || item.item_id?.includes('slash')) code = '2694';
+      else if (item.item_id?.includes('warhammer') || item.item_id?.includes('hammer')) code = '2692';
+      else if (item.item_id?.includes('prayer') || item.item_id?.includes('heal')) code = '1F496';
+      else if (item.item_id?.includes('armor') || item.item_id?.includes('plate')) code = '1F9BA';
+      else if (item.item_id?.includes('buckler') || item.item_id?.includes('shield')) code = '1F6E1';
+      else if (item.item_id?.includes('relic') || item.item_id?.includes('amulet') || item.item_id?.includes('crest')) code = '1F4FF';
+    }
+    return `<img class="openmoji-icon" src="./assets/openmoji/${code}.svg" alt="${item.name || 'item'}" />`;
   }
 
   static logCombat(combatLogScrollEl, message, category = 'system') {

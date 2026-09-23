@@ -4,6 +4,7 @@
 
 import { FateGrantSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
+import { HUDManager } from './hud-manager.js';
 
 export class ModalManager {
   static showTitleScreen(modalOverlayEl, savedPlayer, callbacks) {
@@ -14,27 +15,27 @@ export class ModalManager {
       const voc = (savedPlayer.vocation || 'magician').toUpperCase();
       continueBtnHtml = `
         <div class="continue-summary-card">
-          <div class="save-tag">⭐ SAVED HERO AVAILABLE</div>
+          <div class="save-tag"><img class="openmoji-icon badge-icon" src="./assets/openmoji/2B50.svg" alt="Star" /> SAVED HERO AVAILABLE</div>
           <div class="save-details"><strong>${voc}</strong> (Level ${savedPlayer.level || 1})</div>
           <div class="save-stats">Floor ${savedPlayer.current_floor || 1}/20 • HP: ${savedPlayer.hp}/${savedPlayer.max_hp} • MP: ${savedPlayer.mana}/${savedPlayer.max_mana}</div>
         </div>
-        <button class="title-btn continue-btn" id="title-btn-continue">⚔️ CONTINUE ADVENTURE</button>
+        <button class="title-btn continue-btn" id="title-btn-continue"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/2694.svg" alt="Swords" /> CONTINUE ADVENTURE</button>
       `;
     }
 
     modalOverlayEl.innerHTML = `
       <div class="title-screen-modal">
         <div class="torch-flicker-container">
-          <span class="title-torch left-torch">🔥</span>
-          <span class="title-torch right-torch">🔥</span>
+          <span class="title-torch left-torch"><img class="openmoji-icon torch-icon" src="./assets/openmoji/1F525.svg" alt="Torch" /></span>
+          <span class="title-torch right-torch"><img class="openmoji-icon torch-icon" src="./assets/openmoji/1F525.svg" alt="Torch" /></span>
         </div>
-        <div class="title-emblem">🕯️</div>
+        <div class="title-emblem"><img class="openmoji-icon emblem-icon" src="./assets/openmoji/1F56F.svg" alt="Candle" /></div>
         <h1 class="title-main">LOKARTA</h1>
         <div class="title-subtitle">COME INTO THE LIGHT</div>
         <div class="title-tagline">A Gothic Roguelike Dungeon Crawl</div>
         <div class="title-menu-actions">
           ${continueBtnHtml}
-          <button class="title-btn new-game-btn" id="title-btn-new-game">🕯️ NEW EXPEDITION</button>
+          <button class="title-btn new-game-btn" id="title-btn-new-game"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/1F56F.svg" alt="Candle" /> NEW EXPEDITION</button>
         </div>
         <div class="title-footer">v2.3 • 10 Action Slots • Fate Grant Draft • 10-Tile FOV</div>
       </div>
@@ -65,7 +66,7 @@ export class ModalManager {
         <div class="vocation-cards">
           <!-- Magician -->
           <div class="vocation-card" data-vocation="magician">
-            <div class="card-icon">🧙‍♂️</div>
+            <div class="card-icon"><img class="openmoji-icon card-emoji" src="./assets/openmoji/1F9D9.svg" alt="Magician" /></div>
             <h3>Magician</h3>
             <div class="stats-preview">
               <div class="stat-row"><span class="stat-label">Health (HP):</span><span class="stat-val hp">60</span></div>
@@ -77,7 +78,7 @@ export class ModalManager {
 
           <!-- Archer -->
           <div class="vocation-card" data-vocation="archer">
-            <div class="card-icon">🏹</div>
+            <div class="card-icon"><img class="openmoji-icon card-emoji" src="./assets/openmoji/1F3F9.svg" alt="Archer" /></div>
             <h3>Archer</h3>
             <div class="stats-preview">
               <div class="stat-row"><span class="stat-label">Health (HP):</span><span class="stat-val hp">90</span></div>
@@ -89,7 +90,7 @@ export class ModalManager {
 
           <!-- Fighter -->
           <div class="vocation-card" data-vocation="fighter">
-            <div class="card-icon">⚔️</div>
+            <div class="card-icon"><img class="openmoji-icon card-emoji" src="./assets/openmoji/2694.svg" alt="Fighter" /></div>
             <h3>Fighter</h3>
             <div class="stats-preview">
               <div class="stat-row"><span class="stat-label">Health (HP):</span><span class="stat-val hp">140</span></div>
@@ -101,7 +102,7 @@ export class ModalManager {
 
           <!-- Paladin -->
           <div class="vocation-card" data-vocation="paladin">
-            <div class="card-icon">🛡️</div>
+            <div class="card-icon"><img class="openmoji-icon card-emoji" src="./assets/openmoji/1F6E1.svg" alt="Paladin" /></div>
             <h3>Paladin</h3>
             <div class="stats-preview">
               <div class="stat-row"><span class="stat-label">Health (HP):</span><span class="stat-val hp">120</span></div>
@@ -180,21 +181,24 @@ export class ModalManager {
     modalOverlayEl.innerHTML = `
       <div class="fate-grant-modal">
         <div class="modal-header">
-          <h2>🕯️ FATE GRANT DRAFT (Level ${level})</h2>
+          <h2><img class="openmoji-icon title-icon" src="./assets/openmoji/1F56F.svg" alt="Candle" /> FATE GRANT DRAFT (Level ${level})</h2>
           <div class="subtitle">Select 1 or 2 cards to fortify your Action Slots and Backpack</div>
         </div>
         <div class="fate-cards-grid" id="fate-cards-grid">
           ${offer.cards
             .map(
-              (card, idx) => `
+              (card, idx) => {
+                const iconCode = HUDManager.emojiToOpenMojiCode(card.icon);
+                return `
             <div class="fate-card rarity-${card.rarity}" data-card-id="${card.id}" data-idx="${idx}">
               <div class="card-select-badge">✓</div>
-              <div class="card-icon">${card.icon}</div>
+              <div class="card-icon"><img class="openmoji-icon card-emoji" src="./assets/openmoji/${iconCode}.svg" alt="${card.name}" /></div>
               <div class="card-title">${card.name}</div>
               <div class="card-stat-bonus">${card.statBonusText || ''}</div>
               <div class="card-desc">${card.description}</div>
             </div>
-          `
+          `;
+              }
             )
             .join('')}
         </div>

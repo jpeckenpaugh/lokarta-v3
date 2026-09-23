@@ -507,3 +507,72 @@
   color: #f472b6;
   font-weight: 700;
 }
+
+/* ==========================================================================
+   OpenMoji SVG Styling
+   ========================================================================== */
+
+.openmoji-icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.openmoji-icon.header-icon {
+  width: 2rem;
+  height: 2rem;
+  filter: drop-shadow(0 0 8px rgba(229, 185, 92, 0.6));
+}
+
+.openmoji-icon.btn-emoji {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-right: 4px;
+}
+
+.openmoji-icon.placeholder {
+  opacity: 0.35;
+  filter: grayscale(80%);
+}
+
+.paperdoll-slot .slot-content .openmoji-icon {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.backpack-slot .slot-content .openmoji-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.action-slot-btn .btn-icon .openmoji-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.vocation-card .card-icon .openmoji-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  filter: drop-shadow(0 0 10px rgba(229, 185, 92, 0.5));
+}
+
+.fate-card .card-icon .openmoji-icon {
+  width: 3rem;
+  height: 3rem;
+  filter: drop-shadow(0 0 8px rgba(229, 185, 92, 0.4));
+}
+
+.title-screen-modal .title-emblem .openmoji-icon {
+  width: 4.5rem;
+  height: 4.5rem;
+  filter: drop-shadow(0 0 15px rgba(229, 185, 92, 0.8));
+}
+
+.title-screen-modal .title-torch .openmoji-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.8));
+}
