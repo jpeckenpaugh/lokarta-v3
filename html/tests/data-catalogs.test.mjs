@@ -14,6 +14,7 @@ import {
   ENCOUNTERS_CATALOG,
   DUNGEONS_CATALOG,
   TILE_THEMES_CATALOG,
+  KEYBINDINGS_CATALOG,
 } from '../data/index.js';
 
 test('JSON Data Catalogs', async (t) => {
@@ -119,6 +120,13 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(TILE_THEMES_CATALOG.floor);
     assert.ok(TILE_THEMES_CATALOG.stairs);
     assert.ok(TILE_THEMES_CATALOG.door);
+  });
+
+  await t.test('loads and validates keybindings.json catalog', () => {
+    assert.ok(KEYBINDINGS_CATALOG.movement);
+    assert.ok(Array.isArray(KEYBINDINGS_CATALOG.movement.up));
+    assert.equal(KEYBINDINGS_CATALOG.actionBar.length, 10);
+    assert.ok(KEYBINDINGS_CATALOG.gestureTimings.tapMaxMs > 0);
   });
 });
 

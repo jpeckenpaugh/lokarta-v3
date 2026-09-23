@@ -9,7 +9,8 @@
     "range": 5,
     "manaCost": 0,
     "cooldownSec": 1.0,
-    "soundId": "spell_spark"
+    "soundId": "spell_spark",
+    "actionKey": "wand_spark"
   },
   "magician_light": {
     "id": "magician_light",
@@ -20,7 +21,8 @@
     "durationSec": 30,
     "lightRadius": 12,
     "cooldownSec": 5.0,
-    "soundId": "spell_light"
+    "soundId": "spell_light",
+    "actionKey": "light_spell"
   },
   "magician_beam": {
     "id": "magician_beam",
@@ -32,7 +34,8 @@
     "range": 4,
     "manaCost": 30,
     "cooldownSec": 3.0,
-    "soundId": "spell_spark"
+    "soundId": "spell_spark",
+    "actionKey": "energy_beam"
   },
   "archer_bow_shot": {
     "id": "archer_bow_shot",
@@ -45,7 +48,8 @@
     "manaCost": 0,
     "consumesArrow": true,
     "cooldownSec": 1.0,
-    "soundId": "bow_snap"
+    "soundId": "bow_snap",
+    "actionKey": "bow_shot"
   },
   "archer_power_shot": {
     "id": "archer_power_shot",
@@ -58,7 +62,8 @@
     "manaCost": 0,
     "consumesArrow": true,
     "cooldownSec": 4.0,
-    "soundId": "bow_snap"
+    "soundId": "bow_snap",
+    "actionKey": "power_shot"
   },
   "fighter_slash": {
     "id": "fighter_slash",
@@ -70,7 +75,8 @@
     "range": 1,
     "manaCost": 0,
     "cooldownSec": 0.8,
-    "soundId": "melee_hit"
+    "soundId": "melee_hit",
+    "actionKey": "slash"
   },
   "fighter_cleave": {
     "id": "fighter_cleave",
@@ -82,7 +88,8 @@
     "range": 1,
     "manaCost": 10,
     "cooldownSec": 2.5,
-    "soundId": "melee_hit"
+    "soundId": "melee_hit",
+    "actionKey": "cleave"
   },
   "paladin_holy_strike": {
     "id": "paladin_holy_strike",
@@ -94,7 +101,8 @@
     "range": 1,
     "manaCost": 10,
     "cooldownSec": 1.2,
-    "soundId": "holy_chime"
+    "soundId": "holy_chime",
+    "actionKey": "holy_strike"
   },
   "paladin_heal": {
     "id": "paladin_heal",
@@ -105,6 +113,7 @@
     "healMax": 50,
     "manaCost": 25,
     "cooldownSec": 6.0,
-    "soundId": "holy_chime"
+    "soundId": "holy_chime",
+    "actionKey": "healing_prayer"
   }
 }

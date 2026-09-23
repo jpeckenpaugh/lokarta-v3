@@ -15,6 +15,7 @@ import {
   createPlayer,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
+import { ITEMS_CATALOG, ABILITIES_CATALOG, KEYBINDINGS_CATALOG } from '../data/index.js';
 import { CanvasRenderer } from './canvas-renderer.js';
 import { HUDManager } from './hud-manager.js';
 import { ModalManager } from './modal-manager.js';
@@ -304,17 +305,18 @@ export class LokartaApp {
     let dx = 0;
     let dy = 0;
     let newFacing = this.player.facing;
+    const moveBindings = KEYBINDINGS_CATALOG.movement;
 
-    if (this.keysDown.has('KeyW') || this.keysDown.has('ArrowUp')) {
+    if (moveBindings.up.some(k => this.keysDown.has(k))) {
       dy -= 1;
       newFacing = 'up';
-    } else if (this.keysDown.has('KeyS') || this.keysDown.has('ArrowDown')) {
+    } else if (moveBindings.down.some(k => this.keysDown.has(k))) {
       dy += 1;
       newFacing = 'down';
-    } else if (this.keysDown.has('KeyA') || this.keysDown.has('ArrowLeft')) {
+    } else if (moveBindings.left.some(k => this.keysDown.has(k))) {
       dx -= 1;
       newFacing = 'left';
-    } else if (this.keysDown.has('KeyD') || this.keysDown.has('ArrowRight')) {
+    } else if (moveBindings.right.some(k => this.keysDown.has(k))) {
       dx += 1;
       newFacing = 'right';
     }
@@ -404,100 +406,96 @@ export class LokartaApp {
   }
 
   executeActionSlotCombat(item, gesture) {
-    const itemId = item.item_id || '';
+    const catalogItem = ITEMS_CATALOG[item.item_id];
+    const actionKey = item.actionKey || catalogItem?.actionKey || (
+      item.item_id?.includes('spark') ? 'wand_spark' :
+      item.item_id?.includes('beam') ? 'energy_beam' :
+      item.item_id?.includes('light') ? 'light_spell' :
+      item.item_id?.includes('power_shot') ? 'power_shot' :
+      (item.item_id?.includes('bow') || item.item_id?.includes('shot')) ? 'bow_shot' :
+      item.item_id?.includes('cleave') ? 'cleave' :
+      (item.item_id?.includes('sword') || item.item_id?.includes('slash')) ? 'slash' :
+      (item.item_id?.includes('prayer') || item.item_id?.includes('heal')) ? 'healing_prayer' :
+      (item.item_id?.includes('holy') || item.item_id?.includes('warhammer') || item.item_id?.includes('radiance')) ? 'holy_strike' : null
+    );
 
-    // Wand Spark / apprentice wand
-    if (itemId.includes('spark') || itemId.includes('wand') || itemId.includes('scepter')) {
-      const target = this.getTargetMonster(CONFIG.MAGICIAN_SPARK_RANGE);
-      if (!target) {
-        this.logCombat('No enemy in range for Wand Spark (click enemy to target).', 'warning');
-        return;
-      }
-      soundFX.play('wandSpark');
-      const res = CombatSystem.executeWandSpark(this.player, target, this.gridMap);
-      this.handleCombatResult(res, target.x, target.y);
-    }
-    // Energy Beam
-    else if (itemId.includes('beam')) {
-      const res = CombatSystem.executeEnergyBeam(this.player, this.player.facing, this.gridMap, this.monsters);
-      if (res.success) {
-        soundFX.play('energyBeam');
-        this.handleCombatResult(res, this.player.x, this.player.y);
-      } else {
-        this.logCombat(res.message, 'warning');
-      }
-    }
-    // Light Spell
-    else if (itemId.includes('light')) {
-      const res = CombatSystem.executeLightSpell(this.player);
-      if (res.success) {
-        soundFX.play('lightSpell');
-        this.logCombat(res.message, 'spell');
-        this.addFloatingText('Light Aura!', this.player.x, this.player.y, '#ffd700');
-        LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
-      } else {
-        this.logCombat(res.message, 'warning');
-      }
-    }
-    // Bow Shot / Power Shot / bow weapons
-    else if (itemId.includes('power_shot')) {
-      const target = this.getTargetMonster(CONFIG.ARCHER_POWER_SHOT_RANGE);
-      if (!target) {
-        this.logCombat('No enemy in range for Power Shot.', 'warning');
-        return;
-      }
-      soundFX.play('powerShot');
-      const res = CombatSystem.executePowerShot(this.player, target, this.gridMap);
-      this.handleCombatResult(res, target.x, target.y);
-    } else if (itemId.includes('bow') || itemId.includes('shot')) {
-      const target = this.getTargetMonster(CONFIG.ARCHER_BOW_RANGE);
-      if (!target) {
-        this.logCombat('No enemy in range for Bow Shot.', 'warning');
-        return;
-      }
-      soundFX.play('bowShot');
-      const res = CombatSystem.executeBowShot(this.player, target, this.gridMap);
-      this.handleCombatResult(res, target.x, target.y);
-    }
-    // Sword Slash / Broadsword / Cleave
-    else if (itemId.includes('cleave')) {
-      const target = this.getTargetMonster(1.5);
-      if (!target) {
-        this.logCombat('No adjacent enemy for Cleave.', 'warning');
-        return;
-      }
-      soundFX.play('hit');
-      const res = CombatSystem.executeSlash(this.player, target, this.gridMap);
-      this.handleCombatResult(res, target.x, target.y);
-    } else if (itemId.includes('sword') || itemId.includes('slash')) {
-      const target = this.getTargetMonster(1.5);
-      if (!target) {
-        this.logCombat('No adjacent enemy for melee attack.', 'warning');
-        return;
-      }
-      soundFX.play('hit');
-      const res = CombatSystem.executeSlash(this.player, target, this.gridMap);
-      this.handleCombatResult(res, target.x, target.y);
-    }
-    // Paladin Holy Strike / Healing Prayer / Warhammer
-    else if (itemId.includes('prayer') || itemId.includes('heal')) {
-      const res = CombatSystem.executeHealingPrayer(this.player);
-      if (res.success) {
-        soundFX.play('lightSpell');
-        this.logCombat(res.message, 'spell');
-        this.addFloatingText(`+${res.healAmount} HP`, this.player.x, this.player.y, '#22c55e');
-      } else {
-        this.logCombat(res.message, 'warning');
-      }
-    } else if (itemId.includes('holy') || itemId.includes('warhammer') || itemId.includes('radiance')) {
-      const target = this.getTargetMonster(1.5);
-      if (!target) {
-        this.logCombat('No adjacent enemy for Holy Strike.', 'warning');
-        return;
-      }
-      soundFX.play('hit');
-      const res = CombatSystem.executeHolyStrike(this.player, target, this.gridMap);
-      this.handleCombatResult(res, target.x, target.y);
+    const handlers = {
+      wand_spark: () => {
+        const target = this.getTargetMonster(CONFIG.MAGICIAN_SPARK_RANGE);
+        if (!target) return this.logCombat('No enemy in range for Wand Spark (click enemy to target).', 'warning');
+        soundFX.play('wandSpark');
+        const res = CombatSystem.executeWandSpark(this.player, target, this.gridMap);
+        this.handleCombatResult(res, target.x, target.y);
+      },
+      energy_beam: () => {
+        const res = CombatSystem.executeEnergyBeam(this.player, this.player.facing, this.gridMap, this.monsters);
+        if (res.success) {
+          soundFX.play('energyBeam');
+          this.handleCombatResult(res, this.player.x, this.player.y);
+        } else {
+          this.logCombat(res.message, 'warning');
+        }
+      },
+      light_spell: () => {
+        const res = CombatSystem.executeLightSpell(this.player);
+        if (res.success) {
+          soundFX.play('lightSpell');
+          this.logCombat(res.message, 'spell');
+          this.addFloatingText('Light Aura!', this.player.x, this.player.y, '#ffd700');
+          LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+        } else {
+          this.logCombat(res.message, 'warning');
+        }
+      },
+      power_shot: () => {
+        const target = this.getTargetMonster(CONFIG.ARCHER_POWER_SHOT_RANGE);
+        if (!target) return this.logCombat('No enemy in range for Power Shot.', 'warning');
+        soundFX.play('powerShot');
+        const res = CombatSystem.executePowerShot(this.player, target, this.gridMap);
+        this.handleCombatResult(res, target.x, target.y);
+      },
+      bow_shot: () => {
+        const target = this.getTargetMonster(CONFIG.ARCHER_BOW_RANGE);
+        if (!target) return this.logCombat('No enemy in range for Bow Shot.', 'warning');
+        soundFX.play('bowShot');
+        const res = CombatSystem.executeBowShot(this.player, target, this.gridMap);
+        this.handleCombatResult(res, target.x, target.y);
+      },
+      cleave: () => {
+        const target = this.getTargetMonster(1.5);
+        if (!target) return this.logCombat('No adjacent enemy for Cleave.', 'warning');
+        soundFX.play('hit');
+        const res = CombatSystem.executeSlash(this.player, target, this.gridMap);
+        this.handleCombatResult(res, target.x, target.y);
+      },
+      slash: () => {
+        const target = this.getTargetMonster(1.5);
+        if (!target) return this.logCombat('No adjacent enemy for melee attack.', 'warning');
+        soundFX.play('hit');
+        const res = CombatSystem.executeSlash(this.player, target, this.gridMap);
+        this.handleCombatResult(res, target.x, target.y);
+      },
+      healing_prayer: () => {
+        const res = CombatSystem.executeHealingPrayer(this.player);
+        if (res.success) {
+          soundFX.play('lightSpell');
+          this.logCombat(res.message, 'spell');
+          this.addFloatingText(`+${res.healAmount} HP`, this.player.x, this.player.y, '#22c55e');
+        } else {
+          this.logCombat(res.message, 'warning');
+        }
+      },
+      holy_strike: () => {
+        const target = this.getTargetMonster(1.5);
+        if (!target) return this.logCombat('No adjacent enemy for Holy Strike.', 'warning');
+        soundFX.play('hit');
+        const res = CombatSystem.executeHolyStrike(this.player, target, this.gridMap);
+        this.handleCombatResult(res, target.x, target.y);
+      },
+    };
+
+    if (actionKey && handlers[actionKey]) {
+      handlers[actionKey]();
     }
 
     this.updateHUD();

@@ -4,6 +4,7 @@
 
 import { CombatSystem, GestureEngine, InventorySystem, LightingSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
+import { ITEMS_CATALOG } from '../data/index.js';
 
 export class HUDManager {
   static updateHUD(elements, app) {
@@ -297,28 +298,8 @@ export class HUDManager {
 
   static renderItemIcon(item) {
     if (!item) return '•';
-    let code = '1F4E6';
-    const rawIcon = item.icon;
-    if (rawIcon) {
-      code = HUDManager.emojiToOpenMojiCode(rawIcon);
-    } else {
-      if (item.item_id === 'health_potion') code = '1F9EA';
-      else if (item.item_id === 'mana_potion') code = '2697';
-      else if (item.item_id === 'torch') code = '1F525';
-      else if (item.item_id === 'arrows') code = '1F3F9';
-      else if (item.item_id?.includes('wand')) code = '1FA84';
-      else if (item.item_id?.includes('scepter')) code = '1F52E';
-      else if (item.item_id?.includes('spark')) code = '2728';
-      else if (item.item_id?.includes('beam')) code = '26A1';
-      else if (item.item_id?.includes('light')) code = '1F4A1';
-      else if (item.item_id?.includes('bow')) code = '1F3F9';
-      else if (item.item_id?.includes('sword') || item.item_id?.includes('slash')) code = '2694';
-      else if (item.item_id?.includes('warhammer') || item.item_id?.includes('hammer')) code = '2692';
-      else if (item.item_id?.includes('prayer') || item.item_id?.includes('heal')) code = '1F496';
-      else if (item.item_id?.includes('armor') || item.item_id?.includes('plate')) code = '1F9BA';
-      else if (item.item_id?.includes('buckler') || item.item_id?.includes('shield')) code = '1F6E1';
-      else if (item.item_id?.includes('relic') || item.item_id?.includes('amulet') || item.item_id?.includes('crest')) code = '1F4FF';
-    }
+    const catalogItem = ITEMS_CATALOG[item.item_id];
+    const code = item.svgCode || catalogItem?.svgCode || (item.icon ? HUDManager.emojiToOpenMojiCode(item.icon) : '1F4E6');
     return `<img class="openmoji-icon" src="./assets/openmoji/${code}.svg" alt="${item.name || 'item'}" />`;
   }
 

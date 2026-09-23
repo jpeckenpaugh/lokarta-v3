@@ -143,16 +143,9 @@ export class InventorySystem {
       return { success: false, message: 'No item in selected slot.' };
     }
 
-    let targetSlot = null;
-    if (item.type === 'weapon') {
-      targetSlot = 'main_hand';
-    } else if (item.type === 'offhand' || item.item_id === 'torch' || item.item_id === 'buckler') {
-      targetSlot = 'off_hand';
-    } else if (item.type === 'armor') {
-      targetSlot = 'armor';
-    } else if (item.type === 'relic') {
-      targetSlot = 'relic';
-    } else {
+    const catalogItem = ITEMS_CATALOG[item.item_id];
+    const targetSlot = item.slot || catalogItem?.slot;
+    if (!targetSlot) {
       return { success: false, message: `${item.name} cannot be equipped.` };
     }
 

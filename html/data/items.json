@@ -6,6 +6,7 @@
     "slot": "off_hand",
     "stat_bonus": 14,
     "icon": "🔥",
+    "svgCode": "1F525",
     "maxStack": 9
   },
   "health_potion": {
@@ -14,6 +15,8 @@
     "type": "consumable",
     "stat_bonus": 30,
     "icon": "🧪",
+    "svgCode": "1F9EA",
+    "actionKey": "use_health_potion",
     "maxStack": 9
   },
   "mana_potion": {
@@ -22,6 +25,8 @@
     "type": "consumable",
     "stat_bonus": 40,
     "icon": "🔷",
+    "svgCode": "2697",
+    "actionKey": "use_mana_potion",
     "maxStack": 9
   },
   "arrows": {
@@ -30,6 +35,7 @@
     "type": "ammo",
     "stat_bonus": 0,
     "icon": "🏹",
+    "svgCode": "1F3F9",
     "maxStack": 99
   },
   "apprentice_wand": {
@@ -40,6 +46,8 @@
     "stat_bonus": 3,
     "vocationAffinity": "magician",
     "icon": "🪄",
+    "svgCode": "1FA84",
+    "actionKey": "wand_spark",
     "maxStack": 1
   },
   "astral_scepter": {
@@ -50,6 +58,8 @@
     "stat_bonus": 8,
     "vocationAffinity": "magician",
     "icon": "🔮",
+    "svgCode": "1F52E",
+    "actionKey": "energy_beam",
     "maxStack": 1
   },
   "composite_bow": {
@@ -60,6 +70,8 @@
     "stat_bonus": 6,
     "vocationAffinity": "archer",
     "icon": "🏹",
+    "svgCode": "1F3F9",
+    "actionKey": "bow_shot",
     "maxStack": 1
   },
   "tempered_broadsword": {
@@ -70,6 +82,8 @@
     "stat_bonus": 7,
     "vocationAffinity": "fighter",
     "icon": "🗡️",
+    "svgCode": "2694",
+    "actionKey": "slash",
     "maxStack": 1
   },
   "consecrated_warhammer": {
@@ -80,6 +94,8 @@
     "stat_bonus": 6,
     "vocationAffinity": "paladin",
     "icon": "⚒️",
+    "svgCode": "2692",
+    "actionKey": "holy_strike",
     "maxStack": 1
   },
   "buckler": {
@@ -89,6 +105,7 @@
     "slot": "off_hand",
     "stat_bonus": 4,
     "icon": "🛡️",
+    "svgCode": "1F6E1",
     "maxStack": 1
   },
   "plate_armor": {
@@ -98,6 +115,7 @@
     "slot": "armor",
     "stat_bonus": 8,
     "icon": "🦺",
+    "svgCode": "1F9BA",
     "maxStack": 1
   },
   "relic_luminous_amulet": {
@@ -107,6 +125,7 @@
     "slot": "relic",
     "stat_bonus": 20,
     "icon": "📿",
+    "svgCode": "1F4FF",
     "maxStack": 1
   },
   "relic_champions_crest": {
@@ -116,6 +135,7 @@
     "slot": "relic",
     "stat_bonus": 15,
     "icon": "👑",
+    "svgCode": "1F4FF",
     "maxStack": 1
   },
   "spell_wand_spark": {
@@ -127,6 +147,8 @@
     "cooldown": 1.0,
     "vocationAffinity": "magician",
     "icon": "✨",
+    "svgCode": "2728",
+    "actionKey": "wand_spark",
     "maxStack": 1
   },
   "spell_light": {
@@ -138,6 +160,8 @@
     "cooldown": 5.0,
     "vocationAffinity": "magician",
     "icon": "💡",
+    "svgCode": "1F4A1",
+    "actionKey": "light_spell",
     "maxStack": 1
   },
   "spell_energy_beam": {
@@ -149,6 +173,8 @@
     "cooldown": 3.0,
     "vocationAffinity": "magician",
     "icon": "⚡",
+    "svgCode": "26A1",
+    "actionKey": "energy_beam",
     "maxStack": 1
   },
   "spell_bow_shot": {
@@ -159,6 +185,8 @@
     "cooldown": 1.0,
     "vocationAffinity": "archer",
     "icon": "🏹",
+    "svgCode": "1F3F9",
+    "actionKey": "bow_shot",
     "maxStack": 1
   },
   "spell_power_shot": {
@@ -169,6 +197,8 @@
     "cooldown": 4.0,
     "vocationAffinity": "archer",
     "icon": "🎯",
+    "svgCode": "1F3AF",
+    "actionKey": "power_shot",
     "maxStack": 1
   },
   "spell_slash": {
@@ -179,6 +209,8 @@
     "cooldown": 0.8,
     "vocationAffinity": "fighter",
     "icon": "⚔️",
+    "svgCode": "2694",
+    "actionKey": "slash",
     "maxStack": 1
   },
   "spell_cleave": {
@@ -190,6 +222,8 @@
     "cooldown": 2.5,
     "vocationAffinity": "fighter",
     "icon": "🌪️",
+    "svgCode": "1F32A",
+    "actionKey": "cleave",
     "maxStack": 1
   },
   "spell_fortify": {
@@ -201,6 +235,8 @@
     "cooldown": 12.0,
     "vocationAffinity": "fighter",
     "icon": "🛡️",
+    "svgCode": "1F6E1",
+    "actionKey": "fortify",
     "maxStack": 1
   },
   "spell_holy_strike": {
@@ -212,6 +248,8 @@
     "cooldown": 1.2,
     "vocationAffinity": "paladin",
     "icon": "🔨",
+    "svgCode": "2692",
+    "actionKey": "holy_strike",
     "maxStack": 1
   },
   "spell_healing_prayer": {
@@ -223,6 +261,8 @@
     "cooldown": 6.0,
     "vocationAffinity": "paladin",
     "icon": "💖",
+    "svgCode": "1F496",
+    "actionKey": "healing_prayer",
     "maxStack": 1
   },
   "spell_holy_radiance": {
@@ -234,6 +274,8 @@
     "cooldown": 8.0,
     "vocationAffinity": "paladin",
     "icon": "☀️",
+    "svgCode": "2600",
+    "actionKey": "holy_radiance",
     "maxStack": 1
   }
 }
