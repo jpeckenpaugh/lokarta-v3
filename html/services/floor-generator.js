@@ -253,12 +253,7 @@ export function generateFloor(floorNumber = 1, seed = null) {
         mType = spawnSpec.type;
         mName = spawnSpec.name;
         mHp = spawnSpec.baseHp + (floorId - 1) * spawnSpec.hpPerFloor;
-        mAtk = Math.floor(spawnSpec.baseAtk + (floorId - 1) * (spawnSpec.atkStep || 1.0));
-        if (floorId <= 5 && mType === 'crypt_skeleton') mAtk = 8 + floorId;
-        if (floorId >= 6 && floorId <= 10 && mType === 'crypt_skeleton') mAtk = 10 + floorId;
-        if (floorId >= 6 && floorId <= 10 && mType === 'shadow_cultist') mAtk = 10 + floorId;
-        if (floorId >= 11 && floorId <= 19 && mType === 'elite_cultist') mAtk = 14 + floorId;
-        if (floorId >= 11 && floorId <= 19 && mType === 'crypt_skeleton') mAtk = 12 + floorId;
+        mAtk = Math.floor(spawnSpec.baseAtk + floorId * (spawnSpec.atkStep || 1.0));
         mDef = spawnSpec.defense;
         moveCadence = spawnSpec.moveCadence;
         attackCadence = spawnSpec.attackCadence;
@@ -376,26 +371,9 @@ export function generateFloor(floorNumber = 1, seed = null) {
     },
   ];
 
-  // Bonus Greater Potions every 5th floor
-  if (floorId % 5 === 0) {
-    items.push({
-      x: 22,
-      y: 22,
-      item_id: 'mana_potion',
-      name: 'Greater Mana Potion',
-      type: 'consumable',
-      quantity: 3,
-      stat_bonus: 60,
-    });
-    items.push({
-      x: 24,
-      y: 22,
-      item_id: 'health_potion',
-      name: 'Greater Health Potion',
-      type: 'consumable',
-      quantity: 3,
-      stat_bonus: 50,
-    });
+  // Milestone bonus drops catalog
+  if (dungeonSpec.milestoneInterval && floorId % dungeonSpec.milestoneInterval === 0 && dungeonSpec.milestoneBonusItems) {
+    items.push(...dungeonSpec.milestoneBonusItems);
   }
 
   return {

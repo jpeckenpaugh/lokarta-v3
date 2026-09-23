@@ -10,7 +10,12 @@
     "hpPerLevel": 8,
     "manaPerLevel": 16,
     "damageStep": 0.10,
-    "description": "Master of radiant arcane energies and expansive illumination."
+    "description": "Master of radiant arcane energies and expansive illumination.",
+    "renderTheme": {
+      "primary": "#5c2d91",
+      "accent": "#ffd700",
+      "secondary": "#7a3cb8"
+    }
   },
   "archer": {
     "id": "archer",
@@ -23,7 +28,12 @@
     "hpPerLevel": 14,
     "manaPerLevel": 8,
     "damageStep": 0.12,
-    "description": "Deadly long-range sniper utilizing fletched arrows and precision burst."
+    "description": "Deadly long-range sniper utilizing fletched arrows and precision burst.",
+    "renderTheme": {
+      "primary": "#15803d",
+      "accent": "#854d0e",
+      "secondary": "#166534"
+    }
   },
   "fighter": {
     "id": "fighter",
@@ -36,7 +46,12 @@
     "hpPerLevel": 18,
     "manaPerLevel": 4,
     "damageStep": 0.15,
-    "description": "Resilient front-line warrior using heavy broadswords, cleaves, and defensive stances."
+    "description": "Resilient front-line warrior using heavy broadswords, cleaves, and defensive stances.",
+    "renderTheme": {
+      "primary": "#475569",
+      "accent": "#94a3b8",
+      "secondary": "#334155"
+    }
   },
   "paladin": {
     "id": "paladin",
@@ -49,6 +64,11 @@
     "hpPerLevel": 15,
     "manaPerLevel": 10,
     "damageStep": 0.11,
-    "description": "Holy champion striking with sacred warhammers, area light, and restorative prayers."
+    "description": "Holy champion striking with sacred warhammers, area light, and restorative prayers.",
+    "renderTheme": {
+      "primary": "#0284c7",
+      "accent": "#f59e0b",
+      "secondary": "#0369a1"
+    }
   }
 }

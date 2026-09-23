@@ -48,6 +48,27 @@
       { "x": 34, "y": 19, "radius": 4 },
       { "x": 6, "y": 33, "radius": 4 },
       { "x": 21, "y": 33, "radius": 4 }
+    ],
+    "milestoneInterval": 5,
+    "milestoneBonusItems": [
+      {
+        "x": 22,
+        "y": 22,
+        "item_id": "mana_potion",
+        "name": "Greater Mana Potion",
+        "type": "consumable",
+        "quantity": 3,
+        "stat_bonus": 60
+      },
+      {
+        "x": 24,
+        "y": 22,
+        "item_id": "health_potion",
+        "name": "Greater Health Potion",
+        "type": "consumable",
+        "quantity": 3,
+        "stat_bonus": 50
+      }
     ]
   }
 }

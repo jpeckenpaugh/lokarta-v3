@@ -3,7 +3,7 @@
  */
 
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
-import { TILE_THEMES_CATALOG } from '../data/index.js';
+import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 
 export class SpriteRenderer {
   static drawTile(ctx, type, screenX, screenY, size = CONFIG.GRID_SIZE) {
@@ -170,90 +170,41 @@ export class SpriteRenderer {
     ctx.ellipse(cx, cy + size / 3, size / 3, size / 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const voc = player.vocation || 'magician';
+    const vocKey = player.vocation || 'magician';
+    const vocData = VOCATIONS_CATALOG[vocKey] || VOCATIONS_CATALOG.magician;
+    const theme = vocData.renderTheme || { primary: '#5c2d91', accent: '#ffd700', secondary: '#7a3cb8' };
 
-    if (voc === 'magician') {
-      // Magician Robe
-      ctx.fillStyle = '#5c2d91';
-      ctx.beginPath();
-      ctx.moveTo(cx - 8, cy + 12);
-      ctx.lineTo(cx + 8, cy + 12);
-      ctx.lineTo(cx + 5, cy - 4);
-      ctx.lineTo(cx - 5, cy - 4);
-      ctx.closePath();
-      ctx.fill();
+    // Body Outfit
+    ctx.fillStyle = theme.primary;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy + 12);
+    ctx.lineTo(cx + 8, cy + 12);
+    ctx.lineTo(cx + 6, cy - 4);
+    ctx.lineTo(cx - 6, cy - 4);
+    ctx.closePath();
+    ctx.fill();
 
-      // Trim & Hood
-      ctx.strokeStyle = '#ffd700';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.fillStyle = '#7a3cb8';
-      ctx.beginPath();
-      ctx.arc(cx, cy - 6, 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      SpriteRenderer.drawFacingEyes(ctx, cx, cy - 6, player.facing, '#44ccff');
-    } else if (voc === 'archer') {
-      // Archer Tunic
-      ctx.fillStyle = '#2d6a4f';
-      ctx.beginPath();
-      ctx.moveTo(cx - 7, cy + 12);
-      ctx.lineTo(cx + 7, cy + 12);
-      ctx.lineTo(cx + 6, cy - 4);
-      ctx.lineTo(cx - 6, cy - 4);
-      ctx.closePath();
-      ctx.fill();
-
-      // Cap
-      ctx.fillStyle = '#1b4332';
-      ctx.beginPath();
-      ctx.arc(cx, cy - 6, 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      SpriteRenderer.drawFacingEyes(ctx, cx, cy - 6, player.facing, '#e9d8a6');
-    } else if (voc === 'fighter') {
-      // Fighter Steel Armor
-      ctx.fillStyle = '#475569';
-      ctx.beginPath();
-      ctx.moveTo(cx - 8, cy + 12);
-      ctx.lineTo(cx + 8, cy + 12);
-      ctx.lineTo(cx + 7, cy - 4);
-      ctx.lineTo(cx - 7, cy - 4);
-      ctx.closePath();
-      ctx.fill();
-
-      // Helmet
-      ctx.fillStyle = '#64748b';
-      ctx.beginPath();
-      ctx.arc(cx, cy - 6, 7, 0, Math.PI * 2);
-      ctx.fill();
-
-      SpriteRenderer.drawFacingEyes(ctx, cx, cy - 6, player.facing, '#f87171');
-    } else if (voc === 'paladin') {
-      // Paladin Golden Plate
-      ctx.fillStyle = '#ca8a04';
-      ctx.beginPath();
-      ctx.moveTo(cx - 8, cy + 12);
-      ctx.lineTo(cx + 8, cy + 12);
-      ctx.lineTo(cx + 7, cy - 4);
-      ctx.lineTo(cx - 7, cy - 4);
-      ctx.closePath();
-      ctx.fill();
-
-      // Sacred Halo & Greathelm
-      ctx.strokeStyle = '#fef08a';
+    // Accent Trim / Halo
+    if (vocKey === 'paladin') {
+      ctx.strokeStyle = theme.accent;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.ellipse(cx, cy - 14, 6, 2, 0, 0, Math.PI * 2);
       ctx.stroke();
-
-      ctx.fillStyle = '#eab308';
-      ctx.beginPath();
-      ctx.arc(cx, cy - 6, 7, 0, Math.PI * 2);
-      ctx.fill();
-
-      SpriteRenderer.drawFacingEyes(ctx, cx, cy - 6, player.facing, '#38bdf8');
+    } else {
+      ctx.strokeStyle = theme.accent;
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
+
+    // Head / Hood / Helmet
+    ctx.fillStyle = theme.secondary;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 6, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    const eyeColors = { magician: '#44ccff', archer: '#e9d8a6', fighter: '#f87171', paladin: '#38bdf8' };
+    SpriteRenderer.drawFacingEyes(ctx, cx, cy - 6, player.facing, eyeColors[vocKey] || '#ffffff');
   }
 
   static drawMonster(ctx, monster, screenX, screenY, size = CONFIG.GRID_SIZE) {
