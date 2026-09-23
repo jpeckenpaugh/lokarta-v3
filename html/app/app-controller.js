@@ -304,7 +304,59 @@ export class LokartaApp {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
 
-      // Handle legacy duration-based projectiles (e.g. non-physics spells)
+      // Energy Beam Wave Animation
+      if (p.type === 'energy_beam' && p.waves) {
+        p.elapsedMs += dtMs;
+        const targetWaveIndex = Math.floor(p.elapsedMs / p.stepIntervalMs);
+
+        if (targetWaveIndex > p.currentWaveIndex && targetWaveIndex < p.waves.length) {
+          p.currentWaveIndex = targetWaveIndex;
+          const wave = p.waves[targetWaveIndex];
+
+          for (const tile of wave.tiles) {
+            const pxX = tile.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
+            const pxY = tile.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
+
+            if (tile.isWall) {
+              soundFX.playAt('energyBeam', tile.x, tile.y, this.player.x, this.player.y);
+              this.triggerImpactBurst(pxX, pxY, p.visual, p.color);
+            } else {
+              soundFX.playAt('energyBeam', tile.x, tile.y, this.player.x, this.player.y);
+              const hitMonster = this.monsters.find(m => m.hp > 0 && m.x === tile.x && m.y === tile.y);
+              if (hitMonster && !p.hitMonsterIds.includes(hitMonster.id)) {
+                p.hitMonsterIds.push(hitMonster.id);
+                const payload = p.damagePayload || {};
+                const dmg = payload.damage || 35;
+                hitMonster.hp -= dmg;
+
+                this.triggerImpactBurst(pxX, pxY, p.visual, p.color);
+
+                let combatMsg = `Arcane Beam struck ${hitMonster.name} for ${dmg} magic damage!`;
+                if (hitMonster.hp <= 0) {
+                  combatMsg += ` ${hitMonster.name} was slain!`;
+                  const loot = CombatSystem.generateMonsterLoot(hitMonster);
+                  this.handleCombatResult({
+                    success: true,
+                    defeatedMonsterId: hitMonster.id,
+                    droppedLoot: loot,
+                  }, tile.x, tile.y);
+                }
+
+                this.logCombat(combatMsg, 'combat');
+                this.addFloatingText(`-${dmg}`, tile.x, tile.y, '#ff66dd');
+              }
+            }
+          }
+        }
+
+        // Beam expires 300ms after final wave step completes
+        if (p.elapsedMs >= (p.waves.length * p.stepIntervalMs + 300)) {
+          this.projectiles.splice(i, 1);
+        }
+        continue;
+      }
+
+      // Handle legacy duration-based projectiles
       if (!p.dirX && !p.dirY) {
         p.elapsedMs += dtMs;
         if (p.elapsedMs >= p.durationMs) {
@@ -313,7 +365,7 @@ export class LokartaApp {
         continue;
       }
 
-      // Real-time continuous projectile physics
+      // Real-time continuous projectile physics (e.g. Wand Spark)
       p.currentPxX += p.dirX * p.speedPxPerSec * dtSec;
       p.currentPxY += p.dirY * p.speedPxPerSec * dtSec;
 

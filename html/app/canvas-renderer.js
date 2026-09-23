@@ -117,17 +117,45 @@ export class CanvasRenderer {
 
   renderProjectiles(ctx, projectiles) {
     for (const p of projectiles) {
-      if (p.type === 'energy_beam' && p.piercingTiles) {
+      if (p.type === 'energy_beam' && p.waves) {
         ctx.save();
-        ctx.fillStyle = 'rgba(255, 0, 170, 0.4)';
-        ctx.strokeStyle = '#ff66dd';
-        ctx.lineWidth = 3;
+        const mainColor = p.color || '#ff66dd';
+        const glowColor = p.visual?.glowColor || '#ff00aa';
 
-        for (const tile of p.piercingTiles) {
-          const sx = tile.x * CONFIG.GRID_SIZE - this.cameraX;
-          const sy = tile.y * CONFIG.GRID_SIZE - this.cameraY;
-          ctx.fillRect(sx, sy, CONFIG.GRID_SIZE, CONFIG.GRID_SIZE);
-          ctx.strokeRect(sx + 2, sy + 2, CONFIG.GRID_SIZE - 4, CONFIG.GRID_SIZE - 4);
+        // Render all active wave steps up to current step index
+        for (let idx = 0; idx <= p.currentWaveIndex && idx < p.waves.length; idx++) {
+          const wave = p.waves[idx];
+          const ageMs = p.elapsedMs - (wave.delayMs || 0);
+          const alpha = Math.max(0, 1.0 - ageMs / 300); // 300ms fadeout per step
+
+          ctx.globalAlpha = alpha;
+          for (const tile of wave.tiles) {
+            const sx = tile.x * CONFIG.GRID_SIZE - this.cameraX;
+            const sy = tile.y * CONFIG.GRID_SIZE - this.cameraY;
+
+            if (tile.isWall) {
+              ctx.fillStyle = 'rgba(255, 0, 170, 0.4)';
+              ctx.fillRect(sx + 4, sy + 4, CONFIG.GRID_SIZE - 8, CONFIG.GRID_SIZE - 8);
+            } else {
+              // Radial Energy Wave Aura
+              const cx = sx + CONFIG.GRID_SIZE / 2;
+              const cy = sy + CONFIG.GRID_SIZE / 2;
+              const auraGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, CONFIG.GRID_SIZE * 0.7);
+              auraGrad.addColorStop(0, '#ffffff');
+              auraGrad.addColorStop(0.4, mainColor);
+              auraGrad.addColorStop(1, 'rgba(255, 0, 170, 0)');
+
+              ctx.fillStyle = auraGrad;
+              ctx.beginPath();
+              ctx.arc(cx, cy, CONFIG.GRID_SIZE * 0.7, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Glowing Square Border
+              ctx.strokeStyle = glowColor;
+              ctx.lineWidth = 2;
+              ctx.strokeRect(sx + 3, sy + 3, CONFIG.GRID_SIZE - 6, CONFIG.GRID_SIZE - 6);
+            }
+          }
         }
         ctx.restore();
       } else {

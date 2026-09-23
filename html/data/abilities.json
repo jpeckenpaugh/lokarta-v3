@@ -59,7 +59,17 @@
     "manaCost": 30,
     "cooldownSec": 3.0,
     "soundId": "spell_spark",
-    "actionKey": "energy_beam"
+    "impactSoundId": "energyBeam",
+    "actionKey": "energy_beam",
+    "visual": {
+      "pattern": "w_wave",
+      "stepIntervalSec": 0.1,
+      "maxSteps": 4,
+      "color": "#ff66dd",
+      "glowColor": "#ff00aa",
+      "burstParticleCount": 8,
+      "burstColor": "#ff99ee"
+    }
   },
   "archer_bow_shot": {
     "id": "archer_bow_shot",

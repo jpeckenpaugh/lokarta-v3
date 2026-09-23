@@ -196,76 +196,96 @@ export class CombatSystem {
     player.cooldowns.energy_beam = CONFIG.MAGICIAN_BEAM_COOLDOWN_SEC;
 
     const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'magician' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
-    const bonusRng = player.skillBoosts?.bonusRange || 0;
-    const beamRange = CONFIG.MAGICIAN_BEAM_RANGE + bonusRng;
+    const baseDmg = CombatSystem.randomBetween(CONFIG.MAGICIAN_BEAM_DAMAGE_MIN, CONFIG.MAGICIAN_BEAM_DAMAGE_MAX);
+    const damage = Math.round(baseDmg * mult);
 
-    const dx = facing === 'left' ? -1 : facing === 'right' ? 1 : 0;
-    const dy = facing === 'up' ? -1 : facing === 'down' ? 1 : 0;
+    const fVecs = {
+      up: { fX: 0, fY: -1, pX: 1, pY: 0 },
+      down: { fX: 0, fY: 1, pX: -1, pY: 0 },
+      left: { fX: -1, fY: 0, pX: 0, pY: -1 },
+      right: { fX: 1, fY: 0, pX: 0, pY: 1 },
+    };
+    const { fX, fY, pX, pY } = fVecs[facing] || fVecs.right;
 
-    const beamTiles = [];
-    let currX = player.x;
-    let currY = player.y;
+    // Step offsets relative to facing direction vector:
+    // Step 1: 1 tile (0)
+    // Step 2: 3 tiles (-1, 0, +1)
+    // Step 3: 3 tiles (-2, 0, +2)
+    // Step 4: 3 tiles (-3, 0, +3)
+    const stepOffsets = [
+      [0],
+      [-1, 0, 1],
+      [-2, 0, 2],
+      [-3, 0, 3],
+    ];
 
-    for (let i = 1; i <= beamRange; i++) {
-      currX += dx;
-      currY += dy;
-      if (!gridMap.isInBounds(currX, currY)) break;
-      beamTiles.push({ x: currX, y: currY });
-      if (gridMap.isWall(currX, currY)) {
-        break; // Beam stops at wall
-      }
-    }
+    const waves = [];
+    const beamBlocked = { left: false, center: false, right: false };
 
-    let totalDamage = 0;
-    let hits = 0;
-    const defeatedIds = [];
-    const allLoot = [];
+    for (let s = 0; s < 4; s++) {
+      const dist = s + 1;
+      const offsets = stepOffsets[s];
+      const waveTiles = [];
 
-    for (const monster of monsters) {
-      const hit = beamTiles.some(t => t.x === monster.x && t.y === monster.y);
-      if (hit && monster.hp > 0) {
-        const baseDmg = CombatSystem.randomBetween(CONFIG.MAGICIAN_BEAM_DAMAGE_MIN, CONFIG.MAGICIAN_BEAM_DAMAGE_MAX);
-        const damage = Math.round(baseDmg * mult);
-        monster.hp -= damage;
-        totalDamage += damage;
-        hits++;
+      for (const off of offsets) {
+        let beamKey = 'center';
+        if (off < 0) beamKey = 'left';
+        if (off > 0) beamKey = 'right';
 
-        if (monster.hp <= 0) {
-          defeatedIds.push(monster.id);
-          const loot = CombatSystem.generateMonsterLoot(monster);
-          allLoot.push(...loot);
+        if (beamBlocked[beamKey]) continue;
+
+        const tx = player.x + (fX * dist) + (pX * off);
+        const ty = player.y + (fY * dist) + (pY * off);
+
+        if (!gridMap.isInBounds(tx, ty)) {
+          beamBlocked[beamKey] = true;
+          continue;
         }
+
+        if (gridMap.isWall(tx, ty)) {
+          beamBlocked[beamKey] = true;
+          waveTiles.push({ x: tx, y: ty, isWall: true });
+          continue;
+        }
+
+        waveTiles.push({ x: tx, y: ty, isWall: false });
       }
+
+      waves.push({
+        step: s,
+        delayMs: s * 100, // 0.1s step interval
+        tiles: waveTiles,
+      });
     }
 
+    const abilitySpec = ABILITIES_CATALOG.magician_beam;
     const projectile = {
-      id: `proj_beam_${Date.now()}`,
+      id: `proj_beam_${Date.now()}_${Math.random()}`,
+      abilityId: 'magician_beam',
       type: 'energy_beam',
       sourceX: player.x,
       sourceY: player.y,
-      targetX: currX,
-      targetY: currY,
-      currentX: player.x * CONFIG.GRID_SIZE,
-      currentY: player.y * CONFIG.GRID_SIZE,
-      durationMs: 400,
+      facing,
+      waves,
+      currentWaveIndex: -1,
       elapsedMs: 0,
-      color: '#ff00aa',
-      direction: facing,
-      piercingTiles: beamTiles,
+      stepIntervalMs: 100,
+      hitMonsterIds: [],
+      damagePayload: {
+        damage,
+        vocation: player.vocation,
+        casterId: player.id || 'player',
+      },
+      visual: abilitySpec?.visual || null,
+      color: abilitySpec?.visual?.color || '#ff66dd',
+      active: true,
     };
-
-    let msg = 'You unleashed Energy Beam!';
-    if (hits > 0) {
-      msg += ` Pierced ${hits} enemy(s) for ${totalDamage} total damage${player.vocation === 'magician' ? ' (2.5x Mastery)' : ''}.`;
-    }
 
     return {
       success: true,
-      message: msg,
-      damageDealt: totalDamage,
+      message: 'You unleashed Arcane Beam!',
+      damageDealt: damage,
       projectiles: [projectile],
-      defeatedMonsterId: defeatedIds[0],
-      droppedLoot: allLoot,
     };
   }
 
