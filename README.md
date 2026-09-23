@@ -16,7 +16,8 @@
 - **Dynamic Line-of-Sight (LOS) Lighting:** Raycasted Bresenham fog of war algorithm with dynamic vision radii (Base FOV: 10 tiles, Torch: 14 tiles, Light Spell: 12 tiles).
 - **4 Playable Vocations & 2.5x Class Mastery:** Play as Magician, Archer, Fighter, or Paladin with unique stat growth curves and a $2.5\times$ Native Class Mastery damage/healing multiplier for aligned gear and abilities.
 - **Fate Grant Leveling System:** 5-card draft reward selection upon leveling up (up to Level 20 cap), offering vocation-aligned skills, stat boosts, and gear.
-- **Real-Time Web Audio Synthesizer:** 11 procedural sound effects (footsteps, spell sparks, bow snaps, holy chimes, level-up fanfares) generated dynamically in code without audio asset files.
+- **Data-Driven JSON Catalogs:** Clean JSON data structures under `html/data/` defining `cards.json` (Fate Grant draft cards), `monsters.json` (bestiary stats & cadences), `items.json` (gear & consumable attributes), `vocations.json` (character archetypes & growth), and `sounds.json` (sound synthesis definitions).
+- **Real-Time Web Audio Synthesizer:** 19 procedural sound definitions (footsteps, spell sparks, bow snaps, holy chimes, level-up fanfares, victory/defeat) driven by `html/data/sounds.json` without external audio asset files.
 - **Offline Save Persistence:** Local database persistence (`lokarta_browser_db`) via IndexedDB storing characters, action bars, equipment paperdolls, backpacks, profile settings, and generated floor states.
 
 ---
@@ -60,42 +61,43 @@ Lokarta includes a comprehensive, zero-dependency automated unit test suite buil
 
 ### Executing Tests
 
-Run the test suite from the repository root:
+Run all test suites from the repository root:
 
 ```bash
-node --test html/tests/engine.test.mjs
+node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs
 ```
 
-### Test Suite Coverage (9 Suites, 25/25 Passing)
+### Test Suite Coverage (5 Test Suites, 51/51 Passing)
 
 - **Floor Generator (1–20):** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, biome mapping, and Floor 20 Abyssal Overlord stats (600 HP, 20 ATK, 6 DEF).
 - **GridMap & Tile Bounds:** Tests matrix initialization, tile opacity/walkability checks, and item placement/removal.
 - **LightingSystem & 10-Tile FOV:** Verifies FOV radius calculations (Base 10, Torch 14, Spell 12), Bresenham raycasting, and wall occlusion.
-- **ProgressionSystem & 4 Vocations:** Verifies initial archetype vitals, XP level curves (`level * 100`), and stat growth.
-- **CombatSystem & 2.5x Mastery:** Verifies native class item identification, $2.5\times$ damage/healing multiplier scaling, Archer arrow consumption, and Paladin prayers/strikes.
-- **InventorySystem & Stacking:** Tests item pickup priorities (Action Slots 0–9 before Backpack), paperdoll equipment slots, unequip logic, and stack limits.
-- **FateGrantSystem:** Verifies 5-card draft reward generation and inventory placement.
+- **ProgressionSystem & 4 Vocations:** Verifies initial archetype vitals, XP level curves (`level * 100`), and stat growth from `vocations.json`.
+- **CombatSystem & 2.5x Mastery:** Verifies native class item identification from `items.json`, $2.5\times$ damage/healing multiplier scaling, Archer arrow consumption, and Paladin prayers/strikes.
+- **InventorySystem & Stacking:** Tests item pickup priorities (Action Slots 0–9 before Backpack), paperdoll equipment slots, unequip logic, and stack limits from `items.json`.
+- **FateGrantSystem:** Verifies 5-card draft reward generation from `cards.json` and inventory placement.
 - **GestureEngine:** Validates key mapping for hotkeys `1`–`9` and `0` to slots 0–9.
 - **GameClient & Worker Protocol:** Tests client initialization and worker RPC lifecycle communication.
+- **JSON Data Catalogs:** Validates schema structure and completeness for `cards.json`, `monsters.json`, `items.json`, `vocations.json`, and `sounds.json`.
 
 ---
 
 ## 🏗️ Architecture & Module Structure
 
-The client application is structured into modular vanilla ES JavaScript components residing under `html/`:
+The client application is structured into clean, modular vanilla ES JavaScript submodules residing under `html/`:
 
-| Module / Asset | Layer | Thread Context | Primary Responsibility |
+| Module / Directory | Layer | Thread Context | Primary Responsibility |
 | :--- | :--- | :--- | :--- |
 | [`html/index.html`](file:///Users/jarad/git/lokarta-v3/html/index.html) | View / DOM | Main UI Thread | HTML5 layout container, Canvas element, HUD overlays, and modal views. |
-| [`html/styles.css`](file:///Users/jarad/git/lokarta-v3/html/styles.css) | Presentation | Main UI Thread | Responsive layout styling, retro HUD theme, inventory slots, modal dialogues. |
-| [`html/app.js`](file:///Users/jarad/git/lokarta-v3/html/app.js) | UI Controller | Main UI Thread | 10 Hz fixed simulation step, 60 FPS requestAnimationFrame lerp renderer, camera offset, DOM handlers. |
-| [`html/audio.js`](file:///Users/jarad/git/lokarta-v3/html/audio.js) | Audio Subsystem | Main UI Thread | Web Audio API sound synthesizer managing 11 procedural sound routines. |
-| [`html/game-client.js`](file:///Users/jarad/git/lokarta-v3/html/game-client.js) | RPC Client | Main UI Thread | Promise-wrapped Web Worker RPC client managing async postMessage request lifecycle and timeouts. |
-| [`html/game-worker.js`](file:///Users/jarad/git/lokarta-v3/html/game-worker.js) | Worker Dispatcher | Web Worker Thread | Background RPC handler managing floor generation dispatches, state updates, and storage I/O. |
-| [`html/engine.js`](file:///Users/jarad/git/lokarta-v3/html/engine.js) | Core Engine | Shared | Subsystems: GridMap, LightingSystem, ProgressionSystem, CombatSystem, EntityAI, InventorySystem, FateGrantSystem, GestureEngine. |
-| [`html/floor-generator.js`](file:///Users/jarad/git/lokarta-v3/html/floor-generator.js) | Dungeon Generator | Web Worker Thread | Mulberry32 PRNG procedural floor generator with BFS path connectivity validation. |
-| [`html/storage.js`](file:///Users/jarad/git/lokarta-v3/html/storage.js) | Data Storage | Web Worker Thread | IndexedDB manager (`lokarta_browser_db`) for `profile`, `characters`, `dungeon_floors`, and `game_settings`. |
-| [`html/tests/engine.test.mjs`](file:///Users/jarad/git/lokarta-v3/html/tests/engine.test.mjs) | Test Suite | CLI / Node.js | Automated unit test suite run via native Node.js test runner. |
+| [`html/styles/`](file:///Users/jarad/git/lokarta-v3/html/styles/) | Presentation | Main UI Thread | Modular CSS stylesheets (`base.css`, `hud.css`, `modals.css`, `index.css`). |
+| [`html/app.js`](file:///Users/jarad/git/lokarta-v3/html/app.js) | Bootstrap | Main UI Thread | Central loading entry point for application controllers and renderers. |
+| [`html/app/`](file:///Users/jarad/git/lokarta-v3/html/app/) | UI Controller | Main UI Thread | Submodules: `app-controller.js`, `canvas-renderer.js`, `hud-manager.js`, `input-controller.js`, `modal-manager.js`, `sprite-renderer.js`. |
+| [`html/audio/`](file:///Users/jarad/git/lokarta-v3/html/audio/) | Audio Subsystem | Main UI Thread | Web Audio API procedural synthesizer (`audio-system.js`) driven by `sounds.json`. |
+| [`html/data/`](file:///Users/jarad/git/lokarta-v3/html/data/) | Data Catalogs | Shared | JSON data catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`. |
+| [`html/engine/`](file:///Users/jarad/git/lokarta-v3/html/engine/) | Core Engine | Shared | Submodules: `config.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `entity-ai.js`, `inventory-system.js`, `fate-grant-system.js`, `gesture-engine.js`. |
+| [`html/services/`](file:///Users/jarad/git/lokarta-v3/html/services/) | Services | Shared / Worker | Floor generator (`floor-generator.js`) and IndexedDB persistence (`storage.js`). |
+| [`html/worker/`](file:///Users/jarad/git/lokarta-v3/html/worker/) | Worker RPC | Web Worker Thread | RPC Client (`game-client.js`) and background worker dispatcher (`game-worker.js`). |
+| [`html/tests/`](file:///Users/jarad/git/lokarta-v3/html/tests/) | Test Suite | CLI / Node.js | Automated unit test suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`). |
 
 ---
 

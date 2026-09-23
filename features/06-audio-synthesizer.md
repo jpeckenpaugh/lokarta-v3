@@ -8,7 +8,8 @@ The **Procedural Web Audio Synthesizer** provides zero-dependency, code-generate
 
 ## 2. Mapped Codebase Modules
 
-- [html/audio.js](file:///Users/jarad/git/lokarta-v3/html/audio.js) — `AudioSystem` singleton, `soundFX` sound generator functions (`footstep`, `wandSpark`, `energyBeam`, `bowShot`, `powerShot`, `holyStrike`, `healingPrayer`, `monsterHit`, `playerHit`, `levelUp`, `itemPickup`, `potionDrink`).
+- [html/audio/audio-system.js](file:///Users/jarad/git/lokarta-v3/html/audio/audio-system.js) — `AudioSystem` singleton synthesizer.
+- [html/data/sounds.json](file:///Users/jarad/git/lokarta-v3/html/data/sounds.json) — JSON sound catalog containing 19 procedural sound definitions (`footstep`, `wandSpark`, `lightSpell`, `energyBeam`, `bowShot`, `powerShot`, `hit`, `monsterAttack`, `monsterDeath`, `playerHurt`, `itemPickup`, `potionDrink`, `equip`, `unequip`, `stairs`, `levelUp`, `victory`, `defeat`, `click`).
 
 ---
 

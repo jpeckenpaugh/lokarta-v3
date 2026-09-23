@@ -55,17 +55,16 @@ The project files reside under `html/` and follow strict module boundaries:
 
 ```
 html/
-├── index.html          # DOM layout container, HUD overlays, canvas element, and CSS links
-├── styles.css          # Responsive layout styles, HUD theme, modals, action bar styling
-├── app.js              # Main UI Controller & Canvas 2D sprite/tile/FOV rendering loop
-├── engine.js           # Core Engine subsystems (GridMap, Lighting, Combat, AI, Inventory, Progression, Fate, Gesture)
-├── floor-generator.js  # Deterministic Mulberry32 PRNG & 40x40 procedural dungeon floor generator
-├── game-client.js      # Promise-wrapped RPC client bridge managing Web Worker communication
-├── game-worker.js      # Dedicated Web Worker handling RPC dispatches, state updates, and storage persistence
-├── storage.js          # IndexedDB manager for persistent offline state (`lokarta_browser_db`)
-├── audio.js            # Procedural Web Audio API sound synthesizer singleton
-└── tests/
-    └── engine.test.mjs # Automated unit test suite run via native Node.js test runner
+├── index.html            # DOM layout container, HUD overlays, canvas element, and CSS links
+├── app.js                # Central bootstrap & loading entry point
+├── app/                  # UI & Rendering submodules (app-controller, canvas-renderer, sprite-renderer, etc.)
+├── audio/                # Web Audio synthesizer subsystem (audio-system.js)
+├── data/                 # JSON data catalogs (cards.json, monsters.json, items.json, vocations.json, sounds.json)
+├── engine/               # Core game engine submodules (config, grid-map, lighting, combat, AI, inventory, etc.)
+├── services/             # Floor generator & IndexedDB persistence layer
+├── styles/               # Modular CSS stylesheets (base.css, hud.css, modals.css, index.css)
+├── worker/               # Web Worker dispatcher (game-worker.js) & RPC client (game-client.js)
+└── tests/                # Automated unit test suites (engine, audio, submodules, app-modules, data-catalogs)
 ```
 
 ### Module Boundary Dependency Graph
@@ -74,7 +73,7 @@ html/
                    ┌───────────────┐
                    │  index.html   │
                    └───────┬───────┘
-                           │ loads app.js (type="module")
+                           │ loads app.js (bootstrap)
                            ▼
                       ┌─────────┐
                       │ app.js  │
@@ -82,18 +81,20 @@ html/
          ┌───────────────┘  │  └───────────────────┐
          ▼                  ▼                      ▼
   ┌─────────────┐    ┌─────────────┐        ┌─────────────┐
-  │  audio.js   │    │  engine.js  │        │game-client.js│
-  └─────────────┘    └──────┬──────┘        └──────┬──────┘
-                            │                      │ Worker RPC
-                            ▼                      ▼
-                     ┌──────────────┐       ┌──────────────┐
-                     │floor-generator│      │game-worker.js│
-                     └──────────────┘       └──────┬───────┘
+  │ html/audio/ │    │ html/engine/│        │html/worker/ │
+  └──────┬──────┘    └──────┬──────┘        │(game-client)│
+         │                  │               └──────┬──────┘
+         ▼                  ▼                      │ Worker RPC
+  ┌─────────────┐    ┌─────────────┐               ▼
+  │ html/data/  │◀───│html/services│        ┌──────────────┐
+  │  catalogs   │    └─────────────┘        │html/worker/  │
+  └─────────────┘                           │(game-worker) │
+                                            └──────┬───────┘
                                                    │ imports
                                          ┌─────────┴─────────┐
                                          ▼                   ▼
                                   ┌─────────────┐     ┌─────────────┐
-                                  │  engine.js  │     │ storage.js  │
+                                  │ html/engine/│     │html/services│
                                   └─────────────┘     └─────────────┘
 ```
 
@@ -128,6 +129,15 @@ html/
 - **Archer:** Base HP 90 (+14/level), Base MP 80 (+8/level). Native: Bows/Crossbows, Bow Shot, Power Shot, Arrows.
 - **Fighter:** Base HP 140 (+18/level), Base MP 30 (+4/level). Native: Heavy Swords, Shields, Heavy Plate Armor, Slash, Cleave.
 - **Paladin:** Base HP 120 (+15/level), Base MP 90 (+10/level). Native: Warhammers, Relics, Holy Strike, Healing Prayer.
+
+### 3.4 Data-Driven JSON Catalogs (`html/data/`)
+The game data systems are fully decoupled from codebase logic and driven by JSON data files in `html/data/`:
+- **`cards.json`**: 24 Fate Grant Draft cards with rarity, stat bonuses, vocation affinities, and item payloads.
+- **`monsters.json`**: Bestiary catalog for 5 monster types defining base HP/ATK/DEF, movement/attack cadences, AI types (`chase`, `standoff`), and XP rewards.
+- **`items.json`**: Attributes, icons, vocation affinities, and stack limits for 24 weapons, armor, relics, consumables, and spells.
+- **`vocations.json`**: Starting HP/MP, per-level HP/MP growth, damage scaling steps, and descriptions for all 4 playable vocations.
+- **`sounds.json`**: 19 procedural sound definitions powering `AudioSystem`.
+- **`index.js`**: Export barrel exposing `CARDS_CATALOG`, `MONSTERS_CATALOG`, `ITEMS_CATALOG`, `VOCATIONS_CATALOG`, and `SOUNDS_CATALOG`.
 
 ---
 

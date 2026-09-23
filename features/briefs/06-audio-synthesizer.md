@@ -13,20 +13,8 @@ The **Procedural Web Audio Synthesizer** provides code-generated, zero-asset ret
 - **Master Volume & Mute Persistence:** Master gain is set to `0.35` by default. Mute state toggles via `toggleMute()` / `setMuted(boolean)` and persists in `localStorage` under key `'lokarta_audio_muted'`. When muted, master gain ramps to `0`.
 
 ### 2.2 Procedural Sound Synthesis Catalogue
-- **Movement:** `playFootstep()` generates a low-pass filtered (400 Hz) triangle wave pitch drop ($90\text{ Hz} \rightarrow 30\text{ Hz}$) over 0.05s.
-- **Spells & Abilities:**
-  - *Wand Spark:* Frequency-swept sine wave with high-pass sparkle.
-  - *Light Spell:* Ascending chime sequence.
-  - *Energy Beam:* Sawtooth oscillator sweep with resonant low-pass filter sweep.
-  - *Bow Shot & Power Shot:* Fast pitch drop square wave simulating string snap and arrow release.
-  - *Holy Strike:* Dual-oscillator chime combining square and triangle harmonics.
-  - *Healing Prayer:* Sweeping ascending chord with gentle gain decay envelope.
-- **Combat Feedback:**
-  - *Monster Hit:* Low-frequency noise burst and punchy sub-bass thump.
-  - *Player Damage:* Discordant saw wave pitch drop.
-- **Progression & Items:**
-  - *Level-Up Fanfare:* Arpeggiated multi-tone fanfare sequence.
-  - *Item Pickup & Potion Drink:* High-register chime and bubble pitch modulation.
+- **19 JSON Sound Definitions (`html/data/sounds.json`):** Driven dynamically by parameter sets specifying oscillator shapes (`sine`, `square`, `sawtooth`, `triangle`, `noise`), frequency sweeps, envelope decays, and filter cutoff parameters.
+- **Sound Events:** `footstep`, `wandSpark`, `lightSpell`, `energyBeam`, `bowShot`, `powerShot`, `hit`, `monsterAttack`, `monsterDeath`, `playerHurt`, `itemPickup`, `potionDrink`, `equip`, `unequip`, `stairs`, `levelUp`, `victory`, `defeat`, `click`.
 
 ### 2.3 Zero-Asset Runtime Architecture
 - Creates node graphs programmatically: `OscillatorNode` $\rightarrow$ `BiquadFilterNode` $\rightarrow$ `GainNode` $\rightarrow$ `masterGain` $\rightarrow$ `AudioContext.destination`.
