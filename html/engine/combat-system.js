@@ -83,9 +83,15 @@ export class CombatSystem {
   /**
    * Executes Magician Wand Spark ability.
    */
-  static executeWandSpark(player, target, gridMap) {
+  static executeWandSpark(player, target, gridMap, item = null) {
     if (player.cooldowns?.wand_spark > 0) {
-      return { success: false, message: 'Wand Spark is on cooldown.' };
+      return { success: false, message: 'Spark Wand is on cooldown.' };
+    }
+
+    const manaCost = (item && typeof item.manaCost === 'number') ? item.manaCost : CONFIG.MAGICIAN_SPARK_MANA_COST;
+
+    if (player.mana < manaCost) {
+      return { success: false, message: 'Not enough Mana to use Spark Wand.' };
     }
 
     let dirX = 0;
@@ -113,11 +119,12 @@ export class CombatSystem {
       dirY = vec.y;
     }
 
+    player.mana -= manaCost;
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.wand_spark = CONFIG.MAGICIAN_SPARK_COOLDOWN_SEC;
 
     const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'magician' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
-    const baseDmg = CombatSystem.randomBetween(CONFIG.MAGICIAN_SPARK_DAMAGE_MIN, CONFIG.MAGICIAN_SPARK_DAMAGE_MAX);
+    const baseDmg = (item && typeof item.damage === 'number') ? item.damage : CombatSystem.randomBetween(CONFIG.MAGICIAN_SPARK_DAMAGE_MIN, CONFIG.MAGICIAN_SPARK_DAMAGE_MAX);
     const damage = Math.round(baseDmg * mult);
 
     const abilitySpec = ABILITIES_CATALOG.magician_spark;
@@ -150,7 +157,7 @@ export class CombatSystem {
 
     return {
       success: true,
-      message: 'You cast Wand Spark!',
+      message: 'You cast Spark Wand!',
       damageDealt: damage,
       projectiles: [projectile],
     };
@@ -182,22 +189,23 @@ export class CombatSystem {
   /**
    * Executes Magician Energy Beam piercing ability.
    */
-  static executeEnergyBeam(player, facing = 'right', gridMap, monsters = []) {
+  static executeEnergyBeam(player, facing = 'right', gridMap, monsters = [], item = null) {
     if (player.cooldowns?.energy_beam > 0) {
-      return { success: false, message: 'Energy Beam is on cooldown.' };
+      return { success: false, message: 'Beam Staff is on cooldown.' };
     }
 
-    if (player.mana < CONFIG.MAGICIAN_BEAM_MANA_COST) {
-      return { success: false, message: 'Not enough Mana to cast Energy Beam.' };
+    const manaCost = (item && typeof item.manaCost === 'number') ? item.manaCost : CONFIG.MAGICIAN_BEAM_MANA_COST;
+    const maxSteps = (item && typeof item.range === 'number') ? item.range : 4;
+
+    if (player.mana < manaCost) {
+      return { success: false, message: 'Not enough Mana to cast Beam Staff.' };
     }
 
-    player.mana -= CONFIG.MAGICIAN_BEAM_MANA_COST;
+    player.mana -= manaCost;
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.energy_beam = CONFIG.MAGICIAN_BEAM_COOLDOWN_SEC;
 
     const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'magician' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
-    const baseDmg = CombatSystem.randomBetween(CONFIG.MAGICIAN_BEAM_DAMAGE_MIN, CONFIG.MAGICIAN_BEAM_DAMAGE_MAX);
-    const damage = Math.round(baseDmg * mult);
 
     const fVecs = {
       up: { fX: 0, fY: -1, pX: 1, pY: 0 },
@@ -208,21 +216,20 @@ export class CombatSystem {
     const { fX, fY, pX, pY } = fVecs[facing] || fVecs.right;
 
     // Step offsets relative to facing direction vector:
-    // Step 1: 1 tile (0)
-    // Step 2: 3 tiles (-1, 0, +1)
-    // Step 3: 3 tiles (-2, 0, +2)
-    // Step 4: 3 tiles (-3, 0, +3)
-    const stepOffsets = [
-      [0],
-      [-1, 0, 1],
-      [-2, 0, 2],
-      [-3, 0, 3],
-    ];
+    // Dynamic generation for step 0..maxSteps-1
+    const stepOffsets = [];
+    for (let s = 0; s < maxSteps; s++) {
+      if (s === 0) {
+        stepOffsets.push([0]);
+      } else {
+        stepOffsets.push([-s, 0, s]);
+      }
+    }
 
     const waves = [];
     const beamBlocked = { left: false, center: false, right: false };
 
-    for (let s = 0; s < 4; s++) {
+    for (let s = 0; s < maxSteps; s++) {
       const dist = s + 1;
       const offsets = stepOffsets[s];
       const waveTiles = [];
@@ -259,8 +266,21 @@ export class CombatSystem {
     }
 
     const abilitySpec = ABILITIES_CATALOG.magician_beam;
-    const baseStepDamage = abilitySpec?.visual?.stepDamage || [40, 30, 20, 10];
-    const stepVolumes = abilitySpec?.visual?.stepVolumes || [1.0, 0.75, 0.50, 0.25];
+    const rawStepDamage = abilitySpec?.visual?.stepDamage || [20, 15, 10, 5];
+    const bonusDmg = item?.stepDamageBonus || 0;
+
+    // Build step damage array for maxSteps
+    const baseStepDamage = [];
+    for (let s = 0; s < maxSteps; s++) {
+      const raw = (s < rawStepDamage.length ? rawStepDamage[s] : Math.max(5, rawStepDamage[rawStepDamage.length - 1])) + bonusDmg;
+      baseStepDamage.push(raw);
+    }
+
+    const stepVolumes = [];
+    for (let s = 0; s < maxSteps; s++) {
+      const vol = Math.max(0.1, 1.0 - s * 0.2);
+      stepVolumes.push(vol);
+    }
 
     // Compute step damage list scaled by vocation mastery
     const stepDamage = baseStepDamage.map(base => Math.round(base * mult));

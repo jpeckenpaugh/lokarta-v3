@@ -474,6 +474,30 @@ describe('FateGrantSystem', () => {
     assert.ok(player.action_bar[0] !== null);
     assert.ok(player.action_bar[1] !== null);
   });
+
+  it('converts duplicate wand/staff offers into Level Up upgrades up to Rank 5', () => {
+    const player = createPlayer('magician');
+    player.action_bar[0] = { item_id: 'spell_wand_spark', name: 'Spark Wand', type: 'spell', damage: 14, range: 5, manaCost: 1, itemLevel: 1 };
+
+    const offer = FateGrantSystem.generateDraftOffer(player, 2);
+    const wandCard = offer.cards.find(c => c.targetItemId === 'spell_wand_spark');
+    assert.ok(wandCard);
+    assert.equal(wandCard.isUpgrade, true);
+    assert.equal(wandCard.targetItemLevel, 1);
+
+    FateGrantSystem.applyDraftedCards(player, [wandCard]);
+    const wand = player.action_bar[0];
+    assert.equal(wand.itemLevel, 2);
+    assert.ok(wand.damage >= 18 && wand.damage <= 20); // +4-6 damage
+    assert.equal(wand.range, 6);
+    assert.equal(wand.manaCost, 2);
+
+    // Max rank cap check at Rank 5
+    wand.itemLevel = 5;
+    const maxOffer = FateGrantSystem.generateDraftOffer(player, 6);
+    const hasSpark = maxOffer.cards.some(c => c.targetItemId === 'spell_wand_spark' || c.item?.item_id === 'spell_wand_spark');
+    assert.equal(hasSpark, false);
+  });
 });
 
 // ============================================================================

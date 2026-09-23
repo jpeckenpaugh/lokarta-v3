@@ -636,11 +636,11 @@ export class LokartaApp {
       wand_spark: () => {
         const target = this.getTargetMonster(CONFIG.MAGICIAN_SPARK_RANGE);
         soundFX.play('wandSpark');
-        const res = CombatSystem.executeWandSpark(this.player, target, this.gridMap);
-        this.handleCombatResult(res, this.player.x, this.player.y);
+        const res = CombatSystem.executeWandSpark(this.player, target, this.gridMap, item);
+        this.handleCombatResult(res, null, null);
       },
       energy_beam: () => {
-        const res = CombatSystem.executeEnergyBeam(this.player, this.player.facing, this.gridMap, this.monsters);
+        const res = CombatSystem.executeEnergyBeam(this.player, this.player.facing, this.gridMap, this.monsters, item);
         if (res.success) {
           soundFX.play('energyBeam');
           this.handleCombatResult(res, this.player.x, this.player.y);
@@ -754,7 +754,9 @@ export class LokartaApp {
     if (res.message) this.logCombat(res.message, 'combat');
     if (res.damageDealt) {
       soundFX.play('hit');
-      this.addFloatingText(`-${res.damageDealt}`, targetX, targetY, '#ffdd44');
+      if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
+        this.addFloatingText(`-${res.damageDealt}`, targetX, targetY, '#ffdd44');
+      }
     }
 
     if (res.projectiles) this.projectiles.push(...res.projectiles);

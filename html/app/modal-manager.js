@@ -174,7 +174,7 @@ export class ModalManager {
   }
 
   static showFateGrantModal(modalOverlayEl, app, level = 1) {
-    const offer = FateGrantSystem.generateDraftOffer(app.player.vocation, level);
+    const offer = FateGrantSystem.generateDraftOffer(app.player, level);
     const selectedCards = new Set();
 
     modalOverlayEl.classList.remove('hidden');
