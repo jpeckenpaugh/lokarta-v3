@@ -341,57 +341,67 @@ export class LokartaApp {
     }
   }
 
-  pushKnockbackMonster(monster, fX, fY, endStep, currentStep, stepDamage) {
-    if (!monster || monster.hp <= 0) return;
+  resolveWaveLandedMonsters(carriedMonsters, fX, fY) {
+    if (!carriedMonsters || carriedMonsters.length === 0) return;
 
-    const pushDist = Math.max(1, endStep - currentStep);
-    let targetX = monster.x;
-    let targetY = monster.y;
+    // Filter surviving monsters
+    const survivors = carriedMonsters.filter(c => c.monster && c.monster.hp > 0);
+    if (survivors.length === 0) return;
 
-    for (let step = 1; step <= pushDist; step++) {
-      const nx = targetX + fX;
-      const ny = targetY + fY;
-
-      if (!this.gridMap.isWalkable(nx, ny)) {
-        break; // Wall stop
-      }
-      targetX = nx;
-      targetY = ny;
-    }
-
-    if (targetX === monster.x && targetY === monster.y) return;
-
-    // Check if target landing tile is occupied by another monster
-    const standingMonster = this.monsters.find(m => m.id !== monster.id && m.hp > 0 && m.x === targetX && m.y === targetY);
-    if (standingMonster) {
-      // Displace standing monster 1 tile backward
-      let dispX = targetX + fX;
-      let dispY = targetY + fY;
-
-      if (this.gridMap.isWalkable(dispX, dispY) && !this.monsters.some(m => m.id !== standingMonster.id && m.hp > 0 && m.x === dispX && m.y === dispY)) {
-        standingMonster.x = dispX;
-        standingMonster.y = dispY;
-      }
-
-      // Displaced standing monster also receives displacement damage!
-      const dispDmg = Math.max(10, Math.round(stepDamage * 0.5));
-      standingMonster.hp -= dispDmg;
-      this.addFloatingText(`-${dispDmg} Collide!`, targetX, targetY, '#ef4444');
-      this.logCombat(`${standingMonster.name} was displaced by knockback collision for ${dispDmg} damage!`, 'combat');
-
-      if (standingMonster.hp <= 0) {
-        const loot = CombatSystem.generateMonsterLoot(standingMonster);
-        this.handleCombatResult({
-          success: true,
-          defeatedMonsterId: standingMonster.id,
-          droppedLoot: loot,
-        }, targetX, targetY);
+    // Group survivors by target landing tile
+    const occupiedTiles = new Set();
+    // Track monsters that are already stationary on the map (not in the wave)
+    for (const m of this.monsters) {
+      if (m.hp > 0 && !survivors.some(s => s.monster.id === m.id)) {
+        occupiedTiles.add(`${m.x},${m.y}`);
       }
     }
 
-    // Move pushed monster to target tile
-    monster.x = targetX;
-    monster.y = targetY;
+    for (const entry of survivors) {
+      const m = entry.monster;
+      const originalKey = `${m.x},${m.y}`;
+
+      if (!occupiedTiles.has(originalKey)) {
+        // Tile is free, keep monster here
+        occupiedTiles.add(originalKey);
+      } else {
+        // Tile is occupied, find closest adjacent free walkable tile
+        let placed = false;
+        // Search directions: backwards along wave path first, then sides, then forwards
+        const checkOffsets = [
+          { dx: -fX, dy: -fY },
+          { dx: -fY, dy: -fX },
+          { dx: fY, dy: fX },
+          { dx: fX, dy: fY },
+          { dx: -fX * 2, dy: -fY * 2 },
+        ];
+
+        for (const off of checkOffsets) {
+          const nx = m.x + off.dx;
+          const ny = m.y + off.dy;
+          const key = `${nx},${ny}`;
+          if (this.gridMap.isWalkable(nx, ny) && !occupiedTiles.has(key)) {
+            m.x = nx;
+            m.y = ny;
+            occupiedTiles.add(key);
+            placed = true;
+            break;
+          }
+        }
+
+        if (!placed) {
+          // Fallback: keep on original tile if no adjacent space exists
+          occupiedTiles.add(originalKey);
+        }
+      }
+    }
+
+    // Extend stun effect for 0.5s after the wave ends for all carried monsters
+    for (const entry of carriedMonsters) {
+      if (entry.monster && entry.monster.hp > 0) {
+        entry.monster.stunTimer = 0.5;
+      }
+    }
   }
 
   updateAnimations(dtMs) {
@@ -402,6 +412,10 @@ export class LokartaApp {
 
       // Energy Beam Wave Animation
       if (p.type === 'energy_beam' && p.waves) {
+        if (!p.carriedMonsters) {
+          p.carriedMonsters = []; // Array of { monster, wallStopped: boolean }
+        }
+
         p.elapsedMs += dtMs;
         const targetWaveIndex = Math.floor(p.elapsedMs / p.stepIntervalMs);
 
@@ -415,6 +429,10 @@ export class LokartaApp {
           // Play cast sound ONCE per wave step, diminishing per step
           soundFX.play('energyBeam', stepVol);
 
+          const fX = p.fX || 0;
+          const fY = p.fY || 0;
+
+          // 1. Catch new monsters standing on current wave tiles FIRST
           for (const tile of wave.tiles) {
             const pxX = tile.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
             const pxY = tile.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
@@ -422,36 +440,107 @@ export class LokartaApp {
             if (tile.isWall) {
               this.triggerImpactBurst(pxX, pxY, p.visual, p.color);
             } else {
-              const hitMonster = this.monsters.find(m => m.hp > 0 && m.x === tile.x && m.y === tile.y);
-              if (hitMonster && !p.hitMonsterIds.includes(hitMonster.id)) {
-                p.hitMonsterIds.push(hitMonster.id);
-                hitMonster.hp -= stepDmg;
-
-                this.triggerImpactBurst(pxX, pxY, p.visual, p.color);
-
-                let combatMsg = `Arcane Beam (Wave ${stepIdx + 1}) struck ${hitMonster.name} for ${stepDmg} magic damage!`;
-                if (hitMonster.hp <= 0) {
-                  combatMsg += ` ${hitMonster.name} was slain!`;
-                  const loot = CombatSystem.generateMonsterLoot(hitMonster);
-                  this.handleCombatResult({
-                    success: true,
-                    defeatedMonsterId: hitMonster.id,
-                    droppedLoot: loot,
-                  }, tile.x, tile.y);
-                } else {
-                  // Perform Knockback Push to end of beam path
-                  this.pushKnockbackMonster(hitMonster, p.fX || 0, p.fY || 0, p.waves.length, stepIdx + 1, stepDmg);
+              const hitMonsters = this.monsters.filter(m => m.hp > 0 && m.x === tile.x && m.y === tile.y);
+              for (const hitMonster of hitMonsters) {
+                if (!p.carriedMonsters.some(c => c.monster.id === hitMonster.id)) {
+                  // Newly caught monster! Mark caughtStepIdx and stun monster while in wave
+                  hitMonster.stunTimer = 10.0; // Stunned while riding wave
+                  p.carriedMonsters.push({ monster: hitMonster, wallStopped: false, caughtStepIdx: stepIdx });
                 }
+              }
+            }
+          }
 
-                this.logCombat(combatMsg, 'combat');
-                this.addFloatingText(`-${stepDmg}`, tile.x, tile.y, '#ff66dd');
+          // 2. Advance ALREADY CARRIED monsters (caught in prior steps) forward along the wave direction (if not wall-stopped)
+          for (const entry of p.carriedMonsters) {
+            if (entry.monster.hp <= 0 || entry.wallStopped) continue;
+            if (entry.caughtStepIdx === stepIdx) continue; // Just caught in this step, riding this tile
+
+            const nextX = entry.monster.x + fX;
+            const nextY = entry.monster.y + fY;
+
+            if (this.gridMap.isWall(nextX, nextY) || !this.gridMap.isInBounds(nextX, nextY)) {
+              // Wall collision!
+              entry.wallStopped = true;
+              const wallDmg = 10;
+              entry.monster.hp -= wallDmg;
+              this.addFloatingText(`-${wallDmg} Wall Collide!`, entry.monster.x, entry.monster.y, '#ef4444');
+              this.logCombat(`${entry.monster.name} crashed into a wall while riding the wave for ${wallDmg} collision damage!`, 'combat');
+
+              if (entry.monster.hp <= 0) {
+                const loot = CombatSystem.generateMonsterLoot(entry.monster);
+                this.handleCombatResult({
+                  success: true,
+                  defeatedMonsterId: entry.monster.id,
+                  droppedLoot: loot,
+                }, entry.monster.x, entry.monster.y);
+              }
+            } else {
+              entry.monster.x = nextX;
+              entry.monster.y = nextY;
+            }
+          }
+
+          // 3. Apply step damage & stack collision checks to all active carried monsters
+          const activeCarried = p.carriedMonsters.filter(c => c.monster.hp > 0);
+
+          for (const entry of activeCarried) {
+            if (entry.wallStopped) continue; // Wall-stopped monsters only took wall collision damage on this step
+            const m = entry.monster;
+            m.hp -= stepDmg;
+            const pxX = m.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
+            const pxY = m.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
+            this.triggerImpactBurst(pxX, pxY, p.visual, p.color);
+
+            let combatMsg = `Arcane Beam (Wave ${stepIdx + 1}) swept up ${m.name} for ${stepDmg} magic damage!`;
+            if (m.hp <= 0) {
+              combatMsg += ` ${m.name} was slain!`;
+              const loot = CombatSystem.generateMonsterLoot(m);
+              this.handleCombatResult({
+                success: true,
+                defeatedMonsterId: m.id,
+                droppedLoot: loot,
+              }, m.x, m.y);
+            }
+
+            this.logCombat(combatMsg, 'combat');
+            this.addFloatingText(`-${stepDmg}`, m.x, m.y, '#ff66dd');
+          }
+
+          // Check for co-located monsters riding the wave together (Stack Collision)
+          const tileCounts = {};
+          for (const entry of activeCarried) {
+            if (entry.monster.hp <= 0) continue;
+            const key = `${entry.monster.x},${entry.monster.y}`;
+            tileCounts[key] = (tileCounts[key] || 0) + 1;
+          }
+
+          for (const entry of activeCarried) {
+            if (entry.monster.hp <= 0) continue;
+            const key = `${entry.monster.x},${entry.monster.y}`;
+            if (tileCounts[key] > 1) {
+              const stackDmg = 10;
+              entry.monster.hp -= stackDmg;
+              this.addFloatingText(`-${stackDmg} Stack Collide!`, entry.monster.x, entry.monster.y, '#f59e0b');
+              this.logCombat(`${entry.monster.name} collided with another opponent in the wave for ${stackDmg} damage!`, 'combat');
+
+              if (entry.monster.hp <= 0) {
+                const loot = CombatSystem.generateMonsterLoot(entry.monster);
+                this.handleCombatResult({
+                  success: true,
+                  defeatedMonsterId: entry.monster.id,
+                  droppedLoot: loot,
+                }, entry.monster.x, entry.monster.y);
               }
             }
           }
         }
 
-        // Beam expires 300ms after final wave step completes
-        if (p.elapsedMs >= (p.waves.length * p.stepIntervalMs + 300)) {
+        // Beam expires after final wave step completes; resolve landed positions
+        if (p.elapsedMs >= (p.waves.length * p.stepIntervalMs + 100)) {
+          if (p.carriedMonsters && p.carriedMonsters.length > 0) {
+            this.resolveWaveLandedMonsters(p.carriedMonsters, p.fX || 0, p.fY || 0);
+          }
           this.projectiles.splice(i, 1);
         }
         continue;
@@ -516,24 +605,28 @@ export class LokartaApp {
       }
     }
 
-    for (let i = this.particles.length - 1; i >= 0; i--) {
-      const pt = this.particles[i];
-      pt.elapsedMs += dtMs;
-      pt.x += (pt.vx * dtMs) / 1000;
-      pt.y += (pt.vy * dtMs) / 1000;
-      pt.vx *= 0.92;
-      pt.vy *= 0.92;
-      if (pt.elapsedMs >= pt.durationMs) {
-        this.particles.splice(i, 1);
+    if (this.particles) {
+      for (let i = this.particles.length - 1; i >= 0; i--) {
+        const pt = this.particles[i];
+        pt.elapsedMs += dtMs;
+        pt.x += (pt.vx * dtMs) / 1000;
+        pt.y += (pt.vy * dtMs) / 1000;
+        pt.vx *= 0.92;
+        pt.vy *= 0.92;
+        if (pt.elapsedMs >= pt.durationMs) {
+          this.particles.splice(i, 1);
+        }
       }
     }
 
-    for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
-      const t = this.floatingTexts[i];
-      t.elapsedMs += dtMs;
-      t.y -= (dtMs / 1000) * 20;
-      if (t.elapsedMs >= t.durationMs) {
-        this.floatingTexts.splice(i, 1);
+    if (this.floatingTexts) {
+      for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+        const t = this.floatingTexts[i];
+        t.elapsedMs += dtMs;
+        t.y -= (dtMs / 1000) * 20;
+        if (t.elapsedMs >= t.durationMs) {
+          this.floatingTexts.splice(i, 1);
+        }
       }
     }
   }

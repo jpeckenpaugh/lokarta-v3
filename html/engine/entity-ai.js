@@ -104,6 +104,12 @@ export class EntityAI {
     for (const monster of monsters) {
       if (monster.hp <= 0) continue;
 
+      // Handle Stun status
+      if (monster.stunTimer > 0) {
+        monster.stunTimer = Math.max(0, monster.stunTimer - deltaSec);
+        continue; // Stunned: skip movement and attack actions!
+      }
+
       if (monster.attackCooldown > 0) {
         monster.attackCooldown = Math.max(0, monster.attackCooldown - deltaSec);
       }

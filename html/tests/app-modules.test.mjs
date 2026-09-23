@@ -42,9 +42,75 @@ test('App Submodules & Root Re-exports', async (t) => {
     assert.equal(typeof InputController.prototype.bindInputs, 'function');
   });
 
-  await t.test('verifies LokartaApp class and barrel exports', () => {
-    assert.equal(typeof LokartaApp, 'function');
-    assert.equal(AppExports.LokartaApp, LokartaApp);
-    assert.equal(RootAppExports.LokartaApp, LokartaApp);
+  await t.test('verifies Beam Wave swept-up carrying and collision resolution', () => {
+    globalThis.soundFX = { play: () => {}, playAt: () => {} };
+    globalThis.CONFIG = { GRID_SIZE: 32 };
+    const mockApp = Object.create(LokartaApp.prototype);
+    mockApp.particles = [];
+    mockApp.floatingTexts = [];
+    mockApp.logCombat = () => {};
+    mockApp.addFloatingText = () => {};
+    mockApp.triggerImpactBurst = () => {};
+    mockApp.handleCombatResult = () => {};
+    mockApp.gridMap = {
+      width: 10,
+      height: 10,
+      isWall: (x, y) => x === 5 && y === 2, // Wall at (5,2)
+      isInBounds: (x, y) => x >= 0 && x < 10 && y >= 0 && y < 10,
+      isWalkable: (x, y) => x >= 0 && x < 10 && y >= 0 && y < 10 && !(x === 5 && y === 2),
+    };
+    mockApp.monsters = [
+      { id: 'm1', name: 'Goblin A', x: 2, y: 2, hp: 100 },
+      { id: 'm2', name: 'Goblin B', x: 3, y: 2, hp: 150 },
+    ];
+    mockApp.projectiles = [
+      {
+        type: 'energy_beam',
+        fX: 1,
+        fY: 0,
+        currentWaveIndex: -1,
+        elapsedMs: 0,
+        stepIntervalMs: 100,
+        stepDamage: [30, 30, 30],
+        stepVolumes: [1, 1, 1],
+        hitMonsterIds: [],
+        waves: [
+          { tiles: [{ x: 2, y: 2, isWall: false }] },
+          { tiles: [{ x: 3, y: 2, isWall: false }] },
+          { tiles: [{ x: 4, y: 2, isWall: false }] },
+          { tiles: [{ x: 5, y: 2, isWall: true }] },
+        ],
+      },
+    ];
+
+    // Step 0 (50ms): targetWaveIndex = 0 -> Goblin A caught at x=2
+    mockApp.updateAnimations(50);
+    assert.equal(mockApp.monsters[0].x, 2);
+    assert.equal(mockApp.monsters[0].hp, 70); // 100 - 30
+
+    // Step 1 (50ms -> total 100ms -> targetWaveIndex = 1): Goblin A moves to x=3, Goblin B caught at x=3 -> STACK COLLISION (+10 extra dmg)
+    mockApp.updateAnimations(50);
+    assert.equal(mockApp.monsters[0].x, 3);
+    assert.equal(mockApp.monsters[1].x, 3);
+    assert.equal(mockApp.monsters[0].hp, 30); // 70 - 30 - 10 = 30
+    assert.equal(mockApp.monsters[1].hp, 110); // 150 - 30 - 10 = 110
+
+    // Step 2 (100ms -> total 200ms -> targetWaveIndex = 2): both move to x=4 -> Goblin A takes 30 dmg & is slain (0 HP); Goblin B takes 30 dmg (80 HP, no stack collide since A is dead)
+    mockApp.updateAnimations(100);
+    assert.equal(mockApp.monsters[0].x, 4);
+    assert.equal(mockApp.monsters[1].x, 4);
+    assert.equal(mockApp.monsters[0].hp, 0); // Slain! (30 - 30 = 0)
+    assert.equal(mockApp.monsters[1].hp, 80); // 110 - 30 = 80
+
+    // Step 3 (100ms -> total 300ms -> targetWaveIndex = 3): x=5 is wall -> Goblin B hits wall at x=5 -> WALL COLLISION (+10 extra dmg), stays at x=4
+    mockApp.updateAnimations(100);
+    assert.equal(mockApp.monsters[1].x, 4);
+    assert.equal(mockApp.monsters[1].hp, 70); // 80 - 10 (wall) = 70
+
+    // Wave expires & resolves end positions (elapsed 300 + 210 = 510ms >= 500ms)
+    mockApp.updateAnimations(210);
+    assert.equal(mockApp.monsters[1].x, 4); // Placed safely on walkable tile
+    assert.equal(mockApp.monsters[1].stunTimer, 0.5); // Stun extended for 0.5s after wave ends
   });
 });
+

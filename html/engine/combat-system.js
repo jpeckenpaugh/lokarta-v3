@@ -216,18 +216,18 @@ export class CombatSystem {
     const { fX, fY, pX, pY } = fVecs[facing] || fVecs.right;
 
     // Step offsets relative to facing direction vector:
-    // Dynamic generation for step 0..maxSteps-1
+    // Solid wave front generation for step 0..maxSteps-1 (all offsets from -s to +s)
     const stepOffsets = [];
     for (let s = 0; s < maxSteps; s++) {
-      if (s === 0) {
-        stepOffsets.push([0]);
-      } else {
-        stepOffsets.push([-s, 0, s]);
+      const offs = [];
+      for (let o = -s; o <= s; o++) {
+        offs.push(o);
       }
+      stepOffsets.push(offs);
     }
 
     const waves = [];
-    const beamBlocked = { left: false, center: false, right: false };
+    const blockedOffsets = new Set();
 
     for (let s = 0; s < maxSteps; s++) {
       const dist = s + 1;
@@ -235,22 +235,18 @@ export class CombatSystem {
       const waveTiles = [];
 
       for (const off of offsets) {
-        let beamKey = 'center';
-        if (off < 0) beamKey = 'left';
-        if (off > 0) beamKey = 'right';
-
-        if (beamBlocked[beamKey]) continue;
+        if (blockedOffsets.has(off)) continue;
 
         const tx = player.x + (fX * dist) + (pX * off);
         const ty = player.y + (fY * dist) + (pY * off);
 
         if (!gridMap.isInBounds(tx, ty)) {
-          beamBlocked[beamKey] = true;
+          blockedOffsets.add(off);
           continue;
         }
 
         if (gridMap.isWall(tx, ty)) {
-          beamBlocked[beamKey] = true;
+          blockedOffsets.add(off);
           waveTiles.push({ x: tx, y: ty, isWall: true });
           continue;
         }

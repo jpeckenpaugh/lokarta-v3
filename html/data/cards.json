@@ -1,62 +1,5 @@
 [
   {
-    "id": "card_wand_spark",
-    "name": "Spark Wand",
-    "rarity": "common",
-    "icon": "✨",
-    "description": "Cast radiant projectile for 12–16 magic damage (1 MP).",
-    "statBonusText": "12–16 Dmg (1 MP)",
-    "vocationAffinity": "magician",
-    "item": {
-      "item_id": "spell_wand_spark",
-      "name": "Spark Wand",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 14,
-      "manaCost": 1,
-      "cooldown": 1.0,
-      "icon": "✨"
-    }
-  },
-  {
-    "id": "card_light_spell",
-    "name": "Radiant Light Spell",
-    "rarity": "common",
-    "icon": "💡",
-    "description": "Expand illuminated line-of-sight to 12 tiles for 30 seconds.",
-    "statBonusText": "12-Tile Vision (15 MP)",
-    "vocationAffinity": "magician",
-    "item": {
-      "item_id": "spell_light",
-      "name": "Light Spell",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 12,
-      "manaCost": 15,
-      "cooldown": 5.0,
-      "icon": "💡"
-    }
-  },
-  {
-    "id": "card_energy_beam",
-    "name": "Beam Staff",
-    "rarity": "rare",
-    "icon": "⚡",
-    "description": "Unleash expanding W-shaped beam wave dealing 20/15/10/5 damage.",
-    "statBonusText": "20-5 Wave Dmg (5 MP)",
-    "vocationAffinity": "magician",
-    "item": {
-      "item_id": "spell_energy_beam",
-      "name": "Beam Staff",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 35,
-      "manaCost": 5,
-      "cooldown": 3.0,
-      "icon": "⚡"
-    }
-  },
-  {
     "id": "card_apprentice_wand",
     "name": "Spark Wand",
     "rarity": "common",
@@ -77,17 +20,36 @@
     "id": "card_astral_scepter",
     "name": "Beam Staff",
     "rarity": "epic",
-    "icon": "🔮",
+    "icon": "⚡",
     "description": "Ancient staff unleashing an expanding wave of arcane energy.",
     "statBonusText": "20-5 Wave Dmg (5 MP)",
     "vocationAffinity": "magician",
     "item": {
-      "item_id": "apprentice_wand",
+      "item_id": "astral_scepter",
       "name": "Beam Staff",
       "type": "weapon",
       "quantity": 1,
       "stat_bonus": 8,
-      "icon": "🔮"
+      "icon": "⚡"
+    }
+  },
+  {
+    "id": "card_light_spell",
+    "name": "Radiant Light Spell",
+    "rarity": "common",
+    "icon": "💡",
+    "description": "Expand illuminated line-of-sight to 12 tiles for 30 seconds.",
+    "statBonusText": "12-Tile Vision (15 MP)",
+    "vocationAffinity": "magician",
+    "item": {
+      "item_id": "spell_light",
+      "name": "Light Spell",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 12,
+      "manaCost": 15,
+      "cooldown": 5.0,
+      "icon": "💡"
     }
   },
   {
