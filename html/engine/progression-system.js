@@ -3,6 +3,7 @@
  */
 
 import { CONFIG } from './config.js';
+import { MONSTERS_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 
 export class ProgressionSystem {
   static MAX_LEVEL = 20;
@@ -24,6 +25,12 @@ export class ProgressionSystem {
    * @returns {number}
    */
   static getMonsterXp(monsterType, floor = 1, isBoss = false) {
+    const info = MONSTERS_CATALOG[monsterType];
+    if (info) {
+      if (info.isBoss || isBoss) return info.baseXp;
+      const floorMult = monsterType === 'giant_rat' ? floor : (floor - 1);
+      return info.baseXp + floorMult * info.xpFloorScale;
+    }
     if (isBoss || monsterType === 'abyssal_overlord' || monsterType === 'boss_overlord') {
       return 500;
     }
@@ -50,7 +57,8 @@ export class ProgressionSystem {
    */
   static computeSkillBoosts(vocation, level) {
     const levelDelta = Math.max(0, level - 1);
-    const damageStep = vocation === 'magician' ? 0.10 : vocation === 'archer' ? 0.12 : vocation === 'fighter' ? 0.15 : 0.11;
+    const vocInfo = VOCATIONS_CATALOG[vocation];
+    const damageStep = vocInfo ? vocInfo.damageStep : (vocation === 'magician' ? 0.10 : vocation === 'archer' ? 0.12 : vocation === 'fighter' ? 0.15 : 0.11);
 
     return {
       damageMultiplier: Number((1.0 + levelDelta * damageStep).toFixed(2)),
@@ -110,18 +118,9 @@ export class ProgressionSystem {
       player.xpToNextLevel = ProgressionSystem.getXpForLevel(player.level);
 
       // Stat growth per level for 4 vocations
-      let hpInc = 8;
-      let manaInc = 16;
-      if (player.vocation === 'archer') {
-        hpInc = 14;
-        manaInc = 8;
-      } else if (player.vocation === 'fighter') {
-        hpInc = 18;
-        manaInc = 4;
-      } else if (player.vocation === 'paladin') {
-        hpInc = 15;
-        manaInc = 10;
-      }
+      const vocData = VOCATIONS_CATALOG[player.vocation];
+      let hpInc = vocData ? vocData.hpPerLevel : 8;
+      let manaInc = vocData ? vocData.manaPerLevel : 16;
 
       player.max_hp += hpInc;
       player.max_mana += manaInc;

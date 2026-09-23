@@ -3,9 +3,13 @@
  */
 
 import { CONFIG } from './config.js';
+import { ITEMS_CATALOG } from '../data/index.js';
 
 export class InventorySystem {
   static getMaxStack(itemId) {
+    if (ITEMS_CATALOG[itemId] && typeof ITEMS_CATALOG[itemId].maxStack === 'number') {
+      return ITEMS_CATALOG[itemId].maxStack;
+    }
     if (itemId === 'health_potion' || itemId === 'mana_potion' || itemId === 'torch') {
       return 9;
     }

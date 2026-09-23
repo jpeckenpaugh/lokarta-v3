@@ -4,6 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
+import { ITEMS_CATALOG } from '../data/index.js';
 
 export class CombatSystem {
   static decrementCooldowns(player, deltaSec) {
@@ -28,6 +29,9 @@ export class CombatSystem {
   static isNativeItem(item, vocation) {
     if (!item) return false;
     const itemId = item.item_id || '';
+    if (ITEMS_CATALOG[itemId] && ITEMS_CATALOG[itemId].vocationAffinity) {
+      return ITEMS_CATALOG[itemId].vocationAffinity === vocation;
+    }
     if (vocation === 'magician') {
       return itemId.includes('wand') || itemId.includes('spark') || itemId.includes('beam') || itemId.includes('scepter') || itemId.includes('robe') || item.type === 'spell';
     }

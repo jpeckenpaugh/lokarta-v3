@@ -4,6 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
+import { MONSTERS_CATALOG } from '../data/index.js';
 
 export class EntityAI {
   /**
@@ -34,8 +35,15 @@ export class EntityAI {
         continue;
       }
 
-      // Melee monsters: Giant Rat, Crypt Skeleton, Abyssal Overlord Boss
-      if (monster.type === 'giant_rat') {
+      // Check catalog for monster metadata
+      const mData = MONSTERS_CATALOG[monster.type];
+      if (mData && mData.aiType === 'standoff') {
+        const action = EntityAI.updateCultist(monster, player, gridMap, monsters);
+        if (action) results.push(action);
+      } else if (mData) {
+        const action = EntityAI.updateMeleeMonster(monster, player, gridMap, monsters, mData.damageMin, mData.damageMax, mData.moveCadence);
+        if (action) results.push(action);
+      } else if (monster.type === 'giant_rat') {
         const action = EntityAI.updateMeleeMonster(monster, player, gridMap, monsters, CONFIG.RAT_DAMAGE_MIN, CONFIG.RAT_DAMAGE_MAX, CONFIG.RAT_MOVE_CADENCE_SEC);
         if (action) results.push(action);
       } else if (monster.type === 'crypt_skeleton') {
@@ -44,9 +52,7 @@ export class EntityAI {
       } else if (monster.type === 'abyssal_overlord' || monster.isBoss) {
         const action = EntityAI.updateMeleeMonster(monster, player, gridMap, monsters, CONFIG.BOSS_DAMAGE_MIN, CONFIG.BOSS_DAMAGE_MAX, CONFIG.BOSS_MOVE_CADENCE_SEC);
         if (action) results.push(action);
-      }
-      // Ranged monsters: Shadow Cultist, Elite Cultist
-      else if (monster.type === 'shadow_cultist' || monster.type === 'elite_cultist') {
+      } else if (monster.type === 'shadow_cultist' || monster.type === 'elite_cultist') {
         const action = EntityAI.updateCultist(monster, player, gridMap, monsters);
         if (action) results.push(action);
       }

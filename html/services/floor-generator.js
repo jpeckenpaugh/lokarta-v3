@@ -3,6 +3,8 @@
  * Generates 40x40 procedural dungeon floors for Floors 1 to 20.
  */
 
+import { MONSTERS_CATALOG, ITEMS_CATALOG } from '../data/index.js';
+
 export const TILE_TYPES = {
   FLOOR: 0,
   WALL: 1,

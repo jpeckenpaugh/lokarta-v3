@@ -1,0 +1,422 @@
+[
+  {
+    "id": "card_wand_spark",
+    "name": "Wand Spark",
+    "rarity": "common",
+    "icon": "✨",
+    "description": "Cast instant radiant bolt for 12–16 magic damage.",
+    "statBonusText": "12–16 Dmg (0 MP)",
+    "vocationAffinity": "magician",
+    "item": {
+      "item_id": "spell_wand_spark",
+      "name": "Wand Spark",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 14,
+      "manaCost": 0,
+      "cooldown": 1.0,
+      "icon": "✨"
+    }
+  },
+  {
+    "id": "card_light_spell",
+    "name": "Radiant Light Spell",
+    "rarity": "common",
+    "icon": "💡",
+    "description": "Expand illuminated line-of-sight to 12 tiles for 30 seconds.",
+    "statBonusText": "12-Tile Vision (15 MP)",
+    "vocationAffinity": "magician",
+    "item": {
+      "item_id": "spell_light",
+      "name": "Light Spell",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 12,
+      "manaCost": 15,
+      "cooldown": 5.0,
+      "icon": "💡"
+    }
+  },
+  {
+    "id": "card_energy_beam",
+    "name": "Arcane Energy Beam",
+    "rarity": "rare",
+    "icon": "⚡",
+    "description": "Unleash a piercing linear ray striking all enemies across 4 tiles for 30–40 damage.",
+    "statBonusText": "30–40 Linear Dmg (30 MP)",
+    "vocationAffinity": "magician",
+    "item": {
+      "item_id": "spell_energy_beam",
+      "name": "Energy Beam",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 35,
+      "manaCost": 30,
+      "cooldown": 3.0,
+      "icon": "⚡"
+    }
+  },
+  {
+    "id": "card_apprentice_wand",
+    "name": "Apprentice Wand",
+    "rarity": "common",
+    "icon": "🪄",
+    "description": "Carved hazel wand boosting magic projectile accuracy and spell focus.",
+    "statBonusText": "+3 Spell Power",
+    "vocationAffinity": "magician",
+    "item": {
+      "item_id": "apprentice_wand",
+      "name": "Apprentice Wand",
+      "type": "weapon",
+      "quantity": 1,
+      "stat_bonus": 3,
+      "icon": "🪄"
+    }
+  },
+  {
+    "id": "card_astral_scepter",
+    "name": "Astral Scepter",
+    "rarity": "epic",
+    "icon": "🔮",
+    "description": "Ancient scepter pulsating with cosmic resonance, enhancing all elemental spell damage.",
+    "statBonusText": "+8 Spell Power",
+    "vocationAffinity": "magician",
+    "item": {
+      "item_id": "astral_scepter",
+      "name": "Astral Scepter",
+      "type": "weapon",
+      "quantity": 1,
+      "stat_bonus": 8,
+      "icon": "🔮"
+    }
+  },
+  {
+    "id": "card_bow_shot",
+    "name": "Hunting Bow & Shot",
+    "rarity": "common",
+    "icon": "🏹",
+    "description": "Fire a precision physical arrow at distant monsters within line-of-sight (14–18 damage).",
+    "statBonusText": "14–18 Dmg (1 Arrow)",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "spell_bow_shot",
+      "name": "Bow Shot",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 16,
+      "cooldown": 1.0,
+      "icon": "🏹"
+    }
+  },
+  {
+    "id": "card_power_shot",
+    "name": "Power Shot",
+    "rarity": "rare",
+    "icon": "🎯",
+    "description": "Draw bow to full tension for a devastating burst strike dealing 32–42 damage.",
+    "statBonusText": "32–42 Dmg (4s CD)",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "spell_power_shot",
+      "name": "Power Shot",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 37,
+      "cooldown": 4.0,
+      "icon": "🎯"
+    }
+  },
+  {
+    "id": "card_quiver_arrows",
+    "name": "Quiver of Arrows",
+    "rarity": "common",
+    "icon": "📦",
+    "description": "Bundle of 15 fletched iron-tipped dungeon arrows.",
+    "statBonusText": "15 Arrows",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "arrows",
+      "name": "Arrows",
+      "type": "ammo",
+      "quantity": 15,
+      "stat_bonus": 0,
+      "icon": "🏹"
+    }
+  },
+  {
+    "id": "card_composite_bow",
+    "name": "Composite Longbow",
+    "rarity": "epic",
+    "icon": "🏹",
+    "description": "High-draw recurve bow extending attack range and piercing through armor.",
+    "statBonusText": "+6 Ranged Power",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "composite_bow",
+      "name": "Composite Longbow",
+      "type": "weapon",
+      "quantity": 1,
+      "stat_bonus": 6,
+      "icon": "🏹"
+    }
+  },
+  {
+    "id": "card_iron_shortsword",
+    "name": "Iron Shortsword & Slash",
+    "rarity": "common",
+    "icon": "⚔️",
+    "description": "Swift melee blade strike dealing 16–22 physical damage to adjacent foes.",
+    "statBonusText": "16–22 Melee Dmg",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "spell_slash",
+      "name": "Sword Slash",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 18,
+      "cooldown": 0.8,
+      "icon": "⚔️"
+    }
+  },
+  {
+    "id": "card_fighter_cleave",
+    "name": "Whirlwind Cleave",
+    "rarity": "rare",
+    "icon": "🌪️",
+    "description": "Sweeping wide arc slashing all adjacent monsters for 24–34 physical damage.",
+    "statBonusText": "24–34 Multi Dmg (10 MP)",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "spell_cleave",
+      "name": "Sweeping Cleave",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 28,
+      "manaCost": 10,
+      "cooldown": 2.5,
+      "icon": "🌪️"
+    }
+  },
+  {
+    "id": "card_fighter_fortify",
+    "name": "Shield Wall / Fortify",
+    "rarity": "common",
+    "icon": "🛡️",
+    "description": "Assume an unyielding defensive stance reducing incoming damage by 50% for 10 seconds.",
+    "statBonusText": "-50% Dmg Taken (15 MP)",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "spell_fortify",
+      "name": "Fortify Stance",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 50,
+      "manaCost": 15,
+      "cooldown": 12.0,
+      "icon": "🛡️"
+    }
+  },
+  {
+    "id": "card_broadsword",
+    "name": "Tempered Broadsword",
+    "rarity": "epic",
+    "icon": "🗡️",
+    "description": "Heavy double-edged steel broadsword delivering bone-crushing melee swings.",
+    "statBonusText": "+7 Melee Power",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "tempered_broadsword",
+      "name": "Tempered Broadsword",
+      "type": "weapon",
+      "quantity": 1,
+      "stat_bonus": 7,
+      "icon": "🗡️"
+    }
+  },
+  {
+    "id": "card_holy_strike",
+    "name": "Holy Warhammer Strike",
+    "rarity": "common",
+    "icon": "🔨",
+    "description": "Smite an adjacent monster with consecrated golden power for 18–26 holy damage.",
+    "statBonusText": "18–26 Holy Dmg (10 MP)",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "spell_holy_strike",
+      "name": "Holy Strike",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 22,
+      "manaCost": 10,
+      "cooldown": 1.2,
+      "icon": "🔨"
+    }
+  },
+  {
+    "id": "card_healing_prayer",
+    "name": "Healing Prayer",
+    "rarity": "common",
+    "icon": "✨",
+    "description": "Channel sacred light to restore 35–50 Health points immediately.",
+    "statBonusText": "Heal 35–50 HP (25 MP)",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "spell_healing_prayer",
+      "name": "Healing Prayer",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 42,
+      "manaCost": 25,
+      "cooldown": 6.0,
+      "icon": "💖"
+    }
+  },
+  {
+    "id": "card_holy_radiance",
+    "name": "Holy Radiance",
+    "rarity": "rare",
+    "icon": "☀️",
+    "description": "Unleash a burst of sanctified radiance, damaging all surrounding undead monsters for 20–30 damage.",
+    "statBonusText": "20–30 Area Dmg (30 MP)",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "spell_holy_radiance",
+      "name": "Holy Radiance",
+      "type": "spell",
+      "quantity": 1,
+      "stat_bonus": 25,
+      "manaCost": 30,
+      "cooldown": 8.0,
+      "icon": "☀️"
+    }
+  },
+  {
+    "id": "card_radiant_warhammer",
+    "name": "Consecrated Warhammer",
+    "rarity": "epic",
+    "icon": "⚒️",
+    "description": "Heavy gilded maul blessed by the High Templars.",
+    "statBonusText": "+6 Holy Power, +3 Armor",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "consecrated_warhammer",
+      "name": "Consecrated Warhammer",
+      "type": "weapon",
+      "quantity": 1,
+      "stat_bonus": 6,
+      "icon": "⚒️"
+    }
+  },
+  {
+    "id": "card_health_potion_x3",
+    "name": "Health Potion Stash",
+    "rarity": "common",
+    "icon": "🧪",
+    "description": "A set of 3 crimson restorative draughts (restores +30 HP each).",
+    "statBonusText": "+30 HP x 3",
+    "item": {
+      "item_id": "health_potion",
+      "name": "Health Potion",
+      "type": "consumable",
+      "quantity": 3,
+      "stat_bonus": 30,
+      "icon": "🧪"
+    }
+  },
+  {
+    "id": "card_mana_potion_x3",
+    "name": "Mana Potion Stash",
+    "rarity": "common",
+    "icon": "🔷",
+    "description": "A set of 3 cobalt ether draughts (restores +40 Mana each).",
+    "statBonusText": "+40 MP x 3",
+    "item": {
+      "item_id": "mana_potion",
+      "name": "Mana Potion",
+      "type": "consumable",
+      "quantity": 3,
+      "stat_bonus": 40,
+      "icon": "🔷"
+    }
+  },
+  {
+    "id": "card_wooden_torch_x3",
+    "name": "Ever-Burning Torches",
+    "rarity": "common",
+    "icon": "🔥",
+    "description": "A bundle of 3 pitch-soaked dungeon torches illuminating 14 tiles when held.",
+    "statBonusText": "+14 Light Radius x 3",
+    "item": {
+      "item_id": "torch",
+      "name": "Wooden Torch",
+      "type": "offhand",
+      "quantity": 3,
+      "stat_bonus": 14,
+      "icon": "🔥"
+    }
+  },
+  {
+    "id": "card_iron_buckler",
+    "name": "Reinforced Buckler",
+    "rarity": "common",
+    "icon": "🛡️",
+    "description": "A sturdy iron-rimmed off-hand buckler absorbing blows.",
+    "statBonusText": "+4 Armor",
+    "item": {
+      "item_id": "buckler",
+      "name": "Reinforced Buckler",
+      "type": "offhand",
+      "quantity": 1,
+      "stat_bonus": 4,
+      "icon": "🛡️"
+    }
+  },
+  {
+    "id": "card_plate_armor",
+    "name": "Knight Plate Body",
+    "rarity": "rare",
+    "icon": "🦺",
+    "description": "Heavy interlocking steel cuirass protecting vital organs from lethal damage.",
+    "statBonusText": "+8 Armor",
+    "item": {
+      "item_id": "plate_armor",
+      "name": "Knight Plate Armor",
+      "type": "armor",
+      "quantity": 1,
+      "stat_bonus": 8,
+      "icon": "🦺"
+    }
+  },
+  {
+    "id": "card_relic_luminous_amulet",
+    "name": "Luminous Relic Amulet",
+    "rarity": "epic",
+    "icon": "📿",
+    "description": "Sacred luminescent charm boosting max health, mana, and ambient glow.",
+    "statBonusText": "+20 Max HP/MP",
+    "item": {
+      "item_id": "relic_luminous_amulet",
+      "name": "Luminous Amulet",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 20,
+      "icon": "📿"
+    }
+  },
+  {
+    "id": "card_relic_champions_crest",
+    "name": "Champion's Crest",
+    "rarity": "legendary",
+    "icon": "👑",
+    "description": "Ancient artifact of legend that enhances all combat damage by +20%.",
+    "statBonusText": "+20% Damage, +15 Max HP",
+    "item": {
+      "item_id": "relic_champions_crest",
+      "name": "Champion's Crest",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 15,
+      "icon": "👑"
+    }
+  }
+]

@@ -1,0 +1,54 @@
+{
+  "magician": {
+    "id": "magician",
+    "name": "Magician",
+    "vocation": "magician",
+    "hp": 60,
+    "max_hp": 60,
+    "mana": 150,
+    "max_mana": 150,
+    "hpPerLevel": 8,
+    "manaPerLevel": 16,
+    "damageStep": 0.10,
+    "description": "Master of radiant arcane energies and expansive illumination."
+  },
+  "archer": {
+    "id": "archer",
+    "name": "Archer",
+    "vocation": "archer",
+    "hp": 90,
+    "max_hp": 90,
+    "mana": 80,
+    "max_mana": 80,
+    "hpPerLevel": 14,
+    "manaPerLevel": 8,
+    "damageStep": 0.12,
+    "description": "Deadly long-range sniper utilizing fletched arrows and precision burst."
+  },
+  "fighter": {
+    "id": "fighter",
+    "name": "Fighter",
+    "vocation": "fighter",
+    "hp": 140,
+    "max_hp": 140,
+    "mana": 30,
+    "max_mana": 30,
+    "hpPerLevel": 18,
+    "manaPerLevel": 4,
+    "damageStep": 0.15,
+    "description": "Resilient front-line warrior using heavy broadswords, cleaves, and defensive stances."
+  },
+  "paladin": {
+    "id": "paladin",
+    "name": "Paladin",
+    "vocation": "paladin",
+    "hp": 120,
+    "max_hp": 120,
+    "mana": 90,
+    "max_mana": 90,
+    "hpPerLevel": 15,
+    "manaPerLevel": 10,
+    "damageStep": 0.11,
+    "description": "Holy champion striking with sacred warhammers, area light, and restorative prayers."
+  }
+}

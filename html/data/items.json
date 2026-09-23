@@ -1,0 +1,239 @@
+{
+  "torch": {
+    "item_id": "torch",
+    "name": "Wooden Torch",
+    "type": "offhand",
+    "slot": "off_hand",
+    "stat_bonus": 14,
+    "icon": "🔥",
+    "maxStack": 9
+  },
+  "health_potion": {
+    "item_id": "health_potion",
+    "name": "Health Potion",
+    "type": "consumable",
+    "stat_bonus": 30,
+    "icon": "🧪",
+    "maxStack": 9
+  },
+  "mana_potion": {
+    "item_id": "mana_potion",
+    "name": "Mana Potion",
+    "type": "consumable",
+    "stat_bonus": 40,
+    "icon": "🔷",
+    "maxStack": 9
+  },
+  "arrows": {
+    "item_id": "arrows",
+    "name": "Arrows",
+    "type": "ammo",
+    "stat_bonus": 0,
+    "icon": "🏹",
+    "maxStack": 99
+  },
+  "apprentice_wand": {
+    "item_id": "apprentice_wand",
+    "name": "Apprentice Wand",
+    "type": "weapon",
+    "slot": "main_hand",
+    "stat_bonus": 3,
+    "vocationAffinity": "magician",
+    "icon": "🪄",
+    "maxStack": 1
+  },
+  "astral_scepter": {
+    "item_id": "astral_scepter",
+    "name": "Astral Scepter",
+    "type": "weapon",
+    "slot": "main_hand",
+    "stat_bonus": 8,
+    "vocationAffinity": "magician",
+    "icon": "🔮",
+    "maxStack": 1
+  },
+  "composite_bow": {
+    "item_id": "composite_bow",
+    "name": "Composite Longbow",
+    "type": "weapon",
+    "slot": "main_hand",
+    "stat_bonus": 6,
+    "vocationAffinity": "archer",
+    "icon": "🏹",
+    "maxStack": 1
+  },
+  "tempered_broadsword": {
+    "item_id": "tempered_broadsword",
+    "name": "Tempered Broadsword",
+    "type": "weapon",
+    "slot": "main_hand",
+    "stat_bonus": 7,
+    "vocationAffinity": "fighter",
+    "icon": "🗡️",
+    "maxStack": 1
+  },
+  "consecrated_warhammer": {
+    "item_id": "consecrated_warhammer",
+    "name": "Consecrated Warhammer",
+    "type": "weapon",
+    "slot": "main_hand",
+    "stat_bonus": 6,
+    "vocationAffinity": "paladin",
+    "icon": "⚒️",
+    "maxStack": 1
+  },
+  "buckler": {
+    "item_id": "buckler",
+    "name": "Reinforced Buckler",
+    "type": "offhand",
+    "slot": "off_hand",
+    "stat_bonus": 4,
+    "icon": "🛡️",
+    "maxStack": 1
+  },
+  "plate_armor": {
+    "item_id": "plate_armor",
+    "name": "Knight Plate Armor",
+    "type": "armor",
+    "slot": "armor",
+    "stat_bonus": 8,
+    "icon": "🦺",
+    "maxStack": 1
+  },
+  "relic_luminous_amulet": {
+    "item_id": "relic_luminous_amulet",
+    "name": "Luminous Amulet",
+    "type": "relic",
+    "slot": "relic",
+    "stat_bonus": 20,
+    "icon": "📿",
+    "maxStack": 1
+  },
+  "relic_champions_crest": {
+    "item_id": "relic_champions_crest",
+    "name": "Champion's Crest",
+    "type": "relic",
+    "slot": "relic",
+    "stat_bonus": 15,
+    "icon": "👑",
+    "maxStack": 1
+  },
+  "spell_wand_spark": {
+    "item_id": "spell_wand_spark",
+    "name": "Wand Spark",
+    "type": "spell",
+    "stat_bonus": 14,
+    "manaCost": 0,
+    "cooldown": 1.0,
+    "vocationAffinity": "magician",
+    "icon": "✨",
+    "maxStack": 1
+  },
+  "spell_light": {
+    "item_id": "spell_light",
+    "name": "Light Spell",
+    "type": "spell",
+    "stat_bonus": 12,
+    "manaCost": 15,
+    "cooldown": 5.0,
+    "vocationAffinity": "magician",
+    "icon": "💡",
+    "maxStack": 1
+  },
+  "spell_energy_beam": {
+    "item_id": "spell_energy_beam",
+    "name": "Energy Beam",
+    "type": "spell",
+    "stat_bonus": 35,
+    "manaCost": 30,
+    "cooldown": 3.0,
+    "vocationAffinity": "magician",
+    "icon": "⚡",
+    "maxStack": 1
+  },
+  "spell_bow_shot": {
+    "item_id": "spell_bow_shot",
+    "name": "Bow Shot",
+    "type": "spell",
+    "stat_bonus": 16,
+    "cooldown": 1.0,
+    "vocationAffinity": "archer",
+    "icon": "🏹",
+    "maxStack": 1
+  },
+  "spell_power_shot": {
+    "item_id": "spell_power_shot",
+    "name": "Power Shot",
+    "type": "spell",
+    "stat_bonus": 37,
+    "cooldown": 4.0,
+    "vocationAffinity": "archer",
+    "icon": "🎯",
+    "maxStack": 1
+  },
+  "spell_slash": {
+    "item_id": "spell_slash",
+    "name": "Sword Slash",
+    "type": "spell",
+    "stat_bonus": 18,
+    "cooldown": 0.8,
+    "vocationAffinity": "fighter",
+    "icon": "⚔️",
+    "maxStack": 1
+  },
+  "spell_cleave": {
+    "item_id": "spell_cleave",
+    "name": "Sweeping Cleave",
+    "type": "spell",
+    "stat_bonus": 28,
+    "manaCost": 10,
+    "cooldown": 2.5,
+    "vocationAffinity": "fighter",
+    "icon": "🌪️",
+    "maxStack": 1
+  },
+  "spell_fortify": {
+    "item_id": "spell_fortify",
+    "name": "Fortify Stance",
+    "type": "spell",
+    "stat_bonus": 50,
+    "manaCost": 15,
+    "cooldown": 12.0,
+    "vocationAffinity": "fighter",
+    "icon": "🛡️",
+    "maxStack": 1
+  },
+  "spell_holy_strike": {
+    "item_id": "spell_holy_strike",
+    "name": "Holy Strike",
+    "type": "spell",
+    "stat_bonus": 22,
+    "manaCost": 10,
+    "cooldown": 1.2,
+    "vocationAffinity": "paladin",
+    "icon": "🔨",
+    "maxStack": 1
+  },
+  "spell_healing_prayer": {
+    "item_id": "spell_healing_prayer",
+    "name": "Healing Prayer",
+    "type": "spell",
+    "stat_bonus": 42,
+    "manaCost": 25,
+    "cooldown": 6.0,
+    "vocationAffinity": "paladin",
+    "icon": "💖",
+    "maxStack": 1
+  },
+  "spell_holy_radiance": {
+    "item_id": "spell_holy_radiance",
+    "name": "Holy Radiance",
+    "type": "spell",
+    "stat_bonus": 25,
+    "manaCost": 30,
+    "cooldown": 8.0,
+    "vocationAffinity": "paladin",
+    "icon": "☀️",
+    "maxStack": 1
+  }
+}
