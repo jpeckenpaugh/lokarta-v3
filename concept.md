@@ -79,9 +79,9 @@ Dungeons are procedurally generated on a $40 \times 40$ tile grid using a determ
    - Carves rooms and corridors on a $40 \times 40$ matrix, placing walls, doors, floor tiles, stairs, monsters, and chest loot.
    - Guarantees valid pathing between start `(2,2)` and exit stairs `(35,35)` via Breadth-First Search (BFS) path verification.
 
-2. **Dynamic Line-of-Sight & Raycasted Fog of War:**
-   - Calculates dynamic vision radii: Base FOV (10 tiles), Torch boost (14 tiles), and Light Spell activation (12 tiles).
-   - Uses Bresenham line-casting to evaluate wall occlusion and illuminate visible tiles while keeping unexplored tiles shrouded in dark fog-of-war.
+2. **Dynamic Line-of-Sight & Circular Fog of War:**
+   - Calculates dynamic vision radii driven by JSON catalog specs: Base FOV (10 tiles), Torch (+2 radius -> 12 tiles), and Light Spell (+3/+2/+1 degrading radius).
+   - Evaluates tile distance to illuminate visible tiles while keeping unexplored tiles shrouded in dark fog-of-war.
 
 3. **Turn/Tick Simulation & Entity AI:**
    - 10 Hz simulation tick loop managing player inputs, monster aggro range checks, pathfinding toward the player, melee/ranged monster attacks, and status condition updates.

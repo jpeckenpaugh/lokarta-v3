@@ -2,14 +2,14 @@
 
 ## 1. Overview & Purpose
 
-The **Dynamic Lighting and Line-of-Sight (LOS)** system calculates player vision, raycasted wall occlusion, dynamic light propagation, and fog-of-war memory masks in real time. It ensures tactical exploration by hiding unvisited areas in dark fog, rendering previously visited tiles in a dimmed memory state, and illuminating currently visible tiles with biome-specific color glows.
+The **Dynamic Lighting and Line-of-Sight (LOS)** system calculates player vision, circular radius light propagation, and fog-of-war memory masks in real time. It ensures tactical exploration by hiding unvisited areas in dark fog, rendering previously visited tiles in a dimmed memory state, and illuminating currently visible tiles with biome-specific color glows.
 
 ---
 
 ## 2. Mapped Codebase Modules
 
-- [html/engine.js](file:///Users/jarad/git/lokarta-v3/html/engine.js) — `LightingSystem` class, Bresenham line-of-sight algorithms (`computeFOV`, `isTileVisible`, `castRay`).
-- [html/app.js](file:///Users/jarad/git/lokarta-v3/html/app.js) — Render-loop integration (`drawLightingOverlay`, shadow masks, biome light tinting).
+- [html/engine/lighting-system.js](file:///Users/jarad/git/lokarta-v3/html/engine/lighting-system.js) — `LightingSystem` class (`computePlayerRadius`, `updateLighting`, `castLightCircle`).
+- [html/app/canvas-renderer.js](file:///Users/jarad/git/lokarta-v3/html/app/canvas-renderer.js) — Render-loop integration (`renderLightMask`, shadow masks, biome light tinting).
 
 ---
 
@@ -22,13 +22,12 @@ The **Dynamic Lighting and Line-of-Sight (LOS)** system calculates player vision
 
 ### 3.2 Dynamic Vision Radii Calculation
 - **Base Sight Radius:** 10 tiles default field-of-view (FOV).
-- **Torch Boost:** Increases FOV radius to 14 tiles when a Torch consumable is active.
-- **Light Spell Boost:** Magician *Light Spell* skill expands FOV radius to 12 tiles and applies bright illumination.
+- **Torch Boost:** Adds +2 radius (12 tiles total) when a Torch item is equipped or on the action bar.
+- **Light Spell Boost:** Magician *Light Spell* skill expands FOV radius dynamically by +3 (30–20s -> 13 tiles), +2 (19–10s -> 12 tiles), and +1 (<10s -> 11 tiles).
 
-### 3.3 Bresenham Raycasting & Wall Occlusion
-- Uses integer-based Bresenham line-casting from player grid coordinates $(x_p, y_p)$ to boundary targets within current FOV radius.
-- Wall tiles (`WALL=1`) block light rays, preventing visibility of tiles behind them.
-- Doors block line of sight when closed; open doors transmit light rays.
+### 3.3 Circular Radius Illumination Engine
+- Evaluates spatial distance $d = \sqrt{\Delta x^2 + \Delta y^2}$ from player grid coordinates $(x_p, y_p)$ to boundary targets within current FOV radius.
+- Light spreads in a uniform circular radius around the player with linear distance intensity falloff.
 
 ### 3.4 Biome Light Color Tinting
 - Applies custom ambient color tint overlays over visible tiles based on the active biome:
@@ -41,9 +40,9 @@ The **Dynamic Lighting and Line-of-Sight (LOS)** system calculates player vision
 
 ## 4. Inputs, Outputs & State Data
 
-- **Inputs:** Player position $(x, y)$, current active vision radius (10/12/14), grid map walls state, biome light color.
+- **Inputs:** Player position $(x, y)$, current active vision radius (10/11/12/13), grid map state, biome light color.
 - **Outputs:**
-  - `visibleTiles`: 2D boolean grid or Set of visible coordinate strings `x,y`.
+  - `tile.isLit`: boolean flag on each matrix tile.
   - `exploredTiles`: 2D boolean grid of persistently discovered tiles.
   - Canvas overlay rendering parameters (opacity gradients, radial light falloff, memory shroud).
 

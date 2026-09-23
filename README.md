@@ -13,7 +13,7 @@
 - **Zero-Backend Architecture:** Self-contained static client application. Runs directly in any modern browser via standard HTTP static file servers.
 - **Off-Thread Simulation & Worker RPC:** Procedural floor generation and state persistence run off the UI thread in a dedicated Web Worker (`game-worker.js`), communicated via a Promise-wrapped RPC client bridge (`game-client.js`).
 - **20-Floor Procedural Dungeon & 4 Biomes:** Deterministic Mulberry32 PRNG dungeon generation on a $40 \times 40$ tile matrix with Breadth-First Search (BFS) connectivity verification. Progresses across 4 biomes (Subterranean Crypt, Catacombs of Whispers, Shadow Vaults, Abyssal Sanctum) culminating in the Floor 20 Abyssal Overlord boss fight.
-- **Dynamic Line-of-Sight (LOS) Lighting:** Raycasted Bresenham fog of war algorithm with dynamic vision radii (Base FOV: 10 tiles, Torch: 14 tiles, Light Spell: 12 tiles).
+- **Dynamic Line-of-Sight (LOS) Lighting:** Circular radius field-of-view algorithm driven by JSON catalog specs (Base FOV: 10 tiles, Torch: +2 radius, degrading Light Spell: +3/+2/+1 radius).
 - **4 Playable Vocations & 2.5x Class Mastery:** Play as Magician, Archer, Fighter, or Paladin with unique stat growth curves and a $2.5\times$ Native Class Mastery damage/healing multiplier for aligned gear and abilities.
 - **Fate Grant Leveling System:** 5-card draft reward selection upon leveling up (up to Level 20 cap), offering vocation-aligned skills, stat boosts, and gear.
 - **Data-Driven JSON Catalogs:** Clean JSON data structures under `html/data/` defining 11 decoupled catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tile_themes.json`, and `keybindings.json`.
@@ -71,7 +71,7 @@ node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/subm
 
 - **Floor Generator (1–20):** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, biome mapping, and Floor 20 Abyssal Overlord stats (600 HP, 20 ATK, 6 DEF).
 - **GridMap & Tile Bounds:** Tests matrix initialization, tile opacity/walkability checks, and item placement/removal.
-- **LightingSystem & 10-Tile FOV:** Verifies FOV radius calculations (Base 10, Torch 14, Spell 12), Bresenham raycasting, and wall occlusion.
+- **LightingSystem & 10-Tile FOV:** Verifies FOV radius calculations (Base 10, Torch +2, degrading Light Spell +3/+2/+1), spatial circle lighting without wall occlusion.
 - **ProgressionSystem & 4 Vocations:** Verifies initial archetype vitals, XP level curves (`level * 100`), and stat growth from `vocations.json`.
 - **CombatSystem & 2.5x Mastery:** Verifies native class item identification from `items.json`, $2.5\times$ damage/healing multiplier scaling, Archer arrow consumption, and Paladin prayers/strikes.
 - **InventorySystem & Stacking:** Tests item pickup priorities (Action Slots 0–9 before Backpack), paperdoll equipment slots, unequip logic, and stack limits from `items.json`.
@@ -125,12 +125,11 @@ Complete technical documentation and specifications reverse-engineered from the 
 
 - **Concept Specification:** [`concept.md`](file:///Users/jarad/git/lokarta-v3/concept.md) — Product identity, target audience, stack summary, vocation specs, and biome catalog.
 - **Technical Architecture:** [`docs/architecture.md`](file:///Users/jarad/git/lokarta-v3/docs/architecture.md) — Detailed subsystem architecture, RPC protocols, IndexedDB schemas, rendering lerp formulas, and audio graphs.
-- **Optimization & Performance Report:** [`docs/optimizations.md`](file:///Users/jarad/git/lokarta-v3/docs/optimizations.md) — Detailed runtime bottlenecks, GC profiling, overdraw culling, and proposed optimization solutions.
 - **Verification Report:** [`docs/verification-report.md`](file:///Users/jarad/git/lokarta-v3/docs/verification-report.md) — Stage 8 test execution evidence, verification matrix, and compliance audit.
 - **Environment & System Notes:** [`environment-notes.md`](file:///Users/jarad/git/lokarta-v3/environment-notes.md) — Browser API specifications, server setups, and test runner guidelines.
 - **Feature Briefs:** [`features/briefs/`](file:///Users/jarad/git/lokarta-v3/features/briefs/)
   - [`01-dungeon-generator.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/01-dungeon-generator.md) — Procedural generation, PRNG, and BFS connectivity.
-  - [`02-lighting-and-los.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/02-lighting-and-los.md) — Bresenham LOS raycasting and dynamic fog of war.
+  - [`02-lighting-and-los.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/02-lighting-and-los.md) — Circular radius lighting engine and dynamic fog of war.
   - [`03-combat-and-abilities.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/03-combat-and-abilities.md) — Turn-based combat, ability execution, and $2.5\times$ Class Mastery.
   - [`04-vocations-and-progression.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/04-vocations-and-progression.md) — 4 playable vocations, stat scaling, and XP curves.
   - [`05-inventory-and-storage.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/05-inventory-and-storage.md) — Action bar, backpack, paperdoll, item stacking, and IndexedDB persistence.

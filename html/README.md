@@ -50,7 +50,7 @@ node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/subm
 ### Verified Test Suites (57/57 Tests Passing):
 1. **Floor Generator (1-20):** Deterministic Mulberry32 seed generation, 40×40 boundary constraints, spawn at `(2,2)`, exit stairs at `(35,35)`, full BFS room/corridor connectivity, depth-based monster scaling, catalog-driven encounter density parameters (`dungeons.json`, `encounters.json`), and Floor 20 Abyssal Overlord boss stats (600 HP, 20 ATK, 6 DEF).
 2. **GridMap & Tile Bounds:** Walkability, walls, stairs, doors, coordinate boundaries, ground item stack management, and $O(1)$ `CODE_TO_TILE_TYPE` lookup.
-3. **LightingSystem & LOS:** Dynamic light radii (Base 10, Torch 14, Light Spell 12), Bresenham raycasting, wall occlusion, and light-triggered monster aggro.
+3. **LightingSystem & FOV:** Dynamic light radii (Base 10, Torch +2, degrading Light Spell +3/+2/+1), spatial circle lighting without wall occlusion, and light-triggered monster aggro.
 4. **ProgressionSystem & Leveling:** XP formulas (`level * 100`), monster kill XP, 4-vocation stat growth (Magician, Archer, Fighter, Paladin with `eyeColor` and `regenResource` from `vocations.json`), skill boosts, and Level 20 cap.
 5. **CombatSystem & Abilities:** Catalog-driven ability attributes (`abilities.json`), Wand Spark, Light Spell, piercing Energy Beam, Bow Shot (with arrow depletion), Power Shot, Holy Strike, Healing Prayer, vocation affinity checks (`vocationAffinity`), and monster loot tables (`monsters.json`).
 6. **InventorySystem & Stacking:** 10-slot Action Bar, 6-slot Backpack limit, 4-slot Paperdoll equipment mechanics (main_hand, off_hand, armor, relic), 9-item stack limit for Potions/Torches, and 99-item limit for Arrows (`items.json`).

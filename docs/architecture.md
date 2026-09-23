@@ -109,7 +109,7 @@ html/
 | Subsystem Class | Responsibility | Key Methods & Data Contracts |
 | :--- | :--- | :--- |
 | `GridMap` | 2D tile map matrix management, walkability, opacity checks, entity placement. | `loadFromMatrix(matrix)`, `isWalkable(x, y)`, `isOpaque(x, y)`, `setTile(x, y, type)`, `addItem(x, y, item)`, `removeItem(x, y, itemId)` |
-| `LightingSystem` | Raycasted line-of-sight (LOS) & fog of war calculation. | `calculateVisibility(grid, px, py, radius, hasSpell)`, `resetVisibility()`, `isTileVisible(x, y)`, `isTileExplored(x, y)` |
+| `LightingSystem` | Spatial circular radius field-of-view (FOV) & fog of war calculation. | `computePlayerRadius(player)`, `updateLighting(gridMap, player, ambientLights, monsters)`, `castLightCircle(gridMap, originX, originY, radius)` |
 | `ProgressionSystem` | Character level scaling, XP increments, vitals growth across 4 vocations. | `createPlayer(vocation)`, `addXp(player, amount)`, `getVitalsForLevel(vocation, level)`, `calculateNextXp(level)` |
 | `CombatSystem` | Turn-based attack resolution, 2.5x Native Class Mastery scaling, ability execution. | `executeAbility(player, abilityId, targetX, targetY, grid, monsters)`, `calculateDamage(attacker, weapon/ability)`, `updateCooldowns(entity, deltaSec)` |
 | `EntityAI` | Monster turn cadence, aggro range checks, pathfinding toward player via `AI_HANDLERS` map. | `processMonsterTurns(monsters, player, grid, deltaSec)`, `findPath(monster, targetX, targetY, grid)` |
@@ -121,7 +121,7 @@ html/
 - **Map Dimensions:** Grid size = 32px, Width = 40 tiles, Height = 40 tiles.
 - **Simulation Timing:** Fixed tick interval = 100 ms (10 Hz).
 - **Inventory Layout:** 10 Action Bar slots (0–9), 6 Backpack slots, 4 Paperdoll slots (`main_hand`, `off_hand`, `armor`, `relic`).
-- **Lighting Radii:** Base FOV = 10 tiles, Torch boost = 14 tiles, Light Spell = 12 tiles (30s duration), Ambient = 4 tiles.
+- **Lighting Radii:** Base FOV = 10 tiles, Torch = +2 radius (12 tiles), Light Spell = +3/+2/+1 degrading radius (30s duration), Ambient = 4 tiles.
 - **Native Class Mastery Multiplier:** $2.5\times$ damage/healing bonus when weapon/ability aligns with character vocation.
 
 ### 3.3 Character Archetypes & Stat Growth
