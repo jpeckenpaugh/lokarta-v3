@@ -4,6 +4,12 @@
 
 import { CONFIG, TILE_TYPES } from './config.js';
 
+const CODE_TO_TILE_TYPE = {
+  1: TILE_TYPES.WALL,
+  2: TILE_TYPES.STAIRS,
+  3: TILE_TYPES.DOOR,
+};
+
 export class GridMap {
   /**
    * @param {number} [width=40]
@@ -48,10 +54,7 @@ export class GridMap {
       const row = [];
       for (let x = 0; x < this.width; x++) {
         const typeCode = matrix[y][x];
-        let tileType = TILE_TYPES.FLOOR;
-        if (typeCode === 1) tileType = TILE_TYPES.WALL;
-        else if (typeCode === 2) tileType = TILE_TYPES.STAIRS;
-        else if (typeCode === 3) tileType = TILE_TYPES.DOOR;
+        const tileType = CODE_TO_TILE_TYPE[typeCode] || TILE_TYPES.FLOOR;
 
         row.push({
           x,

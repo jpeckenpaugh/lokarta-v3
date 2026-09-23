@@ -69,6 +69,38 @@ const TILE_RENDERERS = {
   },
 };
 
+const WEAPON_RENDERERS = {
+  archer: (ctx, cx, cy) => {
+    ctx.strokeStyle = '#c68b59';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 9, -Math.PI / 3, Math.PI / 3);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + 5, cy - 8);
+    ctx.lineTo(cx + 5, cy + 8);
+    ctx.stroke();
+  },
+  paladin: (ctx, cx, cy) => {
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(cx - 6, cy - 8, 12, 6);
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(cx - 2, cy - 2, 4, 12);
+  },
+  default: (ctx, cx, cy) => {
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, cy + 6);
+    ctx.lineTo(cx + 6, cy - 6);
+    ctx.stroke();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(cx - 8, cy + 4, 4, 4);
+  },
+};
+
 const ITEM_RENDERERS = {
   health_potion: (ctx, cx, cy) => {
     ctx.fillStyle = '#e63946';
@@ -115,33 +147,9 @@ const ITEM_RENDERERS = {
     ctx.fillRect(cx - 8, cy + 5, 4, 4);
   },
   weapon: (ctx, cx, cy, item) => {
-    if (item.item_id?.includes('bow')) {
-      ctx.strokeStyle = '#c68b59';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 9, -Math.PI / 3, Math.PI / 3);
-      ctx.stroke();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(cx + 5, cy - 8);
-      ctx.lineTo(cx + 5, cy + 8);
-      ctx.stroke();
-    } else if (item.item_id?.includes('warhammer') || item.item_id?.includes('hammer')) {
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(cx - 6, cy - 8, 12, 6);
-      ctx.fillStyle = '#78350f';
-      ctx.fillRect(cx - 2, cy - 2, 4, 12);
-    } else {
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(cx - 6, cy + 6);
-      ctx.lineTo(cx + 6, cy - 6);
-      ctx.stroke();
-      ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(cx - 8, cy + 4, 4, 4);
-    }
+    const affinity = item?.vocationAffinity;
+    const renderer = WEAPON_RENDERERS[affinity] || (item?.item_id?.includes('bow') ? WEAPON_RENDERERS.archer : item?.item_id?.includes('hammer') ? WEAPON_RENDERERS.paladin : WEAPON_RENDERERS.default);
+    renderer(ctx, cx, cy);
   },
   spell: (ctx, cx, cy) => {
     ctx.fillStyle = '#38bdf8';

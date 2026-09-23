@@ -21,6 +21,13 @@ import { HUDManager } from './hud-manager.js';
 import { ModalManager } from './modal-manager.js';
 import { InputController } from './input-controller.js';
 
+const DIRECTION_VECTORS = {
+  up: { dx: 0, dy: -1 },
+  down: { dx: 0, dy: 1 },
+  left: { dx: -1, dy: 0 },
+  right: { dx: 1, dy: 0 },
+};
+
 export class LokartaApp {
   constructor() {
     this.gameClient = new GameClient();
@@ -308,18 +315,16 @@ export class LokartaApp {
     let newFacing = this.player.facing;
     const moveBindings = KEYBINDINGS_CATALOG.movement;
 
-    if (moveBindings.up.some(k => this.keysDown.has(k))) {
-      dy -= 1;
-      newFacing = 'up';
-    } else if (moveBindings.down.some(k => this.keysDown.has(k))) {
-      dy += 1;
-      newFacing = 'down';
-    } else if (moveBindings.left.some(k => this.keysDown.has(k))) {
-      dx -= 1;
-      newFacing = 'left';
-    } else if (moveBindings.right.some(k => this.keysDown.has(k))) {
-      dx += 1;
-      newFacing = 'right';
+    for (const [dir, keys] of Object.entries(moveBindings)) {
+      if (keys.some(k => this.keysDown.has(k))) {
+        const vec = DIRECTION_VECTORS[dir];
+        if (vec) {
+          dx = vec.dx;
+          dy = vec.dy;
+          newFacing = dir;
+          break;
+        }
+      }
     }
 
     if (dx !== 0 || dy !== 0) {
