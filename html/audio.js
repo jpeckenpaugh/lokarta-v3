@@ -31,6 +31,23 @@ export class AudioSystem {
   }
 
   /**
+   * Returns whether audio output is enabled (un-muted).
+   * @returns {boolean}
+   */
+  get enabled() {
+    return !this.isMuted;
+  }
+
+  /**
+   * Sets whether audio output is enabled.
+   * @param {boolean} enabled
+   * @returns {boolean} New enabled status.
+   */
+  setEnabled(enabled) {
+    return !this.setMuted(!enabled);
+  }
+
+  /**
    * Initializes or unlocks the AudioContext on user interaction.
    */
   init() {
