@@ -6,6 +6,36 @@ import { CombatSystem, GestureEngine, InventorySystem, LightingSystem } from '..
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG } from '../data/index.js';
 
+const EMOJI_TO_SVG_MAP = {
+  '🧪': '1F9EA',
+  '⚗️': '2697',
+  '🔷': '1F539',
+  '🔥': '1F525',
+  '🏹': '1F3F9',
+  '🪄': '1FA84',
+  '🔮': '1F52E',
+  '🗡️': '1F5E1',
+  '⚔️': '2694',
+  '⚒️': '2692',
+  '🔨': '1F528',
+  '🛡️': '1F6E1',
+  '🦺': '1F9BA',
+  '📿': '1F4FF',
+  '👑': '1F451',
+  '✨': '2728',
+  '💡': '1F4A1',
+  '⚡': '26A1',
+  '🎯': '1F3AF',
+  '🌪️': '1F32A',
+  '💖': '1F496',
+  '☀️': '2600',
+  '📦': '1F4E6',
+  '🕯️': '1F56F',
+  '🧙‍♂️': '1F9D9',
+  '📖': '1F4D6',
+  '⭐': '2B50',
+};
+
 export class HUDManager {
   static updateHUD(elements, app) {
     const { statusBarsEl, paperdollEl, backpackEl, hotbarEl } = elements;
@@ -266,34 +296,7 @@ export class HUDManager {
 
   static emojiToOpenMojiCode(emoji) {
     if (!emoji) return '1F4E6';
-    if (emoji === '🧪') return '1F9EA';
-    if (emoji === '⚗️') return '2697';
-    if (emoji === '🔷') return '1F539';
-    if (emoji === '🔥') return '1F525';
-    if (emoji === '🏹') return '1F3F9';
-    if (emoji === '🪄') return '1FA84';
-    if (emoji === '🔮') return '1F52E';
-    if (emoji === '🗡️') return '1F5E1';
-    if (emoji === '⚔️') return '2694';
-    if (emoji === '⚒️') return '2692';
-    if (emoji === '🔨') return '1F528';
-    if (emoji === '🛡️') return '1F6E1';
-    if (emoji === '🦺') return '1F9BA';
-    if (emoji === '📿') return '1F4FF';
-    if (emoji === '👑') return '1F451';
-    if (emoji === '✨') return '2728';
-    if (emoji === '💡') return '1F4A1';
-    if (emoji === '⚡') return '26A1';
-    if (emoji === '🎯') return '1F3AF';
-    if (emoji === '🌪️') return '1F32A';
-    if (emoji === '💖') return '1F496';
-    if (emoji === '☀️') return '2600';
-    if (emoji === '📦') return '1F4E6';
-    if (emoji === '🕯️') return '1F56F';
-    if (emoji === '🧙‍♂️') return '1F9D9';
-    if (emoji === '📖') return '1F4D6';
-    if (emoji === '⭐') return '2B50';
-    return '1F4E6';
+    return EMOJI_TO_SVG_MAP[emoji] || '1F4E6';
   }
 
   static renderItemIcon(item) {

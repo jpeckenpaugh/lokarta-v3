@@ -5,6 +5,70 @@
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
 import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 
+const TILE_RENDERERS = {
+  [TILE_TYPES.WALL]: (ctx, screenX, screenY, size, theme) => {
+    ctx.fillStyle = theme.wall.fill;
+    ctx.fillRect(screenX, screenY, size, size);
+
+    ctx.fillStyle = theme.wall.topHighlight;
+    ctx.fillRect(screenX, screenY, size, 4);
+
+    ctx.strokeStyle = theme.wall.gridLine;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(screenX, screenY + size / 2);
+    ctx.lineTo(screenX + size, screenY + size / 2);
+    ctx.moveTo(screenX + size / 2, screenY);
+    ctx.lineTo(screenX + size / 2, screenY + size / 2);
+    ctx.moveTo(screenX + size / 4, screenY + size / 2);
+    ctx.lineTo(screenX + size / 4, screenY + size);
+    ctx.moveTo(screenX + (3 * size) / 4, screenY + size / 2);
+    ctx.lineTo(screenX + (3 * size) / 4, screenY + size);
+    ctx.stroke();
+
+    ctx.strokeStyle = theme.wall.border;
+    ctx.strokeRect(screenX + 0.5, screenY + 0.5, size - 1, size - 1);
+  },
+  [TILE_TYPES.STAIRS]: (ctx, screenX, screenY, size, theme) => {
+    ctx.fillStyle = theme.stairs.bg;
+    ctx.fillRect(screenX, screenY, size, size);
+
+    for (let i = 0; i < 4; i++) {
+      const inset = i * 3;
+      ctx.fillStyle = i % 2 === 0 ? theme.stairs.stepEven : theme.stairs.stepOdd;
+      ctx.fillRect(screenX + inset, screenY + inset, size - inset * 2, size - inset * 2);
+    }
+
+    ctx.fillStyle = theme.stairs.orb;
+    ctx.beginPath();
+    ctx.arc(screenX + size / 2, screenY + size / 2, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = theme.stairs.border;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(screenX + 2, screenY + 2, size - 4, size - 4);
+  },
+  [TILE_TYPES.DOOR]: (ctx, screenX, screenY, size, theme) => {
+    ctx.fillStyle = theme.door.fill;
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.strokeStyle = theme.door.border;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(screenX + 2, screenY + 2, size - 4, size - 4);
+  },
+  default: (ctx, screenX, screenY, size, theme) => {
+    ctx.fillStyle = theme.floor.fill;
+    ctx.fillRect(screenX, screenY, size, size);
+
+    ctx.strokeStyle = theme.floor.gridLine;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(screenX, screenY, size, size);
+
+    ctx.fillStyle = theme.floor.accentSquare;
+    ctx.fillRect(screenX + 4, screenY + 4, 6, 6);
+    ctx.fillRect(screenX + size - 10, screenY + size - 10, 6, 6);
+  },
+};
+
 const ITEM_RENDERERS = {
   health_potion: (ctx, cx, cy) => {
     ctx.fillStyle = '#e63946';
@@ -170,67 +234,18 @@ const MONSTER_RENDERERS = {
   },
 };
 
+const FACING_EYE_OFFSETS = {
+  up: { ox: 0, oy: -2 },
+  down: { ox: 0, oy: 2 },
+  left: { ox: -2, oy: 0 },
+  right: { ox: 2, oy: 0 },
+};
+
 export class SpriteRenderer {
   static drawTile(ctx, type, screenX, screenY, size = CONFIG.GRID_SIZE) {
     const theme = TILE_THEMES_CATALOG;
-    if (type === TILE_TYPES.WALL) {
-      ctx.fillStyle = theme.wall.fill;
-      ctx.fillRect(screenX, screenY, size, size);
-
-      ctx.fillStyle = theme.wall.topHighlight;
-      ctx.fillRect(screenX, screenY, size, 4);
-
-      ctx.strokeStyle = theme.wall.gridLine;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(screenX, screenY + size / 2);
-      ctx.lineTo(screenX + size, screenY + size / 2);
-      ctx.moveTo(screenX + size / 2, screenY);
-      ctx.lineTo(screenX + size / 2, screenY + size / 2);
-      ctx.moveTo(screenX + size / 4, screenY + size / 2);
-      ctx.lineTo(screenX + size / 4, screenY + size);
-      ctx.moveTo(screenX + (3 * size) / 4, screenY + size / 2);
-      ctx.lineTo(screenX + (3 * size) / 4, screenY + size);
-      ctx.stroke();
-
-      ctx.strokeStyle = theme.wall.border;
-      ctx.strokeRect(screenX + 0.5, screenY + 0.5, size - 1, size - 1);
-    } else if (type === TILE_TYPES.STAIRS) {
-      ctx.fillStyle = theme.stairs.bg;
-      ctx.fillRect(screenX, screenY, size, size);
-
-      for (let i = 0; i < 4; i++) {
-        const inset = i * 3;
-        ctx.fillStyle = i % 2 === 0 ? theme.stairs.stepEven : theme.stairs.stepOdd;
-        ctx.fillRect(screenX + inset, screenY + inset, size - inset * 2, size - inset * 2);
-      }
-
-      ctx.fillStyle = theme.stairs.orb;
-      ctx.beginPath();
-      ctx.arc(screenX + size / 2, screenY + size / 2, 5, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = theme.stairs.border;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(screenX + 2, screenY + 2, size - 4, size - 4);
-    } else if (type === TILE_TYPES.DOOR) {
-      ctx.fillStyle = theme.door.fill;
-      ctx.fillRect(screenX, screenY, size, size);
-      ctx.strokeStyle = theme.door.border;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(screenX + 2, screenY + 2, size - 4, size - 4);
-    } else {
-      ctx.fillStyle = theme.floor.fill;
-      ctx.fillRect(screenX, screenY, size, size);
-
-      ctx.strokeStyle = theme.floor.gridLine;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(screenX, screenY, size, size);
-
-      ctx.fillStyle = theme.floor.accentSquare;
-      ctx.fillRect(screenX + 4, screenY + 4, 6, 6);
-      ctx.fillRect(screenX + size - 10, screenY + size - 10, 6, 6);
-    }
+    const renderer = TILE_RENDERERS[type] || TILE_RENDERERS.default;
+    renderer(ctx, screenX, screenY, size, theme);
   }
 
   static drawItem(ctx, item, screenX, screenY, size = CONFIG.GRID_SIZE) {
@@ -321,12 +336,7 @@ export class SpriteRenderer {
 
   static drawFacingEyes(ctx, headX, headY, facing, eyeColor = '#44ccff') {
     ctx.fillStyle = eyeColor;
-    let ox = 0;
-    let oy = 0;
-    if (facing === 'up') oy = -2;
-    if (facing === 'down') oy = 2;
-    if (facing === 'left') ox = -2;
-    if (facing === 'right') ox = 2;
+    const { ox, oy } = FACING_EYE_OFFSETS[facing] || { ox: 0, oy: 0 };
 
     ctx.beginPath();
     ctx.arc(headX + ox - 2, headY + oy, 1.2, 0, Math.PI * 2);
