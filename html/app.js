@@ -675,7 +675,7 @@ export class LokartaApp {
     this.bindInputs();
 
     document.getElementById('header-guide-btn')?.addEventListener('click', () => {
-      soundFX.playClick();
+      soundFX.play('click');
       this.showGuideModal();
     });
 
@@ -742,14 +742,14 @@ export class LokartaApp {
     `;
 
     document.getElementById('title-btn-continue')?.addEventListener('click', async () => {
-      soundFX.playClick();
+      soundFX.play('click');
       this.modalOverlayEl.classList.add('hidden');
       this.modalOverlayEl.innerHTML = '';
       await this.loadSavedGame(savedPlayer);
     });
 
     document.getElementById('title-btn-new-game')?.addEventListener('click', () => {
-      soundFX.playClick();
+      soundFX.play('click');
       this.showCharacterSelectModal();
     });
   }
@@ -820,7 +820,7 @@ export class LokartaApp {
       btn.addEventListener('click', async e => {
         const vocation = e.currentTarget.getAttribute('data-vocation');
         if (vocation) {
-          soundFX.playClick();
+          soundFX.play('click');
           this.modalOverlayEl.classList.add('hidden');
           this.modalOverlayEl.innerHTML = '';
           await this.startNewGame(vocation);
@@ -867,7 +867,7 @@ export class LokartaApp {
     `;
 
     document.getElementById('btn-close-guide')?.addEventListener('click', () => {
-      soundFX.playClick();
+      soundFX.play('click');
       this.modalOverlayEl.classList.add('hidden');
       this.modalOverlayEl.innerHTML = '';
     });
@@ -969,7 +969,7 @@ export class LokartaApp {
 
     cardEls.forEach(el => {
       el.addEventListener('click', () => {
-        soundFX.playClick();
+        soundFX.play('click');
         const cardId = el.getAttribute('data-card-id');
         const cardObj = offer.cards.find(c => c.id === cardId);
 
@@ -991,7 +991,7 @@ export class LokartaApp {
 
     confirmBtn.addEventListener('click', async () => {
       if (selectedCards.size === 0) return;
-      soundFX.playEquip();
+      soundFX.play('equip');
 
       const chosen = Array.from(selectedCards);
       const applyResult = FateGrantSystem.applyDraftedCards(this.player, chosen, this.gridMap);
@@ -1088,8 +1088,8 @@ export class LokartaApp {
       if (res.message) this.logCombat(res.message, 'combat');
       if (res.projectiles) this.projectiles.push(...res.projectiles);
       if (res.damageToPlayer && res.damageToPlayer > 0) {
-        soundFX.playMonsterAttack();
-        soundFX.playPlayerHurt();
+        soundFX.play('monsterAttack');
+        soundFX.play('playerHurt');
         this.addFloatingText(`-${res.damageToPlayer}`, this.player.x, this.player.y, '#ef4444');
       }
     }
@@ -1177,7 +1177,7 @@ export class LokartaApp {
         } else {
           this.player.x = targetX;
           this.player.y = targetY;
-          soundFX.playFootstep();
+          soundFX.play('footstep');
 
           // Frictionless walkover auto-pickup
           const items = this.gridMap.getItems(this.player.x, this.player.y);
@@ -1285,7 +1285,7 @@ export class LokartaApp {
         }
       });
       if (res.success) {
-        soundFX.playPotionDrink();
+        soundFX.play('potionDrink');
         this.logCombat(res.message, 'loot');
         this.addFloatingText(`Used ${item.name}!`, this.player.x, this.player.y, '#38bdf8');
         this.updateHUD();
@@ -1300,7 +1300,7 @@ export class LokartaApp {
     if (item.type === 'offhand' || item.type === 'armor' || item.type === 'relic') {
       const eqRes = InventorySystem.equipItem(this.player, 'action_bar', slotIndex);
       if (eqRes.success) {
-        soundFX.playEquip();
+        soundFX.play('equip');
         this.logCombat(eqRes.message, 'loot');
         LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
         this.updateHUD();
@@ -1321,7 +1321,7 @@ export class LokartaApp {
         this.logCombat('No enemy in range for Wand Spark (click enemy to target).', 'warning');
         return;
       }
-      soundFX.playWandSpark();
+      soundFX.play('wandSpark');
       const res = CombatSystem.executeWandSpark(this.player, target, this.gridMap);
       this.handleCombatResult(res, target.x, target.y);
     }
@@ -1329,7 +1329,7 @@ export class LokartaApp {
     else if (itemId.includes('beam')) {
       const res = CombatSystem.executeEnergyBeam(this.player, this.player.facing, this.gridMap, this.monsters);
       if (res.success) {
-        soundFX.playEnergyBeam();
+        soundFX.play('energyBeam');
         this.handleCombatResult(res, this.player.x, this.player.y);
       } else {
         this.logCombat(res.message, 'warning');
@@ -1339,7 +1339,7 @@ export class LokartaApp {
     else if (itemId.includes('light')) {
       const res = CombatSystem.executeLightSpell(this.player);
       if (res.success) {
-        soundFX.playLightSpell();
+        soundFX.play('lightSpell');
         this.logCombat(res.message, 'spell');
         this.addFloatingText('Light Aura!', this.player.x, this.player.y, '#ffd700');
         LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
@@ -1354,7 +1354,7 @@ export class LokartaApp {
         this.logCombat('No enemy in range for Power Shot.', 'warning');
         return;
       }
-      soundFX.playPowerShot();
+      soundFX.play('powerShot');
       const res = CombatSystem.executePowerShot(this.player, target, this.gridMap);
       this.handleCombatResult(res, target.x, target.y);
     } else if (itemId.includes('bow') || itemId.includes('shot')) {
@@ -1363,7 +1363,7 @@ export class LokartaApp {
         this.logCombat('No enemy in range for Bow Shot.', 'warning');
         return;
       }
-      soundFX.playBowShot();
+      soundFX.play('bowShot');
       const res = CombatSystem.executeBowShot(this.player, target, this.gridMap);
       this.handleCombatResult(res, target.x, target.y);
     }
@@ -1374,7 +1374,7 @@ export class LokartaApp {
         this.logCombat('No adjacent enemy for Cleave.', 'warning');
         return;
       }
-      soundFX.playHit();
+      soundFX.play('hit');
       const res = CombatSystem.executeSlash(this.player, target, this.gridMap);
       this.handleCombatResult(res, target.x, target.y);
     } else if (itemId.includes('sword') || itemId.includes('slash')) {
@@ -1383,7 +1383,7 @@ export class LokartaApp {
         this.logCombat('No adjacent enemy for melee attack.', 'warning');
         return;
       }
-      soundFX.playHit();
+      soundFX.play('hit');
       const res = CombatSystem.executeSlash(this.player, target, this.gridMap);
       this.handleCombatResult(res, target.x, target.y);
     }
@@ -1391,7 +1391,7 @@ export class LokartaApp {
     else if (itemId.includes('prayer') || itemId.includes('heal')) {
       const res = CombatSystem.executeHealingPrayer(this.player);
       if (res.success) {
-        soundFX.playLightSpell();
+        soundFX.play('lightSpell');
         this.logCombat(res.message, 'spell');
         this.addFloatingText(`+${res.healAmount} HP`, this.player.x, this.player.y, '#22c55e');
       } else {
@@ -1403,7 +1403,7 @@ export class LokartaApp {
         this.logCombat('No adjacent enemy for Holy Strike.', 'warning');
         return;
       }
-      soundFX.playHit();
+      soundFX.play('hit');
       const res = CombatSystem.executeHolyStrike(this.player, target, this.gridMap);
       this.handleCombatResult(res, target.x, target.y);
     }
@@ -1451,14 +1451,14 @@ export class LokartaApp {
 
     if (res.message) this.logCombat(res.message, 'combat');
     if (res.damageDealt) {
-      soundFX.playHit();
+      soundFX.play('hit');
       this.addFloatingText(`-${res.damageDealt}`, targetX, targetY, '#ffdd44');
     }
 
     if (res.projectiles) this.projectiles.push(...res.projectiles);
 
     if (res.defeatedMonsterId) {
-      soundFX.playMonsterDeath();
+      soundFX.play('monsterDeath');
       const index = this.monsters.findIndex(m => m.id === res.defeatedMonsterId);
       if (index !== -1) {
         const deadMonster = this.monsters[index];
@@ -1477,7 +1477,7 @@ export class LokartaApp {
         this.addFloatingText(`+${xpEarned} XP`, deadMonster.x, deadMonster.y, '#fbbf24');
 
         if (lvlRes.leveledUp) {
-          soundFX.playLevelUp();
+          soundFX.play('levelUp');
           this.logCombat(
             `⭐ LEVEL UP! You reached Level ${lvlRes.newLevel}! (+${lvlRes.hpGained} Max HP, +${lvlRes.manaGained} Max MP)`,
             'spell'
@@ -1507,7 +1507,7 @@ export class LokartaApp {
     soundFX.init();
     const res = InventorySystem.pickUpItem(this.player, this.gridMap);
     if (res.success) {
-      soundFX.playItemPickup();
+      soundFX.play('itemPickup');
       this.logCombat(res.message, 'loot');
       this.addFloatingText(`+${res.item?.name}`, this.player.x, this.player.y, '#22c55e');
       this.updateHUD();
@@ -1519,7 +1519,7 @@ export class LokartaApp {
     soundFX.init();
     const res = InventorySystem.dropItem(this.player, source, slotIndex, this.gridMap);
     if (res.success) {
-      soundFX.playUnequip();
+      soundFX.play('unequip');
       this.logCombat(res.message, 'system');
       this.updateHUD();
       await this.persistSave();
@@ -1532,7 +1532,7 @@ export class LokartaApp {
     soundFX.init();
     const res = InventorySystem.unequipItem(this.player, slotName);
     if (res.success) {
-      soundFX.playUnequip();
+      soundFX.play('unequip');
       this.logCombat(res.message, 'system');
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
       this.updateHUD();
@@ -1556,7 +1556,7 @@ export class LokartaApp {
       const floorBonusXp = 50 * this.player.current_floor;
       const lvlRes = ProgressionSystem.awardXP(this.player, floorBonusXp);
 
-      soundFX.playStairs();
+      soundFX.play('stairs');
       this.logCombat(
         `Stepped on stairway! Descended to Floor ${nextFloor}/20 (+${floorBonusXp} Floor Clear XP)!`,
         'victory'
@@ -1564,7 +1564,7 @@ export class LokartaApp {
       this.addFloatingText(`FLOOR ${nextFloor}`, this.player.x, this.player.y, '#38bdf8');
 
       if (lvlRes.leveledUp) {
-        soundFX.playLevelUp();
+        soundFX.play('levelUp');
         this.logCombat(
           `⭐ LEVEL UP! You reached Level ${lvlRes.newLevel}! (+${lvlRes.hpGained} Max HP, +${lvlRes.manaGained} Max MP)`,
           'spell'
@@ -1585,7 +1585,7 @@ export class LokartaApp {
       }
     } else {
       this.isFloorCleared = true;
-      soundFX.playVictory();
+      soundFX.play('victory');
       this.logCombat('🎉 YOU CONQUERED THE ABYSSAL SANCTUM! ALL 20 FLOORS CLEARED!', 'victory');
       this.addFloatingText('CAMPAIGN COMPLETED!', this.player.x, this.player.y, '#ffd700');
       this.showVictoryModal();
@@ -1781,7 +1781,7 @@ export class LokartaApp {
         if (idx >= 0) {
           const res = InventorySystem.useBackpackItem(this.player, idx);
           if (res.success) {
-            soundFX.playEquip();
+            soundFX.play('equip');
             this.logCombat(res.message, 'loot');
             this.updateHUD();
             this.persistSave();
@@ -1938,7 +1938,7 @@ export class LokartaApp {
     `;
 
     document.getElementById('btn-restart')?.addEventListener('click', () => {
-      soundFX.playClick();
+      soundFX.play('click');
       this.modalOverlayEl.classList.add('hidden');
       this.modalOverlayEl.innerHTML = '';
       window.location.reload();
@@ -1946,7 +1946,7 @@ export class LokartaApp {
   }
 
   showGameOverModal() {
-    soundFX.playDefeat();
+    soundFX.play('defeat');
     this.modalOverlayEl.classList.remove('hidden');
     this.modalOverlayEl.innerHTML = `
       <div class="result-modal defeat-modal">
@@ -1958,7 +1958,7 @@ export class LokartaApp {
     `;
 
     document.getElementById('btn-retry')?.addEventListener('click', () => {
-      soundFX.playClick();
+      soundFX.play('click');
       this.modalOverlayEl.classList.add('hidden');
       this.modalOverlayEl.innerHTML = '';
       window.location.reload();

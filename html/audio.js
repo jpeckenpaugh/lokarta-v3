@@ -1,6 +1,6 @@
 /**
  * Lokarta: Come Into The Light - Procedural Web Audio API Sound Synthesizer
- * Provides zero-dependency procedural audio for dungeon exploration, combat, items, spells, and UI.
+ * Provides zero-dependency procedural audio driven by JSON sound definitions.
  */
 
 export class AudioSystem {
@@ -9,6 +9,8 @@ export class AudioSystem {
     this.masterGain = null;
     this.isMuted = false;
     this.isInitialized = false;
+    this.sounds = null;
+    this.loadingPromise = null;
 
     // Check saved mute preference
     try {
@@ -48,9 +50,38 @@ export class AudioSystem {
   }
 
   /**
+   * Loads sound definitions asynchronously from sounds.json.
+   * @returns {Promise<Object>}
+   */
+  async loadSounds() {
+    if (this.sounds) return this.sounds;
+    if (this.loadingPromise) return this.loadingPromise;
+
+    this.loadingPromise = (async () => {
+      try {
+        if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+          const res = await fetch('./sounds.json');
+          if (res.ok) {
+            this.sounds = await res.json();
+            return this.sounds;
+          }
+        }
+      } catch (e) {
+        console.warn('Unable to fetch sounds.json, using fallback definitions:', e);
+      }
+      this.sounds = this._getFallbackSounds();
+      return this.sounds;
+    })();
+
+    return this.loadingPromise;
+  }
+
+  /**
    * Initializes or unlocks the AudioContext on user interaction.
    */
   init() {
+    this.loadSounds().catch(() => {});
+
     if (this.isInitialized && this.ctx && this.ctx.state === 'running') {
       return;
     }
@@ -131,524 +162,165 @@ export class AudioSystem {
     return true;
   }
 
+  /**
+   * Primary playback function to play a procedural sound defined in sounds.json.
+   * @param {string} soundKey
+   */
+  play(soundKey) {
+    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
+    if (!this.sounds || !this.sounds[soundKey]) return;
+
+    const config = this.sounds[soundKey];
+    const now = this.ctx.currentTime;
+
+    switch (config.type) {
+      case 'sweep':
+        this._playSweep(config, now);
+        break;
+      case 'sequence':
+        this._playSequence(config, now);
+        break;
+      case 'composite':
+        this._playComposite(config, now);
+        break;
+    }
+  }
+
+  /** Alias for play() */
+  playSound(soundKey) {
+    this.play(soundKey);
+  }
+
   // ==========================================================================
-  // Sound Effects
+  // Internal Sound Synthesizers
   // ==========================================================================
 
-  /**
-   * Soft footstep click on dungeon floor tiles.
-   */
-  playFootstep() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
+  _playSweep(config, now) {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
+    let lastNode = osc;
 
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(400, now);
+    if (config.filter) {
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = config.filter.type || 'lowpass';
+      filter.frequency.setValueAtTime(config.filter.freq, now);
+      osc.connect(filter);
+      lastNode = filter;
+    }
 
-    const baseFreq = 90 + Math.random() * 30;
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(baseFreq, now);
-    osc.frequency.exponentialRampToValueAtTime(30, now + 0.05);
+    const startFreq = config.startFreq + (config.freqRandom ? Math.random() * config.freqRandom : 0);
+    osc.type = config.oscType || 'sine';
+    osc.frequency.setValueAtTime(startFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(0.001, config.endFreq), now + config.duration);
 
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    gain.gain.setValueAtTime(config.gain, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + config.duration);
 
-    osc.connect(filter);
-    filter.connect(gain);
+    lastNode.connect(gain);
     gain.connect(this.masterGain);
 
+    const stopTime = config.stopTime || config.duration;
     osc.start(now);
-    osc.stop(now + 0.05);
+    osc.stop(now + stopTime);
   }
 
-  /**
-   * Magician Wand Spark: Quick crisp electrical arc.
-   */
-  playWandSpark() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
+  _playSequence(config, now) {
+    const oscType = config.oscType || 'sine';
+    const masterVolume = config.gain || 0.15;
 
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(800 + Math.random() * 100, now);
-    osc.frequency.exponentialRampToValueAtTime(150, now + 0.12);
-
-    gain.gain.setValueAtTime(0.2, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    osc.stop(now + 0.12);
-  }
-
-  /**
-   * Magician Light Spell: Radiant celestial chime chord.
-   */
-  playLightSpell() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const freqs = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
-    freqs.forEach((freq, idx) => {
+    config.notes.forEach(note => {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
 
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+      osc.type = oscType;
+      const noteTime = now + (note.time || 0);
+      const noteDuration = note.duration || 0.1;
 
-      gain.gain.setValueAtTime(0.12, now + idx * 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.6);
+      osc.frequency.setValueAtTime(note.freq, noteTime);
+      gain.gain.setValueAtTime(masterVolume, noteTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, noteTime + noteDuration);
 
       osc.connect(gain);
       gain.connect(this.masterGain);
 
-      osc.start(now + idx * 0.04);
-      osc.stop(now + idx * 0.04 + 0.6);
+      osc.start(noteTime);
+      osc.stop(noteTime + noteDuration);
     });
   }
 
-  /**
-   * Magician Energy Beam: Deep shimmering laser sweep.
-   */
-  playEnergyBeam() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const mod = this.ctx.createOscillator();
-    const modGain = this.ctx.createGain();
-    const gain = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
-
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(450, now);
-    osc.frequency.exponentialRampToValueAtTime(120, now + 0.35);
-
-    mod.type = 'sine';
-    mod.frequency.setValueAtTime(40, now);
-    modGain.gain.setValueAtTime(80, now);
-    mod.connect(osc.frequency);
-
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1200, now);
-    filter.frequency.exponentialRampToValueAtTime(300, now + 0.35);
-    filter.Q.setValueAtTime(3, now);
-
-    gain.gain.setValueAtTime(0.25, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-
-    mod.start(now);
-    osc.start(now);
-    mod.stop(now + 0.35);
-    osc.stop(now + 0.35);
-  }
-
-  /**
-   * Archer Bow Shot: Crisp bowstring snap and arrow release.
-   */
-  playBowShot() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(360, now);
-    osc.frequency.exponentialRampToValueAtTime(110, now + 0.09);
-
-    gain.gain.setValueAtTime(0.22, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    osc.stop(now + 0.09);
-  }
-
-  /**
-   * Archer Power Shot: Heavy bowstring release with high velocity impact tone.
-   */
-  playPowerShot() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const subOsc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(500, now);
-    osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
-
-    subOsc.type = 'sine';
-    subOsc.frequency.setValueAtTime(120, now);
-    subOsc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
-
-    gain.gain.setValueAtTime(0.28, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-
-    osc.connect(gain);
-    subOsc.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    subOsc.start(now);
-    osc.stop(now + 0.2);
-    subOsc.stop(now + 0.2);
-  }
-
-  /**
-   * Melee Hit / Combat Impact.
-   */
-  playHit() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(180, now);
-    osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
-
-    gain.gain.setValueAtTime(0.25, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    osc.stop(now + 0.1);
-  }
-
-  /**
-   * Monster Attack / Shadow Bolt cast.
-   */
-  playMonsterAttack() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(220, now);
-    osc.frequency.exponentialRampToValueAtTime(70, now + 0.15);
-
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    osc.stop(now + 0.15);
-  }
-
-  /**
-   * Monster Defeat / Dissolve.
-   */
-  playMonsterDeath() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(150, now);
-    osc.frequency.exponentialRampToValueAtTime(25, now + 0.3);
-
-    gain.gain.setValueAtTime(0.2, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    osc.stop(now + 0.3);
-  }
-
-  /**
-   * Player Taking Damage.
-   */
-  playPlayerHurt() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(110, now);
-    osc.frequency.exponentialRampToValueAtTime(30, now + 0.18);
-
-    gain.gain.setValueAtTime(0.3, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    osc.stop(now + 0.18);
-  }
-
-  /**
-   * Item Pickup / Stack merge: Crisp double-blip.
-   */
-  playItemPickup() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const notes = [587.33, 880.0]; // D5, A5
-    notes.forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
+  _playComposite(config, now) {
+    if (config.oscillators) {
       const gain = this.ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.05);
-
-      gain.gain.setValueAtTime(0.18, now + idx * 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.1);
-
-      osc.connect(gain);
+      gain.gain.setValueAtTime(config.gain, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + config.duration);
       gain.connect(this.masterGain);
 
-      osc.start(now + idx * 0.05);
-      osc.stop(now + idx * 0.05 + 0.1);
-    });
-  }
-
-  /**
-   * Consuming Health / Mana potion: Bubbling restoration tones.
-   */
-  playPotionDrink() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const notes = [330, 440, 550, 660];
-    notes.forEach((freq, idx) => {
+      config.oscillators.forEach(oscConfig => {
+        const osc = this.ctx.createOscillator();
+        osc.type = oscConfig.type;
+        osc.frequency.setValueAtTime(oscConfig.startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(0.001, oscConfig.endFreq), now + config.duration);
+        osc.connect(gain);
+        osc.start(now);
+        osc.stop(now + config.duration);
+      });
+    } else if (config.lfo) {
       const osc = this.ctx.createOscillator();
+      const mod = this.ctx.createOscillator();
+      const modGain = this.ctx.createGain();
       const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
 
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+      osc.type = config.oscType || 'sawtooth';
+      osc.frequency.setValueAtTime(config.startFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(config.endFreq, now + config.duration);
 
-      gain.gain.setValueAtTime(0.15, now + idx * 0.06);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.12);
+      mod.type = config.lfo.oscType || 'sine';
+      mod.frequency.setValueAtTime(config.lfo.freq, now);
+      modGain.gain.setValueAtTime(config.lfo.gain, now);
+      mod.connect(osc.frequency);
 
-      osc.connect(gain);
+      filter.type = config.filter.type || 'bandpass';
+      filter.frequency.setValueAtTime(config.filter.startFreq, now);
+      filter.frequency.exponentialRampToValueAtTime(config.filter.endFreq, now + config.duration);
+      filter.Q.setValueAtTime(config.filter.Q || 1, now);
+
+      gain.gain.setValueAtTime(config.gain, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + config.duration);
+
+      osc.connect(filter);
+      filter.connect(gain);
       gain.connect(this.masterGain);
 
-      osc.start(now + idx * 0.06);
-      osc.stop(now + idx * 0.06 + 0.12);
-    });
+      mod.start(now);
+      osc.start(now);
+      mod.stop(now + config.duration);
+      osc.stop(now + config.duration);
+    }
   }
 
-  /**
-   * Equipping weapon, armor, or lighting a torch.
-   */
-  playEquip() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(280, now);
-    osc.frequency.exponentialRampToValueAtTime(560, now + 0.06);
-
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    osc.stop(now + 0.07);
-  }
-
-  /**
-   * Unequipping or dropping an item.
-   */
-  playUnequip() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(450, now);
-    osc.frequency.exponentialRampToValueAtTime(220, now + 0.06);
-
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    osc.stop(now + 0.06);
-  }
-
-  /**
-   * Stepping onto stairs / Floor clear transition.
-   */
-  playStairs() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const freqs = [330, 440, 554, 659, 880];
-    freqs.forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
-
-      gain.gain.setValueAtTime(0.18, now + idx * 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.4);
-
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-
-      osc.start(now + idx * 0.08);
-      osc.stop(now + idx * 0.08 + 0.4);
-    });
-  }
-
-  /**
-   * Sparkling Level-Up Fanfare Chime (ascending multi-tone fanfare).
-   */
-  playLevelUp() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const notes = [
-      { f: 440.0, t: 0.0 },   // A4
-      { f: 554.37, t: 0.08 }, // C#5
-      { f: 659.25, t: 0.16 }, // E5
-      { f: 880.0, t: 0.24 },  // A5
-      { f: 1108.73, t: 0.36 },// C#6
-      { f: 1318.51, t: 0.48 } // E6
-    ];
-
-    notes.forEach(n => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(n.f, now + n.t);
-
-      gain.gain.setValueAtTime(0.2, now + n.t);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + n.t + 0.45);
-
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-
-      osc.start(now + n.t);
-      osc.stop(now + n.t + 0.45);
-    });
-  }
-
-  /**
-   * Triumphant Victory Fanfare.
-   */
-  playVictory() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const chord = [
-      { f: 523.25, t: 0.0 }, // C5
-      { f: 659.25, t: 0.12 }, // E5
-      { f: 783.99, t: 0.24 }, // G5
-      { f: 1046.5, t: 0.36 }, // C6
-      { f: 1318.5, t: 0.6 },  // E6 sustained
-    ];
-
-    chord.forEach(n => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(n.f, now + n.t);
-
-      const duration = n.t === 0.6 ? 1.0 : 0.25;
-      gain.gain.setValueAtTime(0.25, now + n.t);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + n.t + duration);
-
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-
-      osc.start(now + n.t);
-      osc.stop(now + n.t + duration);
-    });
-  }
-
-  /**
-   * Defeat / Game Over somber tone.
-   */
-  playDefeat() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const notes = [220, 207.65, 196, 174.61]; // A3, G#3, G3, F3
-    notes.forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.25);
-
-      gain.gain.setValueAtTime(0.2, now + idx * 0.25);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.25 + 0.4);
-
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-
-      osc.start(now + idx * 0.25);
-      osc.stop(now + idx * 0.25 + 0.4);
-    });
-  }
-
-  /**
-   * Generic UI Click.
-   */
-  playClick() {
-    if (!this.canPlay() || !this.ctx || !this.masterGain) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(600, now);
-    osc.frequency.exponentialRampToValueAtTime(300, now + 0.03);
-
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    osc.stop(now + 0.03);
+  _getFallbackSounds() {
+    return {
+      "footstep": { "type": "sweep", "oscType": "triangle", "startFreq": 90, "freqRandom": 30, "endFreq": 30, "duration": 0.05, "gain": 0.08, "filter": { "type": "lowpass", "freq": 400 } },
+      "wandSpark": { "type": "sweep", "oscType": "sawtooth", "startFreq": 800, "freqRandom": 100, "endFreq": 150, "duration": 0.12, "gain": 0.2 },
+      "lightSpell": { "type": "sequence", "oscType": "sine", "gain": 0.12, "notes": [{ "freq": 523.25, "time": 0.00, "duration": 0.6 }, { "freq": 659.25, "time": 0.04, "duration": 0.6 }, { "freq": 783.99, "time": 0.08, "duration": 0.6 }, { "freq": 1046.5, "time": 0.12, "duration": 0.6 }] },
+      "energyBeam": { "type": "composite", "oscType": "sawtooth", "startFreq": 450, "endFreq": 120, "duration": 0.35, "gain": 0.25, "lfo": { "oscType": "sine", "freq": 40, "gain": 80 }, "filter": { "type": "bandpass", "startFreq": 1200, "endFreq": 300, "Q": 3 } },
+      "bowShot": { "type": "sweep", "oscType": "triangle", "startFreq": 360, "endFreq": 110, "duration": 0.09, "gain": 0.22 },
+      "powerShot": { "type": "composite", "duration": 0.2, "gain": 0.28, "oscillators": [{ "type": "square", "startFreq": 500, "endFreq": 80 }, { "type": "sine", "startFreq": 120, "endFreq": 40 }] },
+      "hit": { "type": "sweep", "oscType": "square", "startFreq": 180, "endFreq": 40, "duration": 0.1, "gain": 0.25 },
+      "monsterAttack": { "type": "sweep", "oscType": "sawtooth", "startFreq": 220, "endFreq": 70, "duration": 0.15, "gain": 0.18 },
+      "monsterDeath": { "type": "sweep", "oscType": "sawtooth", "startFreq": 150, "endFreq": 25, "duration": 0.3, "gain": 0.2 },
+      "playerHurt": { "type": "sweep", "oscType": "triangle", "startFreq": 110, "endFreq": 30, "duration": 0.18, "gain": 0.3 },
+      "itemPickup": { "type": "sequence", "oscType": "sine", "gain": 0.18, "notes": [{ "freq": 587.33, "time": 0.00, "duration": 0.1 }, { "freq": 880.00, "time": 0.05, "duration": 0.1 }] },
+      "potionDrink": { "type": "sequence", "oscType": "triangle", "gain": 0.15, "notes": [{ "freq": 330, "time": 0.00, "duration": 0.12 }, { "freq": 440, "time": 0.06, "duration": 0.12 }, { "freq": 550, "time": 0.12, "duration": 0.12 }, { "freq": 660, "time": 0.18, "duration": 0.12 }] },
+      "equip": { "type": "sweep", "oscType": "triangle", "startFreq": 280, "endFreq": 560, "duration": 0.06, "stopTime": 0.07, "gain": 0.15 },
+      "unequip": { "type": "sweep", "oscType": "triangle", "startFreq": 450, "endFreq": 220, "duration": 0.06, "gain": 0.12 },
+      "stairs": { "type": "sequence", "oscType": "sine", "gain": 0.18, "notes": [{ "freq": 330, "time": 0.00, "duration": 0.4 }, { "freq": 440, "time": 0.08, "duration": 0.4 }, { "freq": 554, "time": 0.16, "duration": 0.4 }, { "freq": 659, "time": 0.24, "duration": 0.4 }, { "freq": 880, "time": 0.32, "duration": 0.4 }] },
+      "levelUp": { "type": "sequence", "oscType": "sine", "gain": 0.2, "notes": [{ "freq": 440.0, "time": 0.00, "duration": 0.45 }, { "freq": 554.37, "time": 0.08, "duration": 0.45 }, { "freq": 659.25, "time": 0.16, "duration": 0.45 }, { "freq": 880.0, "time": 0.24, "duration": 0.45 }, { "freq": 1108.73, "time": 0.36, "duration": 0.45 }, { "freq": 1318.51, "time": 0.48, "duration": 0.45 }] },
+      "victory": { "type": "sequence", "oscType": "triangle", "gain": 0.25, "notes": [{ "freq": 523.25, "time": 0.00, "duration": 0.25 }, { "freq": 659.25, "time": 0.12, "duration": 0.25 }, { "freq": 783.99, "time": 0.24, "duration": 0.25 }, { "freq": 1046.5, "time": 0.36, "duration": 0.25 }, { "freq": 1318.5, "time": 0.60, "duration": 1.00 }] },
+      "defeat": { "type": "sequence", "oscType": "sawtooth", "gain": 0.2, "notes": [{ "freq": 220.00, "time": 0.00, "duration": 0.4 }, { "freq": 207.65, "time": 0.25, "duration": 0.4 }, { "freq": 196.00, "time": 0.50, "duration": 0.4 }, { "freq": 174.61, "time": 0.75, "duration": 0.4 }] },
+      "click": { "type": "sweep", "oscType": "sine", "startFreq": 600, "endFreq": 300, "duration": 0.03, "gain": 0.12 }
+    };
   }
 }
 
