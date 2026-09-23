@@ -8,7 +8,7 @@
 
 - **Web-Native & Zero-Backend:** Fully self-contained static application with no server runtime or external database dependencies required. Can be hosted on GitHub Pages, Cloudflare Pages, S3, or any static web server.
 - **Dedicated Web Worker:** Runs procedural floor generation and state synchronization in a background worker thread (`game-worker.js`) communicating over a typed RPC protocol (`game-client.js`).
-- **IndexedDB Persistence:** Complete character progression, equipped gear, 6-slot backpack state, settings, and dungeon floors 1–20 persist locally across browser reloads.
+- **IndexedDB Persistence:** Complete character progression, equipped gear (4 paperdoll slots), 10 action slots, 6-slot backpack state, settings, and dungeon floors 1–20 persist locally across browser reloads.
 - **Procedural 20-Floor Dungeon:** Deterministic Mulberry32 PRNG generator (`floor-generator.js`) across 4 biomes (Subterranean Crypt, Catacombs of Whispers, Shadow Vaults, Abyssal Sanctum) culminating in the Floor 20 Abyssal Overlord boss fight.
 - **Procedural Web Audio:** Real-time synthesis of sound effects (footsteps, wand sparks, energy beams, bow shots, power shots, monster hits, level-up fanfares, potions) using the Web Audio API.
 
@@ -51,9 +51,9 @@ node --test html/tests/engine.test.mjs
 1. **Floor Generator (1-20):** Deterministic Mulberry32 seed generation, 40×40 boundary constraints, spawn at `(2,2)`, exit stairs at `(35,35)`, full BFS room/corridor connectivity, depth-based monster scaling, and Floor 20 Abyssal Overlord boss stats (600 HP, 20 ATK, 6 DEF).
 2. **GridMap & Tile Bounds:** Walkability, walls, stairs, doors, coordinate boundaries, and ground item stack management.
 3. **LightingSystem & LOS:** Dynamic light radii (Base 3, Torch 7, Light Spell 6), Bresenham raycasting, wall occlusion, and light-triggered monster aggro.
-4. **ProgressionSystem & Leveling:** XP formulas (`level * 100`), monster kill XP, Magician/Archer stat growth (+8 HP/+16 MP for Magician, +14 HP/+8 MP for Archer), skill boosts, and Level 20 cap.
-5. **CombatSystem & Abilities:** Wand Spark, Light Spell, piercing Energy Beam, Bow Shot (with arrow depletion), Power Shot, and monster loot tables.
-6. **InventorySystem & Stacking:** 6-slot backpack limit, 9-item stack limit for Potions/Torches, 99-item limit for Arrows, and 3-slot Paperdoll equipment mechanics.
+4. **ProgressionSystem & Leveling:** XP formulas (`level * 100`), monster kill XP, 4-vocation stat growth (Magician, Archer, Fighter, Paladin), skill boosts, and Level 20 cap.
+5. **CombatSystem & Abilities:** Wand Spark, Light Spell, piercing Energy Beam, Bow Shot (with arrow depletion), Power Shot, Holy Strike, Healing Prayer, and monster loot tables.
+6. **InventorySystem & Stacking:** 10-slot Action Bar, 6-slot Backpack limit, 4-slot Paperdoll equipment mechanics (main_hand, off_hand, armor, relic), 9-item stack limit for Potions/Torches, and 99-item limit for Arrows.
 7. **GameClient & Worker Protocol:** Asynchronous command serialization, request/response lifecycle, timeout protection, and error propagation.
 
 ---
@@ -69,14 +69,14 @@ node --test html/tests/engine.test.mjs
 | **Core Engine** | `html/engine.js` | Core game simulation modules (`GridMap`, `LightingSystem`, `CombatSystem`, `EntityAI`, `InventorySystem`, `ProgressionSystem`). |
 | **Audio Synthesizer** | `html/audio.js` | Procedural Web Audio synthesizer generating dynamic retro sound effects on the fly with zero external audio assets. |
 | **App / Renderer** | `html/app.js` | Canvas tile/sprite rendering pipeline, 10 Hz fixed tick simulation loop, 60 FPS interpolated animation, HUD panel controller, and keyboard input binding. |
-| **UI Container** | `html/index.html` & `html/styles.css` | RPG layout container, paperdoll UI, 6-slot backpack, ability hotbars, vitals meters, and scrolling combat log. |
+| **UI Container** | `html/index.html` & `html/styles.css` | RPG layout container, 4-slot paperdoll UI, 6-slot backpack, 10-slot action bar, vitals meters, and scrolling combat log. |
 
 ---
 
 ## 🎮 Controls & Gameplay
 
 - **Movement:** `W` / `A` / `S` / `D` or `Arrow Keys` (or on-screen D-Pad)
-- **Select Vocation:** Magician (ranged magic & illumination) or Archer (high single-target damage & ammo management)
+- **Select Vocation:** Magician (ranged magic & illumination), Archer (high single-target damage & ammo management), Fighter (melee powerhouse & high HP), or Paladin (holy melee/magic hybrid & healing)
 - **Abilities:**
   - **Key `1`:** Primary Skill (*Wand Spark* / *Bow Shot*)
   - **Key `2`:** Utility Skill (*Light Spell* / *Power Shot*)

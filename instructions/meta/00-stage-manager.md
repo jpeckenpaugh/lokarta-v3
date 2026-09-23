@@ -8,7 +8,7 @@ defined as used here; a term not listed takes its ordinary meaning.
 - **Stage / Role** — a numbered unit of work in a pipeline (e.g. enhancement
   Stage 6 "Backend Engineer"). "Stage" and "role" are used interchangeably.
 - **Pipeline** — a full sequence of stages under
-  `instructions/<build|enhancements|debug>/` (e.g. "the build pipeline").
+  `instructions/<reverse|enhancements|debug>/` (e.g. "the reverse pipeline").
 - **Stage Manager / Meta role** — the coordinating role this document defines;
   the executor that dispatches, supervises, and audits but does not produce a
   stage's artifacts.
@@ -51,7 +51,7 @@ defined as used here; a term not listed takes its ordinary meaning.
 
 ## Pipeline quick reference
 
-| | build | enhancements | debug |
+| | reverse | enhancements | debug |
 |---|-------|--------------|-------|
 | Stages | 01–09 (01 is a human role, skippable) | 01–10 | 01–03 |
 | Summary folder | `summaries/` | `instructions/enhancements/summaries/` | `instructions/debug/summaries/` |
@@ -64,7 +64,7 @@ the authoritative source for each pipeline's conventions.
 
 ## Role / Purpose
 
-The Stage Manager is the meta role that *runs* the role pipelines (`build`,
+The Stage Manager is the meta role that *runs* the role pipelines (`reverse`,
 `enhancements`, `debug`). It does not do a stage's product work itself — it
 sequences, dispatches, gates, and audits. It is the single point of coordination
 between the human and the sub-agents that execute each stage, so that a pipeline
