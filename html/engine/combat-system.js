@@ -259,6 +259,12 @@ export class CombatSystem {
     }
 
     const abilitySpec = ABILITIES_CATALOG.magician_beam;
+    const baseStepDamage = abilitySpec?.visual?.stepDamage || [40, 30, 20, 10];
+    const stepVolumes = abilitySpec?.visual?.stepVolumes || [1.0, 0.75, 0.50, 0.25];
+
+    // Compute step damage list scaled by vocation mastery
+    const stepDamage = baseStepDamage.map(base => Math.round(base * mult));
+
     const projectile = {
       id: `proj_beam_${Date.now()}_${Math.random()}`,
       abilityId: 'magician_beam',
@@ -266,13 +272,17 @@ export class CombatSystem {
       sourceX: player.x,
       sourceY: player.y,
       facing,
+      fX,
+      fY,
       waves,
       currentWaveIndex: -1,
       elapsedMs: 0,
       stepIntervalMs: 100,
       hitMonsterIds: [],
+      stepDamage,
+      stepVolumes,
       damagePayload: {
-        damage,
+        damage: stepDamage[0],
         vocation: player.vocation,
         casterId: player.id || 'player',
       },
@@ -284,7 +294,7 @@ export class CombatSystem {
     return {
       success: true,
       message: 'You unleashed Arcane Beam!',
-      damageDealt: damage,
+      damageDealt: stepDamage[0],
       projectiles: [projectile],
     };
   }

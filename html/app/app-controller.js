@@ -298,6 +298,59 @@ export class LokartaApp {
     }
   }
 
+  pushKnockbackMonster(monster, fX, fY, endStep, currentStep, stepDamage) {
+    if (!monster || monster.hp <= 0) return;
+
+    const pushDist = Math.max(1, endStep - currentStep);
+    let targetX = monster.x;
+    let targetY = monster.y;
+
+    for (let step = 1; step <= pushDist; step++) {
+      const nx = targetX + fX;
+      const ny = targetY + fY;
+
+      if (!this.gridMap.isWalkable(nx, ny)) {
+        break; // Wall stop
+      }
+      targetX = nx;
+      targetY = ny;
+    }
+
+    if (targetX === monster.x && targetY === monster.y) return;
+
+    // Check if target landing tile is occupied by another monster
+    const standingMonster = this.monsters.find(m => m.id !== monster.id && m.hp > 0 && m.x === targetX && m.y === targetY);
+    if (standingMonster) {
+      // Displace standing monster 1 tile backward
+      let dispX = targetX + fX;
+      let dispY = targetY + fY;
+
+      if (this.gridMap.isWalkable(dispX, dispY) && !this.monsters.some(m => m.id !== standingMonster.id && m.hp > 0 && m.x === dispX && m.y === dispY)) {
+        standingMonster.x = dispX;
+        standingMonster.y = dispY;
+      }
+
+      // Displaced standing monster also receives displacement damage!
+      const dispDmg = Math.max(10, Math.round(stepDamage * 0.5));
+      standingMonster.hp -= dispDmg;
+      this.addFloatingText(`-${dispDmg} Collide!`, targetX, targetY, '#ef4444');
+      this.logCombat(`${standingMonster.name} was displaced by knockback collision for ${dispDmg} damage!`, 'combat');
+
+      if (standingMonster.hp <= 0) {
+        const loot = CombatSystem.generateMonsterLoot(standingMonster);
+        this.handleCombatResult({
+          success: true,
+          defeatedMonsterId: standingMonster.id,
+          droppedLoot: loot,
+        }, targetX, targetY);
+      }
+    }
+
+    // Move pushed monster to target tile
+    monster.x = targetX;
+    monster.y = targetY;
+  }
+
   updateAnimations(dtMs) {
     const dtSec = dtMs / 1000;
 
@@ -311,27 +364,29 @@ export class LokartaApp {
 
         if (targetWaveIndex > p.currentWaveIndex && targetWaveIndex < p.waves.length) {
           p.currentWaveIndex = targetWaveIndex;
-          const wave = p.waves[targetWaveIndex];
+          const stepIdx = targetWaveIndex;
+          const wave = p.waves[stepIdx];
+          const stepDmg = p.stepDamage?.[stepIdx] ?? 40;
+          const stepVol = p.stepVolumes?.[stepIdx] ?? 1.0;
+
+          // Play cast sound ONCE per wave step, diminishing per step
+          soundFX.play('energyBeam', stepVol);
 
           for (const tile of wave.tiles) {
             const pxX = tile.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
             const pxY = tile.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
 
             if (tile.isWall) {
-              soundFX.playAt('energyBeam', tile.x, tile.y, this.player.x, this.player.y);
               this.triggerImpactBurst(pxX, pxY, p.visual, p.color);
             } else {
-              soundFX.playAt('energyBeam', tile.x, tile.y, this.player.x, this.player.y);
               const hitMonster = this.monsters.find(m => m.hp > 0 && m.x === tile.x && m.y === tile.y);
               if (hitMonster && !p.hitMonsterIds.includes(hitMonster.id)) {
                 p.hitMonsterIds.push(hitMonster.id);
-                const payload = p.damagePayload || {};
-                const dmg = payload.damage || 35;
-                hitMonster.hp -= dmg;
+                hitMonster.hp -= stepDmg;
 
                 this.triggerImpactBurst(pxX, pxY, p.visual, p.color);
 
-                let combatMsg = `Arcane Beam struck ${hitMonster.name} for ${dmg} magic damage!`;
+                let combatMsg = `Arcane Beam (Wave ${stepIdx + 1}) struck ${hitMonster.name} for ${stepDmg} magic damage!`;
                 if (hitMonster.hp <= 0) {
                   combatMsg += ` ${hitMonster.name} was slain!`;
                   const loot = CombatSystem.generateMonsterLoot(hitMonster);
@@ -340,10 +395,13 @@ export class LokartaApp {
                     defeatedMonsterId: hitMonster.id,
                     droppedLoot: loot,
                   }, tile.x, tile.y);
+                } else {
+                  // Perform Knockback Push to end of beam path
+                  this.pushKnockbackMonster(hitMonster, p.fX || 0, p.fY || 0, p.waves.length, stepIdx + 1, stepDmg);
                 }
 
                 this.logCombat(combatMsg, 'combat');
-                this.addFloatingText(`-${dmg}`, tile.x, tile.y, '#ff66dd');
+                this.addFloatingText(`-${stepDmg}`, tile.x, tile.y, '#ff66dd');
               }
             }
           }

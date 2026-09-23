@@ -119,14 +119,19 @@ export class CanvasRenderer {
     for (const p of projectiles) {
       if (p.type === 'energy_beam' && p.waves) {
         ctx.save();
-        const mainColor = p.color || '#ff66dd';
-        const glowColor = p.visual?.glowColor || '#ff00aa';
+        const stepColors = p.visual?.stepColors || ['#ff00aa', '#ff66dd', '#d946ef', '#a855f7'];
 
-        // Render all active wave steps up to current step index
-        for (let idx = 0; idx <= p.currentWaveIndex && idx < p.waves.length; idx++) {
+        // Render all wave steps that have started expanding
+        for (let idx = 0; idx < p.waves.length; idx++) {
           const wave = p.waves[idx];
-          const ageMs = p.elapsedMs - (wave.delayMs || 0);
-          const alpha = Math.max(0, 1.0 - ageMs / 300); // 300ms fadeout per step
+          if (p.elapsedMs < wave.delayMs) continue; // Not yet reached
+
+          const ageMs = p.elapsedMs - wave.delayMs;
+          const stepAlpha = Math.max(0.2, 1.0 - (idx * 0.15));
+          const fadeAlpha = Math.max(0, 1.0 - ageMs / 400); // 400ms visible duration
+          const alpha = stepAlpha * fadeAlpha;
+
+          const stepColor = stepColors[idx] || stepColors[stepColors.length - 1];
 
           ctx.globalAlpha = alpha;
           for (const tile of wave.tiles) {
@@ -140,19 +145,19 @@ export class CanvasRenderer {
               // Radial Energy Wave Aura
               const cx = sx + CONFIG.GRID_SIZE / 2;
               const cy = sy + CONFIG.GRID_SIZE / 2;
-              const auraGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, CONFIG.GRID_SIZE * 0.7);
+              const auraGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, CONFIG.GRID_SIZE * 0.75);
               auraGrad.addColorStop(0, '#ffffff');
-              auraGrad.addColorStop(0.4, mainColor);
-              auraGrad.addColorStop(1, 'rgba(255, 0, 170, 0)');
+              auraGrad.addColorStop(0.4, stepColor);
+              auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
               ctx.fillStyle = auraGrad;
               ctx.beginPath();
-              ctx.arc(cx, cy, CONFIG.GRID_SIZE * 0.7, 0, Math.PI * 2);
+              ctx.arc(cx, cy, CONFIG.GRID_SIZE * 0.75, 0, Math.PI * 2);
               ctx.fill();
 
               // Glowing Square Border
-              ctx.strokeStyle = glowColor;
-              ctx.lineWidth = 2;
+              ctx.strokeStyle = stepColor;
+              ctx.lineWidth = Math.max(1, 3 - idx * 0.5);
               ctx.strokeRect(sx + 3, sy + 3, CONFIG.GRID_SIZE - 6, CONFIG.GRID_SIZE - 6);
             }
           }
