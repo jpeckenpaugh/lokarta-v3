@@ -1,0 +1,218 @@
+/* Lokarta: Come Into The Light - Base Theme & Viewport Layout Styles */
+
+:root {
+  --bg-primary: #0a0b10;
+  --bg-panel: #14161f;
+  --bg-panel-header: #1e2130;
+  --bg-card: #0b0d14;
+  --border-color: #2e344d;
+  --border-highlight: #4c5680;
+  --gold-accent: #e5b95c;
+  --gold-glow: rgba(229, 185, 92, 0.35);
+  --blue-accent: #38bdf8;
+  --blue-glow: rgba(56, 189, 248, 0.35);
+  --text-primary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --hp-red: #ef4444;
+  --hp-red-glow: rgba(239, 68, 68, 0.4);
+  --mp-blue: #3b82f6;
+  --mp-blue-glow: rgba(59, 130, 246, 0.4);
+  --xp-gold: #f59e0b;
+  --xp-gold-glow: rgba(245, 158, 11, 0.4);
+  --font-display: 'Cinzel', 'Trajan Pro', 'Palatino', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: radial-gradient(circle at center, #11131c, #050609);
+  position: relative;
+}
+
+/* ==========================================================================
+   App Header
+   ========================================================================== */
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: var(--bg-panel-header);
+  border-bottom: 2px solid var(--border-color);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-icon {
+  font-size: 22px;
+  filter: drop-shadow(0 0 6px var(--gold-accent));
+}
+
+.game-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 3px;
+  color: var(--gold-accent);
+  text-shadow: 0 0 8px var(--gold-glow);
+}
+
+.tagline {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-left: 1px solid var(--border-color);
+  padding-left: 10px;
+}
+
+.system-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.engine-badge {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  background-color: #0b0d14;
+  color: var(--blue-accent);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.audio-btn, .header-btn {
+  cursor: pointer;
+  background-color: #1a1e2e;
+  color: var(--gold-accent);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-family: var(--font-sans);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.audio-btn:hover, .header-btn:hover {
+  background-color: #2a3148;
+  border-color: var(--gold-accent);
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.audio-btn.muted {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* ==========================================================================
+   Main Game Frame Layout
+   ========================================================================== */
+
+.main-frame {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.center-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 2px solid var(--border-color);
+  position: relative;
+}
+
+.viewport-panel {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #050608;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.canvas-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  cursor: crosshair;
+}
+
+#game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Touch controls overlay for mobile */
+.touch-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: none;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+  gap: 4px;
+  z-index: 20;
+  opacity: 0.75;
+}
+
+.touch-btn {
+  background: rgba(20, 24, 38, 0.85);
+  border: 1px solid var(--gold-accent);
+  color: var(--gold-accent);
+  border-radius: 6px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.touch-btn:active {
+  background: var(--gold-accent);
+  color: #050608;
+}
