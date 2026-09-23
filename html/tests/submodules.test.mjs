@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { CONFIG, TILE_TYPES, createPlayer } from '../config.js';
-import { GridMap } from '../grid-map.js';
-import { LightingSystem } from '../lighting-system.js';
-import { ProgressionSystem } from '../progression-system.js';
-import { CombatSystem } from '../combat-system.js';
-import { EntityAI } from '../entity-ai.js';
-import { InventorySystem } from '../inventory-system.js';
-import { FateGrantSystem } from '../fate-grant-system.js';
-import { GestureEngine } from '../gesture-engine.js';
+import { CONFIG, TILE_TYPES, createPlayer } from '../engine/config.js';
+import { GridMap } from '../engine/grid-map.js';
+import { LightingSystem } from '../engine/lighting-system.js';
+import { ProgressionSystem } from '../engine/progression-system.js';
+import { CombatSystem } from '../engine/combat-system.js';
+import { EntityAI } from '../engine/entity-ai.js';
+import { InventorySystem } from '../engine/inventory-system.js';
+import { FateGrantSystem } from '../engine/fate-grant-system.js';
+import { GestureEngine } from '../engine/gesture-engine.js';
 
 test('Modular Engine Submodules', async (t) => {
   await t.test('verifies config.js exports', () => {
