@@ -42,6 +42,7 @@ test('JSON Data Catalogs', async (t) => {
       assert.ok(typeof monster.moveCadence === 'number', `Monster ${key} must specify moveCadence`);
       assert.ok(typeof monster.attackCadence === 'number', `Monster ${key} must specify attackCadence`);
       assert.ok(['chase', 'standoff'].includes(monster.aiType), `Invalid aiType for ${key}`);
+      assert.ok(Array.isArray(monster.lootTable), `Monster ${key} must specify lootTable array`);
     }
   });
 

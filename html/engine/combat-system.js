@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
-import { ITEMS_CATALOG } from '../data/index.js';
+import { ITEMS_CATALOG, MONSTERS_CATALOG } from '../data/index.js';
 
 export class CombatSystem {
   static decrementCooldowns(player, deltaSec) {
@@ -511,73 +511,26 @@ export class CombatSystem {
   }
 
   /**
-   * Generates loot dropped upon monster defeat.
+   * Generates loot dropped upon monster defeat based on MONSTERS_CATALOG lootTable rules.
    */
   static generateMonsterLoot(monster) {
     const loot = [];
-    const roll = Math.random();
+    const monsterDef = MONSTERS_CATALOG[monster.type];
+    if (!monsterDef || !monsterDef.lootTable) {
+      return loot;
+    }
 
-    if (monster.type === 'giant_rat') {
-      if (roll < 0.4) {
+    const roll = Math.random();
+    for (const dropEntry of monsterDef.lootTable) {
+      if (dropEntry.always || (roll >= dropEntry.minRoll && roll < dropEntry.maxRoll)) {
         loot.push({
-          item_id: 'health_potion',
-          name: 'Health Potion',
-          type: 'consumable',
-          quantity: 1,
-          stat_bonus: CONFIG.HEALTH_POTION_HEAL,
+          item_id: dropEntry.item_id,
+          name: dropEntry.name,
+          type: dropEntry.type,
+          quantity: dropEntry.quantity,
+          stat_bonus: dropEntry.stat_bonus,
         });
       }
-    } else if (monster.type === 'crypt_skeleton') {
-      if (roll < 0.5) {
-        loot.push({
-          item_id: 'health_potion',
-          name: 'Health Potion',
-          type: 'consumable',
-          quantity: 1,
-          stat_bonus: CONFIG.HEALTH_POTION_HEAL,
-        });
-      } else {
-        loot.push({
-          item_id: 'arrows',
-          name: 'Arrows',
-          type: 'ammo',
-          quantity: 10,
-          stat_bonus: 0,
-        });
-      }
-    } else if (monster.type === 'shadow_cultist' || monster.type === 'elite_cultist') {
-      if (roll < 0.6) {
-        loot.push({
-          item_id: 'mana_potion',
-          name: 'Mana Potion',
-          type: 'consumable',
-          quantity: 1,
-          stat_bonus: CONFIG.MANA_POTION_RESTORE,
-        });
-      } else {
-        loot.push({
-          item_id: 'torch',
-          name: 'Wooden Torch',
-          type: 'offhand',
-          quantity: 1,
-          stat_bonus: CONFIG.TORCH_LIGHT_RADIUS,
-        });
-      }
-    } else if (monster.type === 'abyssal_overlord') {
-      loot.push({
-        item_id: 'mana_potion',
-        name: 'Greater Mana Potion',
-        type: 'consumable',
-        quantity: 3,
-        stat_bonus: 60,
-      });
-      loot.push({
-        item_id: 'health_potion',
-        name: 'Greater Health Potion',
-        type: 'consumable',
-        quantity: 3,
-        stat_bonus: 50,
-      });
     }
 
     return loot;
