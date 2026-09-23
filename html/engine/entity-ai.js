@@ -6,6 +6,17 @@ import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
 import { MONSTERS_CATALOG } from '../data/index.js';
 
+const AI_HANDLERS = {
+  standoff: (monster, player, gridMap, monsters, mData) =>
+    EntityAI.updateCultist(monster, player, gridMap, monsters, mData),
+  chase: (monster, player, gridMap, monsters, mData) => {
+    const minDmg = mData?.damageMin ?? (monster.type === 'giant_rat' ? CONFIG.RAT_DAMAGE_MIN : monster.type === 'crypt_skeleton' ? CONFIG.SKELETON_DAMAGE_MIN : CONFIG.BOSS_DAMAGE_MIN);
+    const maxDmg = mData?.damageMax ?? (monster.type === 'giant_rat' ? CONFIG.RAT_DAMAGE_MAX : monster.type === 'crypt_skeleton' ? CONFIG.SKELETON_DAMAGE_MAX : CONFIG.BOSS_DAMAGE_MAX);
+    const moveCadence = mData?.moveCadence ?? (monster.type === 'giant_rat' ? CONFIG.RAT_MOVE_CADENCE_SEC : monster.type === 'crypt_skeleton' ? CONFIG.SKELETON_MOVE_CADENCE_SEC : CONFIG.BOSS_MOVE_CADENCE_SEC);
+    return EntityAI.updateMeleeMonster(monster, player, gridMap, monsters, minDmg, maxDmg, moveCadence);
+  },
+};
+
 export class EntityAI {
   /**
    * Updates all active monsters in the dungeon on a game simulation tick.
@@ -35,27 +46,12 @@ export class EntityAI {
         continue;
       }
 
-      // Check catalog for monster metadata
-      const mData = MONSTERS_CATALOG[monster.type];
-      if (mData && mData.aiType === 'standoff') {
-        const action = EntityAI.updateCultist(monster, player, gridMap, monsters);
-        if (action) results.push(action);
-      } else if (mData) {
-        const action = EntityAI.updateMeleeMonster(monster, player, gridMap, monsters, mData.damageMin, mData.damageMax, mData.moveCadence);
-        if (action) results.push(action);
-      } else if (monster.type === 'giant_rat') {
-        const action = EntityAI.updateMeleeMonster(monster, player, gridMap, monsters, CONFIG.RAT_DAMAGE_MIN, CONFIG.RAT_DAMAGE_MAX, CONFIG.RAT_MOVE_CADENCE_SEC);
-        if (action) results.push(action);
-      } else if (monster.type === 'crypt_skeleton') {
-        const action = EntityAI.updateMeleeMonster(monster, player, gridMap, monsters, CONFIG.SKELETON_DAMAGE_MIN, CONFIG.SKELETON_DAMAGE_MAX, CONFIG.SKELETON_MOVE_CADENCE_SEC);
-        if (action) results.push(action);
-      } else if (monster.type === 'abyssal_overlord' || monster.isBoss) {
-        const action = EntityAI.updateMeleeMonster(monster, player, gridMap, monsters, CONFIG.BOSS_DAMAGE_MIN, CONFIG.BOSS_DAMAGE_MAX, CONFIG.BOSS_MOVE_CADENCE_SEC);
-        if (action) results.push(action);
-      } else if (monster.type === 'shadow_cultist' || monster.type === 'elite_cultist') {
-        const action = EntityAI.updateCultist(monster, player, gridMap, monsters);
-        if (action) results.push(action);
-      }
+      // Dispatch via AI_HANDLERS map driven by catalog metadata
+      const mData = MONSTERS_CATALOG[monster.type] || (monster.type === 'boss_overlord' ? MONSTERS_CATALOG.abyssal_overlord : null);
+      const aiType = mData?.aiType || (monster.type?.includes('cultist') ? 'standoff' : 'chase');
+      const handler = AI_HANDLERS[aiType] || AI_HANDLERS.chase;
+      const action = handler(monster, player, gridMap, monsters, mData);
+      if (action) results.push(action);
     }
 
     return results;
@@ -119,7 +115,7 @@ export class EntityAI {
     return null;
   }
 
-  static updateCultist(cultist, player, gridMap, allMonsters) {
+  static updateCultist(cultist, player, gridMap, allMonsters, mData = MONSTERS_CATALOG[cultist.type]) {
     const dist = Math.hypot(cultist.x - player.x, cultist.y - player.y);
     const hasLOS = LightingSystem.hasLineOfSight(gridMap, cultist.x, cultist.y, player.x, player.y);
 
@@ -128,8 +124,8 @@ export class EntityAI {
     // 1. Attack if in range (<= 5) with LOS
     if (dist <= 5 && hasLOS && cultist.attackCooldown <= 0) {
       cultist.attackCooldown = cultist.attackCadence || 2.0;
-      const minDmg = cultist.type === 'elite_cultist' ? 14 : CONFIG.CULTIST_DAMAGE_MIN;
-      const maxDmg = cultist.type === 'elite_cultist' ? 22 : CONFIG.CULTIST_DAMAGE_MAX;
+      const minDmg = mData?.damageMin ?? (cultist.type === 'elite_cultist' ? 14 : CONFIG.CULTIST_DAMAGE_MIN);
+      const maxDmg = mData?.damageMax ?? (cultist.type === 'elite_cultist' ? 22 : CONFIG.CULTIST_DAMAGE_MAX);
       const damage = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
       player.hp = Math.max(0, player.hp - damage);
 
@@ -156,16 +152,19 @@ export class EntityAI {
 
     // 2. Reposition / Standoff management
     if ((cultist.moveCooldown || 0) <= 0) {
-      cultist.moveCooldown = (cultist.moveCadence || CONFIG.CULTIST_MOVE_CADENCE_SEC) + (Math.random() * 0.3 - 0.1);
+      cultist.moveCooldown = (cultist.moveCadence || mData?.moveCadence || CONFIG.CULTIST_MOVE_CADENCE_SEC) + (Math.random() * 0.3 - 0.1);
 
-      if (dist < CONFIG.CULTIST_STANDOFF_MIN) {
+      const standoffMin = mData?.standoffMin ?? CONFIG.CULTIST_STANDOFF_MIN;
+      const standoffMax = mData?.standoffMax ?? CONFIG.CULTIST_STANDOFF_MAX;
+
+      if (dist < standoffMin) {
         const retreatStep = EntityAI.findRetreatStep(cultist, player, gridMap, allMonsters);
         if (retreatStep) {
           cultist.facing = EntityAI.getFacing(cultist.x, cultist.y, retreatStep.x, retreatStep.y);
           cultist.x = retreatStep.x;
           cultist.y = retreatStep.y;
         }
-      } else if (dist > CONFIG.CULTIST_STANDOFF_MAX) {
+      } else if (dist > standoffMax) {
         const nextStep = EntityAI.findNextStepAStar(
           { x: cultist.x, y: cultist.y },
           { x: player.x, y: player.y },

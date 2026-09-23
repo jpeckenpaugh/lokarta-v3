@@ -105,7 +105,8 @@
       "quantity": 1,
       "stat_bonus": 16,
       "cooldown": 1.0,
-      "icon": "🏹"
+      "icon": "🏹",
+      "grantedAmmo": { "item_id": "arrows", "quantity": 20 }
     }
   },
   {
@@ -123,7 +124,8 @@
       "quantity": 1,
       "stat_bonus": 37,
       "cooldown": 4.0,
-      "icon": "🎯"
+      "icon": "🎯",
+      "grantedAmmo": { "item_id": "arrows", "quantity": 20 }
     }
   },
   {
@@ -157,7 +159,8 @@
       "type": "weapon",
       "quantity": 1,
       "stat_bonus": 6,
-      "icon": "🏹"
+      "icon": "🏹",
+      "grantedAmmo": { "item_id": "arrows", "quantity": 20 }
     }
   },
   {

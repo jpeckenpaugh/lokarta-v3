@@ -25,27 +25,13 @@ export class ProgressionSystem {
    * @returns {number}
    */
   static getMonsterXp(monsterType, floor = 1, isBoss = false) {
-    const info = MONSTERS_CATALOG[monsterType];
+    const info = MONSTERS_CATALOG[monsterType] || (monsterType === 'boss_overlord' ? MONSTERS_CATALOG.abyssal_overlord : null);
     if (info) {
       if (info.isBoss || isBoss) return info.baseXp;
       const floorMult = monsterType === 'giant_rat' ? floor : (floor - 1);
       return info.baseXp + floorMult * info.xpFloorScale;
     }
-    if (isBoss || monsterType === 'abyssal_overlord' || monsterType === 'boss_overlord') {
-      return 500;
-    }
-    if (monsterType === 'giant_rat') {
-      return 20 + floor * 4;
-    }
-    if (monsterType === 'crypt_skeleton') {
-      return 35 + (floor - 1) * 8;
-    }
-    if (monsterType === 'shadow_cultist') {
-      return 45 + (floor - 1) * 10;
-    }
-    if (monsterType === 'elite_cultist') {
-      return 65 + (floor - 1) * 12;
-    }
+    if (isBoss) return 500;
     return 30 + floor * 5;
   }
 

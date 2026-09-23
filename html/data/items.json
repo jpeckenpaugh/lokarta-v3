@@ -72,6 +72,7 @@
     "icon": "🏹",
     "svgCode": "1F3F9",
     "actionKey": "bow_shot",
+    "grantedAmmo": { "item_id": "arrows", "quantity": 20 },
     "maxStack": 1
   },
   "tempered_broadsword": {
@@ -187,6 +188,7 @@
     "icon": "🏹",
     "svgCode": "1F3F9",
     "actionKey": "bow_shot",
+    "grantedAmmo": { "item_id": "arrows", "quantity": 20 },
     "maxStack": 1
   },
   "spell_power_shot": {
@@ -199,6 +201,7 @@
     "icon": "🎯",
     "svgCode": "1F3AF",
     "actionKey": "power_shot",
+    "grantedAmmo": { "item_id": "arrows", "quantity": 20 },
     "maxStack": 1
   },
   "spell_slash": {

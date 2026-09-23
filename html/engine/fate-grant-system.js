@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Fate Grant Draft Subsystem
  */
 
-import { CARDS_CATALOG } from '../data/index.js';
+import { CARDS_CATALOG, ITEMS_CATALOG } from '../data/index.js';
 
 export class FateGrantSystem {
   static CARD_DATABASE = CARDS_CATALOG;
@@ -70,22 +70,25 @@ export class FateGrantSystem {
         }
       }
 
-      // If drafting a bow weapon/spell, grant starter arrows if none exist
-      if (itemToPlace.item_id.includes('bow')) {
-        const hasArrows = player.action_bar?.some(s => s?.item_id === 'arrows') || player.backpack?.some(s => s?.item_id === 'arrows');
-        if (!hasArrows && player.backpack) {
+      // If drafting an item that grants starter ammo (e.g. bow), grant starter ammo if none exist
+      const grantedAmmo = itemToPlace.grantedAmmo || ITEMS_CATALOG[itemToPlace.item_id]?.grantedAmmo;
+      if (grantedAmmo) {
+        const ammoId = grantedAmmo.item_id;
+        const hasAmmo = player.action_bar?.some(s => s?.item_id === ammoId) || player.backpack?.some(s => s?.item_id === ammoId);
+        if (!hasAmmo && player.backpack) {
+          const ammoCatalogItem = ITEMS_CATALOG[ammoId] || {};
           const arrowItem = {
-            item_id: 'arrows',
-            name: 'Arrows',
-            type: 'ammo',
-            quantity: 20,
-            stat_bonus: 0,
-            icon: '🏹',
+            item_id: ammoId,
+            name: ammoCatalogItem.name || 'Arrows',
+            type: ammoCatalogItem.type || 'ammo',
+            quantity: grantedAmmo.quantity || 20,
+            stat_bonus: ammoCatalogItem.stat_bonus || 0,
+            icon: ammoCatalogItem.icon || '🏹',
           };
           const emptyBp = player.backpack.findIndex(s => s === null);
           if (emptyBp !== -1) {
             player.backpack[emptyBp] = arrowItem;
-            result.addedToBackpack.push('Starter Arrows (x20)');
+            result.addedToBackpack.push(`Starter Arrows (x${arrowItem.quantity})`);
           }
         }
       }
