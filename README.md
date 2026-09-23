@@ -16,7 +16,7 @@
 - **Dynamic Line-of-Sight (LOS) Lighting:** Raycasted Bresenham fog of war algorithm with dynamic vision radii (Base FOV: 10 tiles, Torch: 14 tiles, Light Spell: 12 tiles).
 - **4 Playable Vocations & 2.5x Class Mastery:** Play as Magician, Archer, Fighter, or Paladin with unique stat growth curves and a $2.5\times$ Native Class Mastery damage/healing multiplier for aligned gear and abilities.
 - **Fate Grant Leveling System:** 5-card draft reward selection upon leveling up (up to Level 20 cap), offering vocation-aligned skills, stat boosts, and gear.
-- **Data-Driven JSON Catalogs:** Clean JSON data structures under `html/data/` defining `cards.json` (Fate Grant draft cards), `monsters.json` (bestiary stats & cadences), `items.json` (gear & consumable attributes), `vocations.json` (character archetypes & growth), and `sounds.json` (sound synthesis definitions).
+- **Data-Driven JSON Catalogs:** Clean JSON data structures under `html/data/` defining 11 decoupled catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tile_themes.json`, and `keybindings.json`.
 - **Real-Time Web Audio Synthesizer:** 19 procedural sound definitions (footsteps, spell sparks, bow snaps, holy chimes, level-up fanfares, victory/defeat) driven by `html/data/sounds.json` without external audio asset files.
 - **Offline Save Persistence:** Local database persistence (`lokarta_browser_db`) via IndexedDB storing characters, action bars, equipment paperdolls, backpacks, profile settings, and generated floor states.
 
@@ -67,7 +67,7 @@ Run all test suites from the repository root:
 node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs
 ```
 
-### Test Suite Coverage (5 Test Suites, 51/51 Passing)
+### Test Suite Coverage (5 Test Suites, 57/57 Passing)
 
 - **Floor Generator (1–20):** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, biome mapping, and Floor 20 Abyssal Overlord stats (600 HP, 20 ATK, 6 DEF).
 - **GridMap & Tile Bounds:** Tests matrix initialization, tile opacity/walkability checks, and item placement/removal.
@@ -78,7 +78,7 @@ node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/subm
 - **FateGrantSystem:** Verifies 5-card draft reward generation from `cards.json` and inventory placement.
 - **GestureEngine:** Validates key mapping for hotkeys `1`–`9` and `0` to slots 0–9.
 - **GameClient & Worker Protocol:** Tests client initialization and worker RPC lifecycle communication.
-- **JSON Data Catalogs:** Validates schema structure and completeness for `cards.json`, `monsters.json`, `items.json`, `vocations.json`, and `sounds.json`.
+- **JSON Data Catalogs:** Validates schema structure and completeness across all 11 JSON catalogs under `html/data/`.
 
 ---
 
@@ -93,7 +93,7 @@ The client application is structured into clean, modular vanilla ES JavaScript s
 | [`html/app.js`](file:///Users/jarad/git/lokarta-v3/html/app.js) | Bootstrap | Main UI Thread | Central loading entry point for application controllers and renderers. |
 | [`html/app/`](file:///Users/jarad/git/lokarta-v3/html/app/) | UI Controller | Main UI Thread | Submodules: `app-controller.js`, `canvas-renderer.js`, `hud-manager.js`, `input-controller.js`, `modal-manager.js`, `sprite-renderer.js`. |
 | [`html/audio/`](file:///Users/jarad/git/lokarta-v3/html/audio/) | Audio Subsystem | Main UI Thread | Web Audio API procedural synthesizer (`audio-system.js`) driven by `sounds.json`. |
-| [`html/data/`](file:///Users/jarad/git/lokarta-v3/html/data/) | Data Catalogs | Shared | JSON data catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`. |
+| [`html/data/`](file:///Users/jarad/git/lokarta-v3/html/data/) | Data Catalogs | Shared | 11 JSON data catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tile_themes.json`, `keybindings.json`. |
 | [`html/engine/`](file:///Users/jarad/git/lokarta-v3/html/engine/) | Core Engine | Shared | Submodules: `config.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `entity-ai.js`, `inventory-system.js`, `fate-grant-system.js`, `gesture-engine.js`. |
 | [`html/services/`](file:///Users/jarad/git/lokarta-v3/html/services/) | Services | Shared / Worker | Floor generator (`floor-generator.js`) and IndexedDB persistence (`storage.js`). |
 | [`html/worker/`](file:///Users/jarad/git/lokarta-v3/html/worker/) | Worker RPC | Web Worker Thread | RPC Client (`game-client.js`) and background worker dispatcher (`game-worker.js`). |

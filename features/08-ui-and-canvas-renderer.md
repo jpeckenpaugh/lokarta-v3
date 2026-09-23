@@ -8,9 +8,13 @@ The **UI Controller and Canvas Renderer** delivers the visual presentation layer
 
 ## 2. Mapped Codebase Modules
 
-- [html/app.js](file:///Users/jarad/git/lokarta-v3/html/app.js) — Main UI controller, `SpriteRenderer`, canvas render loop (`render`, `drawTile`, `drawItem`, `drawMonster`, `drawPlayer`), HUD updates, gesture handlers.
+- [html/app/sprite-renderer.js](file:///Users/jarad/git/lokarta-v3/html/app/sprite-renderer.js) — Canvas tile/sprite rendering pipeline (`SpriteRenderer`), $O(1)$ dispatch tables (`MONSTER_RENDERERS`, `ITEM_RENDERERS`, `WEAPON_RENDERERS`, `TILE_RENDERERS`, `FACING_EYE_OFFSETS`).
+- [html/app/hud-manager.js](file:///Users/jarad/git/lokarta-v3/html/app/hud-manager.js) — HUD updates and $O(1)$ `EMOJI_TO_SVG_MAP`.
+- [html/app/app-controller.js](file:///Users/jarad/git/lokarta-v3/html/app/app-controller.js) — Main UI controller, $O(1)$ `DIRECTION_VECTORS`.
+- [html/data/tile_themes.json](file:///Users/jarad/git/lokarta-v3/html/data/tile_themes.json) — Biome canvas color themes catalog.
+- [html/data/keybindings.json](file:///Users/jarad/git/lokarta-v3/html/data/keybindings.json) — Action bar hotkey bindings configuration catalog.
 - [html/index.html](file:///Users/jarad/git/lokarta-v3/html/index.html) — DOM layout structure (Canvas container, HUD headers, Action bar slots, Modal dialogs, Log panel).
-- [html/styles.css](file:///Users/jarad/git/lokarta-v3/html/styles.css) — Dark retro CSS styling, flexbox/grid layout, responsive viewports, item slot styling.
+- [html/styles/index.css](file:///Users/jarad/git/lokarta-v3/html/styles/index.css) — Modular stylesheets container (`base.css`, `hud.css`, `modals.css`).
 
 ---
 
@@ -19,8 +23,9 @@ The **UI Controller and Canvas Renderer** delivers the visual presentation layer
 ### 3.1 60 FPS HTML5 Canvas Rendering Pipeline
 - **Smooth Coordinate Interpolation:** Interpolates grid movement positions ($x, y$) over time for smooth entity sliding animations.
 - **Camera Centering:** Dynamically centers the canvas camera viewport on current player coordinates $(x_p, y_p)$.
-- **Procedural Canvas Tile & Sprite Renderer:**
-  - Carved walls with brick detail lines and highlight borders.
+- **Procedural Canvas Tile & Sprite Renderer ($O(1)$ Dispatch Tables):**
+  - Uses $O(1)$ object literal map lookup dispatchers in `sprite-renderer.js` (`MONSTER_RENDERERS`, `ITEM_RENDERERS`, `WEAPON_RENDERERS`, `TILE_RENDERERS`, `FACING_EYE_OFFSETS`) to eliminate `switch`/`if-else` chains.
+  - Carved walls with brick detail lines and highlight borders (biome colors driven by `tile_themes.json`).
   - Floor tiles with subtle grid borders and corner accents.
   - Stairs down with layered blue step rings and glowing center orb.
   - Doors with wood grain borders.

@@ -59,7 +59,7 @@ html/
 ├── app.js                # Central bootstrap & loading entry point
 ├── app/                  # UI & Rendering submodules (app-controller, canvas-renderer, sprite-renderer, etc.)
 ├── audio/                # Web Audio synthesizer subsystem (audio-system.js)
-├── data/                 # JSON data catalogs (cards.json, monsters.json, items.json, vocations.json, sounds.json)
+├── data/                 # 11 JSON data catalogs (cards, monsters, items, vocations, sounds, abilities, biomes, encounters, dungeons, tile_themes, keybindings)
 ├── engine/               # Core game engine submodules (config, grid-map, lighting, combat, AI, inventory, etc.)
 ├── services/             # Floor generator & IndexedDB persistence layer
 ├── styles/               # Modular CSS stylesheets (base.css, hud.css, modals.css, index.css)
@@ -112,10 +112,10 @@ html/
 | `LightingSystem` | Raycasted line-of-sight (LOS) & fog of war calculation. | `calculateVisibility(grid, px, py, radius, hasSpell)`, `resetVisibility()`, `isTileVisible(x, y)`, `isTileExplored(x, y)` |
 | `ProgressionSystem` | Character level scaling, XP increments, vitals growth across 4 vocations. | `createPlayer(vocation)`, `addXp(player, amount)`, `getVitalsForLevel(vocation, level)`, `calculateNextXp(level)` |
 | `CombatSystem` | Turn-based attack resolution, 2.5x Native Class Mastery scaling, ability execution. | `executeAbility(player, abilityId, targetX, targetY, grid, monsters)`, `calculateDamage(attacker, weapon/ability)`, `updateCooldowns(entity, deltaSec)` |
-| `EntityAI` | Monster turn cadence, aggro range checks, pathfinding toward player. | `processMonsterTurns(monsters, player, grid, deltaSec)`, `findPath(monster, targetX, targetY, grid)` |
+| `EntityAI` | Monster turn cadence, aggro range checks, pathfinding toward player via `AI_HANDLERS` map. | `processMonsterTurns(monsters, player, grid, deltaSec)`, `findPath(monster, targetX, targetY, grid)` |
 | `InventorySystem` | Action bar, backpack, paperdoll equipment management, item stacking. | `addItemToInventory(player, item)`, `equipItem(player, item, slot)`, `unequipItem(player, slot)`, `useItem(player, itemSlot)` |
 | `FateGrantSystem` | 5-card draft reward generation on level up. | `generateDraftCards(player, floorNumber)`, `applyCardReward(player, card)` |
-| `GestureEngine` | Touch gesture & keyboard input mapping. | `handleKeyDown(event)`, `handleTouchStart(e)`, `handleTouchEnd(e)`, `onGesture(callback)` |
+| `GestureEngine` | Touch gesture & keyboard input mapping via `KEYBINDINGS_CATALOG`. | `handleKeyDown(event)`, `handleTouchStart(e)`, `handleTouchEnd(e)`, `onGesture(callback)` |
 
 ### 3.2 Configuration Parameters (`CONFIG`)
 - **Map Dimensions:** Grid size = 32px, Width = 40 tiles, Height = 40 tiles.
@@ -131,13 +131,20 @@ html/
 - **Paladin:** Base HP 120 (+15/level), Base MP 90 (+10/level). Native: Warhammers, Relics, Holy Strike, Healing Prayer.
 
 ### 3.4 Data-Driven JSON Catalogs (`html/data/`)
-The game data systems are fully decoupled from codebase logic and driven by JSON data files in `html/data/`:
+The game data systems are fully decoupled from codebase logic and driven by 11 JSON data files in `html/data/`:
 - **`cards.json`**: 24 Fate Grant Draft cards with rarity, stat bonuses, vocation affinities, and item payloads.
-- **`monsters.json`**: Bestiary catalog for 5 monster types defining base HP/ATK/DEF, movement/attack cadences, AI types (`chase`, `standoff`), and XP rewards.
-- **`items.json`**: Attributes, icons, vocation affinities, and stack limits for 24 weapons, armor, relics, consumables, and spells.
-- **`vocations.json`**: Starting HP/MP, per-level HP/MP growth, damage scaling steps, and descriptions for all 4 playable vocations.
+- **`monsters.json`**: Bestiary catalog for monster types defining base HP/ATK/DEF, cadences, AI types (`chase`, `standoff`), `svgCode`, and `lootTable` drop rules.
+- **`items.json`**: Attributes, icons, `svgCode`, `vocationAffinity`, `grantedAmmo`, and stack limits for all weapons, armor, relics, consumables, and spells.
+- **`vocations.json`**: Starting HP/MP, per-level growth, damage scaling steps, `eyeColor`, and `regenResource` for all 4 playable vocations.
 - **`sounds.json`**: 19 procedural sound definitions powering `AudioSystem`.
-- **`index.js`**: Export barrel exposing `CARDS_CATALOG`, `MONSTERS_CATALOG`, `ITEMS_CATALOG`, `VOCATIONS_CATALOG`, and `SOUNDS_CATALOG`.
+- **`abilities.json`**: Cooldowns, range, MP costs, and damage parameters for spell skills.
+- **`biomes.json`**: Floor depth ranges and lighting colors for all 4 biomes.
+- **`encounters.json`**: Floor tier spawn groups, boss specifications, and monster density parameters.
+- **`dungeons.json`**: Macro 40x40 room layouts, doorway anchors, milestone bonuses, and floor name overrides.
+- **`tile_themes.json`**: Wall fills, highlights, floor colors, door fills, and stairs colors.
+- **`keybindings.json`**: Movement key maps and hotkey slot assignments.
+- **`index.js`**: Export barrel exposing all 11 JSON catalogs.
+- **Render & AI Dispatchers**: Uses $O(1)$ lookup tables (`MONSTER_RENDERERS`, `ITEM_RENDERERS`, `WEAPON_RENDERERS`, `TILE_RENDERERS`, `AI_HANDLERS`, `CODE_TO_TILE_TYPE`, `EMOJI_TO_SVG_MAP`).
 
 ---
 

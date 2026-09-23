@@ -8,8 +8,10 @@ The **Procedural Dungeon Generator** produces 20 deterministic, $40 \times 40$ t
 
 ## 2. Mapped Codebase Modules
 
-- [html/floor-generator.js](file:///Users/jarad/git/lokarta-v3/html/floor-generator.js) — Core floor generation module (`generateFloor`, `createPRNG`, `getBiomeForFloor`, `verifyPathBFS`, `BIOMES`, `TILE_TYPES`).
-- [html/game-worker.js](file:///Users/jarad/git/lokarta-v3/html/game-worker.js) — Off-thread generation & floor caching integration.
+- [html/services/floor-generator.js](file:///Users/jarad/git/lokarta-v3/html/services/floor-generator.js) — Core floor generation module (`generateFloor`, `createPRNG`, `getBiomeForFloor`, `verifyPathBFS`, `BIOMES`, `TILE_TYPES`).
+- [html/data/dungeons.json](file:///Users/jarad/git/lokarta-v3/html/data/dungeons.json) — Dungeon biome definitions, floor ranges, light colors, and floor name overrides.
+- [html/data/encounters.json](file:///Users/jarad/git/lokarta-v3/html/data/encounters.json) — Catalog-driven monster encounter density scaling parameters (`baseMonstersPerRoom`, `extraMonsterFloorThreshold`, `bonusMonsterChanceFloor`, `bonusMonsterChance`).
+- [html/worker/game-worker.js](file:///Users/jarad/git/lokarta-v3/html/worker/game-worker.js) — Off-thread generation & floor caching integration.
 
 ---
 

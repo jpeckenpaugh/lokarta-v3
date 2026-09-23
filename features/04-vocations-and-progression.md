@@ -8,29 +8,36 @@ The **Vocations and Character Progression** feature manages player character cre
 
 ## 2. Mapped Codebase Modules
 
-- [html/engine.js](file:///Users/jarad/git/lokarta-v3/html/engine.js) — `ProgressionSystem`, `FateGrantSystem`, `DEFAULT_ARCHETYPES`, `createPlayer`.
-- [html/app.js](file:///Users/jarad/git/lokarta-v3/html/app.js) — Character creation UI, Fate Grant card modal presentation, HUD stat displays.
+- [html/engine/progression-system.js](file:///Users/jarad/git/lokarta-v3/html/engine/progression-system.js) — `ProgressionSystem`, `createPlayer`.
+- [html/engine/fate-grant-system.js](file:///Users/jarad/git/lokarta-v3/html/engine/fate-grant-system.js) — `FateGrantSystem` draft logic.
+- [html/data/vocations.json](file:///Users/jarad/git/lokarta-v3/html/data/vocations.json) — Vocation catalog defining base vitals, growth stats, `eyeColor`, and `regenResource`.
+- [html/data/cards.json](file:///Users/jarad/git/lokarta-v3/html/data/cards.json) — Fate Grant card pool definition catalog.
+- [html/app/app-controller.js](file:///Users/jarad/git/lokarta-v3/html/app/app-controller.js) — Character creation UI, Fate Grant card modal presentation, HUD stat displays.
 
 ---
 
 ## 3. Discrete Capabilities & Key Mechanics
 
-### 3.1 4 Playable Character Vocations
+### 3.1 4 Playable Character Vocations (Data-Driven from `vocations.json`)
 - **Magician:**
   - Base Vitals: 60 HP, 150 MP.
   - Per-Level Growth: +8 HP, +16 MP.
+  - Eye Color: `#3b82f6` (Blue). Passive Regen: MP.
   - Class Specialty: Ranged arcane wands, AOE energy beams, illumination spells.
 - **Archer:**
   - Base Vitals: 90 HP, 80 MP.
   - Per-Level Growth: +14 HP, +8 MP.
+  - Eye Color: `#10b981` (Green). Passive Regen: HP.
   - Class Specialty: Longbows, crossbows, precision ranged physical combat, ammo management.
 - **Fighter:**
   - Base Vitals: 140 HP, 30 MP.
   - Per-Level Growth: +18 HP, +4 MP.
+  - Eye Color: `#ef4444` (Red). Passive Regen: HP.
   - Class Specialty: Heavy swords, high defense, melee cleaves, physical durability.
 - **Paladin:**
   - Base Vitals: 120 HP, 90 MP.
   - Per-Level Growth: +15 HP, +10 MP.
+  - Eye Color: `#f59e0b` (Gold). Passive Regen: HP.
   - Class Specialty: Holy warhammers, divine healing prayers, holy strikes, hybrid defense.
 
 ### 3.2 Experience Points & Level Cap

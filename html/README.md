@@ -47,15 +47,15 @@ Run all test suites with:
 node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs
 ```
 
-### Verified Test Suites (51/51 Tests Passing):
-1. **Floor Generator (1-20):** Deterministic Mulberry32 seed generation, 40×40 boundary constraints, spawn at `(2,2)`, exit stairs at `(35,35)`, full BFS room/corridor connectivity, depth-based monster scaling, and Floor 20 Abyssal Overlord boss stats (600 HP, 20 ATK, 6 DEF).
-2. **GridMap & Tile Bounds:** Walkability, walls, stairs, doors, coordinate boundaries, and ground item stack management.
+### Verified Test Suites (57/57 Tests Passing):
+1. **Floor Generator (1-20):** Deterministic Mulberry32 seed generation, 40×40 boundary constraints, spawn at `(2,2)`, exit stairs at `(35,35)`, full BFS room/corridor connectivity, depth-based monster scaling, catalog-driven encounter density parameters (`dungeons.json`, `encounters.json`), and Floor 20 Abyssal Overlord boss stats (600 HP, 20 ATK, 6 DEF).
+2. **GridMap & Tile Bounds:** Walkability, walls, stairs, doors, coordinate boundaries, ground item stack management, and $O(1)$ `CODE_TO_TILE_TYPE` lookup.
 3. **LightingSystem & LOS:** Dynamic light radii (Base 10, Torch 14, Light Spell 12), Bresenham raycasting, wall occlusion, and light-triggered monster aggro.
-4. **ProgressionSystem & Leveling:** XP formulas (`level * 100`), monster kill XP, 4-vocation stat growth (Magician, Archer, Fighter, Paladin), skill boosts, and Level 20 cap.
-5. **CombatSystem & Abilities:** Wand Spark, Light Spell, piercing Energy Beam, Bow Shot (with arrow depletion), Power Shot, Holy Strike, Healing Prayer, and monster loot tables.
-6. **InventorySystem & Stacking:** 10-slot Action Bar, 6-slot Backpack limit, 4-slot Paperdoll equipment mechanics (main_hand, off_hand, armor, relic), 9-item stack limit for Potions/Torches, and 99-item limit for Arrows.
+4. **ProgressionSystem & Leveling:** XP formulas (`level * 100`), monster kill XP, 4-vocation stat growth (Magician, Archer, Fighter, Paladin with `eyeColor` and `regenResource` from `vocations.json`), skill boosts, and Level 20 cap.
+5. **CombatSystem & Abilities:** Catalog-driven ability attributes (`abilities.json`), Wand Spark, Light Spell, piercing Energy Beam, Bow Shot (with arrow depletion), Power Shot, Holy Strike, Healing Prayer, vocation affinity checks (`vocationAffinity`), and monster loot tables (`monsters.json`).
+6. **InventorySystem & Stacking:** 10-slot Action Bar, 6-slot Backpack limit, 4-slot Paperdoll equipment mechanics (main_hand, off_hand, armor, relic), 9-item stack limit for Potions/Torches, and 99-item limit for Arrows (`items.json`).
 7. **GameClient & Worker Protocol:** Asynchronous command serialization, request/response lifecycle, timeout protection, and error propagation.
-8. **JSON Data Catalogs:** Schema validation and completeness tests for `cards.json`, `monsters.json`, `items.json`, `vocations.json`, and `sounds.json`.
+8. **JSON Data Catalogs:** Schema validation and completeness tests across all 11 JSON catalogs (`abilities.json`, `biomes.json`, `cards.json`, `dungeons.json`, `encounters.json`, `items.json`, `keybindings.json`, `monsters.json`, `sounds.json`, `tile_themes.json`, `vocations.json`).
 
 ---
 
@@ -63,9 +63,9 @@ node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/subm
 
 | Module / Directory | Location | Purpose |
 | :--- | :--- | :--- |
-| **App / Renderers** | `html/app/` | UI Controllers (`app-controller.js`, `hud-manager.js`, `input-controller.js`, `modal-manager.js`), Canvas tile/sprite rendering pipeline, 10 Hz fixed tick simulation loop, 60 FPS interpolated animation. |
+| **App / Renderers** | `html/app/` | UI Controllers (`app-controller.js`, `hud-manager.js`, `input-controller.js`, `modal-manager.js`), Canvas tile/sprite rendering pipeline (`sprite-renderer.js` with $O(1)$ lookup maps), 10 Hz fixed tick simulation loop, 60 FPS interpolated animation. |
 | **Audio Subsystem** | `html/audio/` & `html/data/sounds.json` | Web Audio API procedural synthesizer (`audio-system.js`) generating dynamic retro sound effects on the fly driven by `sounds.json`. |
-| **Data Catalogs** | `html/data/` | Data-driven JSON catalogs (`cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`) and barrel export. |
+| **Data Catalogs** | `html/data/` | Data-driven JSON catalogs (11 catalogs: `abilities`, `biomes`, `cards`, `dungeons`, `encounters`, `items`, `keybindings`, `monsters`, `sounds`, `tile_themes`, `vocations`) and barrel export (`catalog.js`). |
 | **Core Engine** | `html/engine/` | Subsystems (`grid-map.js`, `lighting-system.js`, `combat-system.js`, `entity-ai.js`, `inventory-system.js`, `progression-system.js`, `fate-grant-system.js`, `gesture-engine.js`). |
 | **Services** | `html/services/` | Procedural 40×40 dungeon floor generator (`floor-generator.js`) and IndexedDB persistence layer (`storage.js`). |
 | **Styles** | `html/styles/` | Modular stylesheets (`base.css`, `hud.css`, `modals.css`, `index.css`). |

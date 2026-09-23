@@ -8,8 +8,10 @@ The **Tactical Combat and Vocation Abilities** feature governs turn-based combat
 
 ## 2. Mapped Codebase Modules
 
-- [html/engine.js](file:///Users/jarad/git/lokarta-v3/html/engine.js) — `CombatSystem`, `EntityAI`, ability implementations (`Wand Spark`, `Light Spell`, `Energy Beam`, `Bow Shot`, `Power Shot`, `Holy Strike`, `Healing Prayer`).
-- [html/app.js](file:///Users/jarad/git/lokarta-v3/html/app.js) — Input gesture mapping, combat log dispatch, floating damage text, particle FX.
+- [html/engine/combat-system.js](file:///Users/jarad/git/lokarta-v3/html/engine/combat-system.js) — `CombatSystem`, `EntityAI`, ability execution logic.
+- [html/data/abilities.json](file:///Users/jarad/git/lokarta-v3/html/data/abilities.json) — Catalog definitions for ability stats (`Wand Spark`, `Light Spell`, `Energy Beam`, `Bow Shot`, `Power Shot`, `Holy Strike`, `Healing Prayer`).
+- [html/data/monsters.json](file:///Users/jarad/git/lokarta-v3/html/data/monsters.json) — Bestiary catalog defining stats, behaviors, and loot tables (`lootTable`).
+- [html/app/app-controller.js](file:///Users/jarad/git/lokarta-v3/html/app/app-controller.js) — Input gesture mapping, combat log dispatch, floating damage text, particle FX.
 
 ---
 
