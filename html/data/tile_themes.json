@@ -1,0 +1,45 @@
+{
+  "wall": {
+    "fill": "#2a2f3b",
+    "topHighlight": "#444d61",
+    "gridLine": "#1a1d24",
+    "border": "#0d0f14"
+  },
+  "floor": {
+    "fill": "#1a1c23",
+    "gridLine": "#12141a",
+    "accentSquare": "#222530"
+  },
+  "stairs": {
+    "bg": "#152b3c",
+    "stepEven": "#3878a8",
+    "stepOdd": "#254e70",
+    "orb": "#88eeff",
+    "border": "#66ccff"
+  },
+  "door": {
+    "fill": "#4a2f1b",
+    "border": "#2d1c10"
+  },
+  "items": {
+    "health_potion": {
+      "liquid": "#e63946",
+      "neck": "#f1faee",
+      "cork": "#d4a373"
+    },
+    "mana_potion": {
+      "liquid": "#3a86ff",
+      "neck": "#f1faee",
+      "cork": "#d4a373"
+    },
+    "torch": {
+      "handle": "#8b5a2b",
+      "flameOuter": "#ffaa00",
+      "flameInner": "#ff4400"
+    },
+    "arrows": {
+      "shaft": "#d4a373",
+      "fletching": "#e9d8a6"
+    }
+  }
+}

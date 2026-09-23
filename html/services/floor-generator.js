@@ -3,7 +3,7 @@
  * Generates 40x40 procedural dungeon floors for Floors 1 to 20.
  */
 
-import { MONSTERS_CATALOG, ITEMS_CATALOG, BIOMES_CATALOG } from '../data/index.js';
+import { MONSTERS_CATALOG, ITEMS_CATALOG, BIOMES_CATALOG, ENCOUNTERS_CATALOG, DUNGEONS_CATALOG } from '../data/index.js';
 
 export const TILE_TYPES = {
   FLOOR: 0,
@@ -142,19 +142,10 @@ export function generateFloor(floorNumber = 1, seed = null) {
   // 1. Initialize all walls (1)
   const matrix = Array.from({ length: height }, () => Array(width).fill(TILE_TYPES.WALL));
 
+  const dungeonSpec = DUNGEONS_CATALOG.standard_40x40;
+
   // 2. Define structured rooms across a 3x3 macro grid to guarantee rich connectivity
-  const rooms = [
-    // [x1, y1, x2, y2]
-    [2, 2, 8, 8],      // Top-Left (Entrance)
-    [13, 2, 22, 9],    // Top-Center
-    [28, 2, 37, 9],    // Top-Right
-    [2, 14, 10, 24],   // Mid-Left
-    [15, 14, 26, 25],  // Center Hall
-    [30, 14, 37, 24],  // Mid-Right
-    [2, 29, 11, 37],   // Bot-Left
-    [16, 29, 26, 37],  // Bot-Center
-    [30, 29, 37, 37],  // Bot-Right (Exit Sanctum)
-  ];
+  const rooms = dungeonSpec.rooms;
 
   // Carve rooms into floor tiles (0)
   for (const [x1, y1, x2, y2] of rooms) {
@@ -197,31 +188,16 @@ export function generateFloor(floorNumber = 1, seed = null) {
     }
   }
 
-  // Row horizontal connections
-  carveH(8, 13, 5);
-  carveH(22, 28, 5);
-  carveH(10, 15, 19);
-  carveH(26, 30, 19);
-  carveH(11, 16, 33);
-  carveH(26, 30, 33);
+  for (const [xStart, xEnd, y] of dungeonSpec.corridorsH) {
+    carveH(xStart, xEnd, y);
+  }
 
-  // Column vertical connections
-  carveV(8, 14, 5);
-  carveV(24, 29, 5);
-  carveV(9, 14, 20);
-  carveV(25, 29, 20);
-  carveV(9, 14, 34);
-  carveV(24, 29, 34);
+  for (const [yStart, yEnd, x] of dungeonSpec.corridorsV) {
+    carveV(yStart, yEnd, x);
+  }
 
   // 4. Place Door tiles at key room-to-corridor entry thresholds
-  const doorwayThresholds = [
-    [8, 5], [13, 5], [22, 5], [28, 5],
-    [10, 19], [15, 19], [26, 19], [30, 19],
-    [11, 33], [16, 33], [26, 33], [30, 33],
-    [5, 8], [5, 14], [20, 9], [20, 14],
-    [34, 9], [34, 14], [5, 24], [5, 29],
-    [20, 25], [20, 29], [34, 24], [34, 29]
-  ];
+  const doorwayThresholds = dungeonSpec.doorways;
 
   for (const [dx, dy] of doorwayThresholds) {
     if (matrix[dy] && matrix[dy][dx] === TILE_TYPES.FLOOR) {
@@ -230,33 +206,33 @@ export function generateFloor(floorNumber = 1, seed = null) {
   }
 
   // Entrance at top-left
-  const spawnCoords = { x: 2, y: 2 };
+  const spawnCoords = dungeonSpec.spawnCoords;
   matrix[spawnCoords.y][spawnCoords.x] = TILE_TYPES.FLOOR;
 
   // Exit stairs at bottom-right
-  const exitCoords = { x: 35, y: 35 };
+  const exitCoords = dungeonSpec.exitCoords;
   matrix[exitCoords.y][exitCoords.x] = TILE_TYPES.STAIRS;
 
   // 5. Ambient Lights (Torches on walls & room centers)
-  const ambientLights = [
-    { x: 2, y: 2, radius: 4, color: lightColor },
-    { x: 17, y: 5, radius: 4, color: lightColor },
-    { x: 33, y: 5, radius: 4, color: lightColor },
-    { x: 6, y: 19, radius: 4, color: lightColor },
-    { x: 20, y: 19, radius: 6, color: lightColor },
-    { x: 34, y: 19, radius: 4, color: lightColor },
-    { x: 6, y: 33, radius: 4, color: lightColor },
-    { x: 21, y: 33, radius: 4, color: lightColor },
-    { x: exitCoords.x, y: exitCoords.y, radius: 5, color: floorId < 20 ? '#38bdf8' : '#ffd700' },
-  ];
+  const ambientLights = dungeonSpec.ambientLightNodes.map(node => ({
+    x: node.x,
+    y: node.y,
+    radius: node.radius,
+    color: lightColor,
+  }));
+  ambientLights.push({
+    x: exitCoords.x,
+    y: exitCoords.y,
+    radius: 5,
+    color: floorId < 20 ? '#38bdf8' : '#ffd700',
+  });
 
-  // 6. Monster Spawning based on floor depth
-  // Floors 1-5: Giant Rats, Crypt Skeletons
-  // Floors 6-10: Skeletons, Shadow Cultists
-  // Floors 11-19: Elite Cultists, Skeletons
-  // Floor 20: Abyssal Overlord Boss + elite guards
+  // 6. Monster Spawning based on ENCOUNTERS_CATALOG depth tiers
   const monsters = [];
   let spawnId = 1;
+
+  const encounterTierKey = floorId <= 5 ? 'tier_1_5' : floorId <= 10 ? 'tier_6_10' : floorId <= 19 ? 'tier_11_19' : 'tier_20_boss';
+  const encounterData = ENCOUNTERS_CATALOG[encounterTierKey];
 
   // Populate monsters across non-entrance rooms (rooms 1 through 8)
   const monsterRooms = rooms.slice(1);
@@ -265,86 +241,36 @@ export function generateFloor(floorNumber = 1, seed = null) {
     const cx = Math.floor((rx1 + rx2) / 2);
     const cy = Math.floor((ry1 + ry2) / 2);
 
-    // Number of monsters scales with depth
     let count = 1;
     if (floorId >= 4) count += 1;
     if (floorId >= 10 && rng.random() > 0.4) count += 1;
 
     for (let mi = 0; mi < count; mi++) {
-      let mType = 'crypt_skeleton';
-      let mName = 'Crypt Skeleton';
-      let mHp = 40 + (floorId - 1) * 6;
-      let mAtk = 8 + Math.floor(floorId * 0.8);
-      let mDef = 2;
-      let moveCadence = 0.8;
-      let attackCadence = 1.5;
+      let mType, mName, mHp, mAtk, mDef, moveCadence, attackCadence;
 
-      if (floorId <= 5) {
-        // Floors 1-5: Giant Rats (fast melee, lower HP) or Crypt Skeletons
-        if ((idx + mi) % 2 === 0) {
-          mType = 'giant_rat';
-          mName = 'Giant Rat';
-          mHp = 22 + (floorId - 1) * 4;
-          mAtk = 6 + floorId;
-          mDef = 1;
-          moveCadence = 0.6;
-          attackCadence = 1.2;
-        } else {
-          mType = 'crypt_skeleton';
-          mName = 'Crypt Skeleton';
-          mHp = 40 + (floorId - 1) * 6;
-          mAtk = 8 + floorId;
-          mDef = 2;
-          moveCadence = 0.8;
-          attackCadence = 1.5;
-        }
-      } else if (floorId <= 10) {
-        // Floors 6-10: Skeletons or Shadow Cultists
-        if ((idx + mi) % 2 === 0) {
-          mType = 'crypt_skeleton';
-          mName = 'Crypt Skeleton';
-          mHp = 40 + (floorId - 1) * 6;
-          mAtk = 10 + floorId;
-          mDef = 2;
-          moveCadence = 0.8;
-          attackCadence = 1.5;
-        } else {
-          mType = 'shadow_cultist';
-          mName = 'Shadow Cultist';
-          mHp = 30 + (floorId - 1) * 5;
-          mAtk = 10 + floorId;
-          mDef = 1;
-          moveCadence = 1.0;
-          attackCadence = 2.0;
-        }
-      } else if (floorId <= 19) {
-        // Floors 11-19: Elite Cultists or Armored Skeletons
-        if ((idx + mi) % 2 === 0) {
-          mType = 'elite_cultist';
-          mName = 'Elite Shadow Cultist';
-          mHp = 60 + (floorId - 1) * 6;
-          mAtk = 14 + floorId;
-          mDef = 3;
-          moveCadence = 0.9;
-          attackCadence = 1.8;
-        } else {
-          mType = 'crypt_skeleton';
-          mName = 'Crypt Skeleton';
-          mHp = 50 + (floorId - 1) * 7;
-          mAtk = 12 + floorId;
-          mDef = 3;
-          moveCadence = 0.8;
-          attackCadence = 1.5;
-        }
+      if (floorId <= 19) {
+        const spawnSpec = encounterData.spawns[(idx + mi) % encounterData.spawns.length];
+        mType = spawnSpec.type;
+        mName = spawnSpec.name;
+        mHp = spawnSpec.baseHp + (floorId - 1) * spawnSpec.hpPerFloor;
+        mAtk = Math.floor(spawnSpec.baseAtk + (floorId - 1) * (spawnSpec.atkStep || 1.0));
+        if (floorId <= 5 && mType === 'crypt_skeleton') mAtk = 8 + floorId;
+        if (floorId >= 6 && floorId <= 10 && mType === 'crypt_skeleton') mAtk = 10 + floorId;
+        if (floorId >= 6 && floorId <= 10 && mType === 'shadow_cultist') mAtk = 10 + floorId;
+        if (floorId >= 11 && floorId <= 19 && mType === 'elite_cultist') mAtk = 14 + floorId;
+        if (floorId >= 11 && floorId <= 19 && mType === 'crypt_skeleton') mAtk = 12 + floorId;
+        mDef = spawnSpec.defense;
+        moveCadence = spawnSpec.moveCadence;
+        attackCadence = spawnSpec.attackCadence;
       } else {
-        // Floor 20: Elite Void Guards
-        mType = (idx + mi) % 2 === 0 ? 'elite_cultist' : 'crypt_skeleton';
-        mName = (idx + mi) % 2 === 0 ? 'Void Zealot' : 'Abyssal Guardian';
-        mHp = 80;
-        mAtk = 18;
-        mDef = 4;
-        moveCadence = 0.75;
-        attackCadence = 1.5;
+        const guardSpec = encounterData.guardSpawns[(idx + mi) % encounterData.guardSpawns.length];
+        mType = guardSpec.type;
+        mName = guardSpec.name;
+        mHp = guardSpec.hp;
+        mAtk = guardSpec.attack;
+        mDef = guardSpec.defense;
+        moveCadence = guardSpec.moveCadence;
+        attackCadence = guardSpec.attackCadence;
       }
 
       const offsetX = (mi - 1) * 2;
@@ -352,7 +278,6 @@ export function generateFloor(floorNumber = 1, seed = null) {
       let targetX = cx + offsetX;
       let targetY = cy + offsetY;
 
-      // Keep within room bounds
       if (targetX < rx1 + 1 || targetX > rx2 - 1) targetX = cx;
       if (targetY < ry1 + 1 || targetY > ry2 - 1) targetY = cy;
 
@@ -379,23 +304,24 @@ export function generateFloor(floorNumber = 1, seed = null) {
   }
 
   // Floor 20 Final Boss: Abyssal Overlord (600 HP, 20 ATK, 6 DEF)
-  if (floorId === 20) {
+  if (floorId === 20 && ENCOUNTERS_CATALOG.tier_20_boss?.boss) {
+    const bossSpec = ENCOUNTERS_CATALOG.tier_20_boss.boss;
     monsters.push({
-      id: 'f20_boss_overlord',
-      type: 'abyssal_overlord',
-      name: 'Abyssal Overlord',
-      x: 33,
-      y: 33,
-      hp: 600,
-      max_hp: 600,
-      attack: 20,
-      defense: 6,
+      id: bossSpec.id,
+      type: bossSpec.type,
+      name: bossSpec.name,
+      x: bossSpec.x,
+      y: bossSpec.y,
+      hp: bossSpec.hp,
+      max_hp: bossSpec.max_hp,
+      attack: bossSpec.attack,
+      defense: bossSpec.defense,
       facing: 'down',
       isAggroed: true,
       attackCooldown: 0,
       moveCooldown: 0,
-      attackCadence: 1.4,
-      moveCadence: 0.7,
+      attackCadence: bossSpec.attackCadence,
+      moveCadence: bossSpec.moveCadence,
       visible: true,
       isBoss: true,
     });

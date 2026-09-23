@@ -3,17 +3,19 @@
  */
 
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
+import { TILE_THEMES_CATALOG } from '../data/index.js';
 
 export class SpriteRenderer {
   static drawTile(ctx, type, screenX, screenY, size = CONFIG.GRID_SIZE) {
+    const theme = TILE_THEMES_CATALOG;
     if (type === TILE_TYPES.WALL) {
-      ctx.fillStyle = '#2a2f3b';
+      ctx.fillStyle = theme.wall.fill;
       ctx.fillRect(screenX, screenY, size, size);
 
-      ctx.fillStyle = '#444d61';
+      ctx.fillStyle = theme.wall.topHighlight;
       ctx.fillRect(screenX, screenY, size, 4);
 
-      ctx.strokeStyle = '#1a1d24';
+      ctx.strokeStyle = theme.wall.gridLine;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(screenX, screenY + size / 2);
@@ -26,41 +28,41 @@ export class SpriteRenderer {
       ctx.lineTo(screenX + (3 * size) / 4, screenY + size);
       ctx.stroke();
 
-      ctx.strokeStyle = '#0d0f14';
+      ctx.strokeStyle = theme.wall.border;
       ctx.strokeRect(screenX + 0.5, screenY + 0.5, size - 1, size - 1);
     } else if (type === TILE_TYPES.STAIRS) {
-      ctx.fillStyle = '#152b3c';
+      ctx.fillStyle = theme.stairs.bg;
       ctx.fillRect(screenX, screenY, size, size);
 
       for (let i = 0; i < 4; i++) {
         const inset = i * 3;
-        ctx.fillStyle = i % 2 === 0 ? '#3878a8' : '#254e70';
+        ctx.fillStyle = i % 2 === 0 ? theme.stairs.stepEven : theme.stairs.stepOdd;
         ctx.fillRect(screenX + inset, screenY + inset, size - inset * 2, size - inset * 2);
       }
 
-      ctx.fillStyle = '#88eeff';
+      ctx.fillStyle = theme.stairs.orb;
       ctx.beginPath();
       ctx.arc(screenX + size / 2, screenY + size / 2, 5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = '#66ccff';
+      ctx.strokeStyle = theme.stairs.border;
       ctx.lineWidth = 2;
       ctx.strokeRect(screenX + 2, screenY + 2, size - 4, size - 4);
     } else if (type === TILE_TYPES.DOOR) {
-      ctx.fillStyle = '#4a2f1b';
+      ctx.fillStyle = theme.door.fill;
       ctx.fillRect(screenX, screenY, size, size);
-      ctx.strokeStyle = '#2d1c10';
+      ctx.strokeStyle = theme.door.border;
       ctx.lineWidth = 2;
       ctx.strokeRect(screenX + 2, screenY + 2, size - 4, size - 4);
     } else {
-      ctx.fillStyle = '#1a1c23';
+      ctx.fillStyle = theme.floor.fill;
       ctx.fillRect(screenX, screenY, size, size);
 
-      ctx.strokeStyle = '#12141a';
+      ctx.strokeStyle = theme.floor.gridLine;
       ctx.lineWidth = 1;
       ctx.strokeRect(screenX, screenY, size, size);
 
-      ctx.fillStyle = '#222530';
+      ctx.fillStyle = theme.floor.accentSquare;
       ctx.fillRect(screenX + 4, screenY + 4, 6, 6);
       ctx.fillRect(screenX + size - 10, screenY + size - 10, 6, 6);
     }

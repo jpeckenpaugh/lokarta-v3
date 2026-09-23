@@ -11,6 +11,9 @@ import {
   SOUNDS_CATALOG,
   ABILITIES_CATALOG,
   BIOMES_CATALOG,
+  ENCOUNTERS_CATALOG,
+  DUNGEONS_CATALOG,
+  TILE_THEMES_CATALOG,
 } from '../data/index.js';
 
 test('JSON Data Catalogs', async (t) => {
@@ -96,5 +99,26 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(BIOMES_CATALOG.abyssal_sanctum);
     assert.equal(BIOMES_CATALOG.abyssal_sanctum.maxFloor, 20);
   });
+
+  await t.test('loads and validates encounters.json catalog', () => {
+    assert.ok(ENCOUNTERS_CATALOG.tier_1_5);
+    assert.ok(ENCOUNTERS_CATALOG.tier_20_boss);
+    assert.equal(ENCOUNTERS_CATALOG.tier_20_boss.boss.hp, 600);
+  });
+
+  await t.test('loads and validates dungeons.json catalog', () => {
+    assert.ok(DUNGEONS_CATALOG.standard_40x40);
+    assert.equal(DUNGEONS_CATALOG.standard_40x40.width, 40);
+    assert.equal(DUNGEONS_CATALOG.standard_40x40.height, 40);
+    assert.equal(DUNGEONS_CATALOG.standard_40x40.rooms.length, 9);
+  });
+
+  await t.test('loads and validates tile_themes.json catalog', () => {
+    assert.ok(TILE_THEMES_CATALOG.wall);
+    assert.ok(TILE_THEMES_CATALOG.floor);
+    assert.ok(TILE_THEMES_CATALOG.stairs);
+    assert.ok(TILE_THEMES_CATALOG.door);
+  });
 });
+
 
