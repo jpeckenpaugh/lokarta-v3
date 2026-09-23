@@ -134,15 +134,11 @@ export function generateFloor(floorNumber = 1, seed = null) {
   const height = 40;
   const { name: biomeName, lightColor } = getBiomeForFloor(floorId);
 
-  let floorName = `${biomeName} - Floor ${floorId}`;
-  if (floorId === 20) {
-    floorName = 'Abyssal Sanctum - The Void Core (Final Floor)';
-  }
+  const dungeonSpec = DUNGEONS_CATALOG.standard_40x40;
+  const floorName = dungeonSpec.floorNameOverrides?.[floorId] || `${biomeName} - Floor ${floorId}`;
 
   // 1. Initialize all walls (1)
   const matrix = Array.from({ length: height }, () => Array(width).fill(TILE_TYPES.WALL));
-
-  const dungeonSpec = DUNGEONS_CATALOG.standard_40x40;
 
   // 2. Define structured rooms across a 3x3 macro grid to guarantee rich connectivity
   const rooms = dungeonSpec.rooms;
@@ -241,9 +237,9 @@ export function generateFloor(floorNumber = 1, seed = null) {
     const cx = Math.floor((rx1 + rx2) / 2);
     const cy = Math.floor((ry1 + ry2) / 2);
 
-    let count = 1;
-    if (floorId >= 4) count += 1;
-    if (floorId >= 10 && rng.random() > 0.4) count += 1;
+    let count = encounterData.baseMonstersPerRoom || 1;
+    if (encounterData.extraMonsterFloorThreshold && floorId >= encounterData.extraMonsterFloorThreshold) count += 1;
+    if (encounterData.bonusMonsterChanceFloor && floorId >= encounterData.bonusMonsterChanceFloor && rng.random() < (encounterData.bonusMonsterChance || 0.6)) count += 1;
 
     for (let mi = 0; mi < count; mi++) {
       let mType, mName, mHp, mAtk, mDef, moveCadence, attackCadence;

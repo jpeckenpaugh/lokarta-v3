@@ -2,6 +2,8 @@
   "tier_1_5": {
     "minFloor": 1,
     "maxFloor": 5,
+    "baseMonstersPerRoom": 1,
+    "extraMonsterFloorThreshold": 4,
     "spawns": [
       {
         "type": "giant_rat",
@@ -30,6 +32,10 @@
   "tier_6_10": {
     "minFloor": 6,
     "maxFloor": 10,
+    "baseMonstersPerRoom": 1,
+    "extraMonsterFloorThreshold": 4,
+    "bonusMonsterChanceFloor": 10,
+    "bonusMonsterChance": 0.6,
     "spawns": [
       {
         "type": "crypt_skeleton",
@@ -58,6 +64,10 @@
   "tier_11_19": {
     "minFloor": 11,
     "maxFloor": 19,
+    "baseMonstersPerRoom": 1,
+    "extraMonsterFloorThreshold": 4,
+    "bonusMonsterChanceFloor": 10,
+    "bonusMonsterChance": 0.6,
     "spawns": [
       {
         "type": "elite_cultist",

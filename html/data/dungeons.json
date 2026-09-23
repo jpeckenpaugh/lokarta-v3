@@ -69,6 +69,9 @@
         "quantity": 3,
         "stat_bonus": 50
       }
-    ]
+    ],
+    "floorNameOverrides": {
+      "20": "Abyssal Sanctum - The Void Core (Final Floor)"
+    }
   }
 }
