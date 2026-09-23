@@ -1,0 +1,138 @@
+# Lokarta: Come Into The Light
+
+*A zero-backend, client-side 2D roguelike RPG running natively in modern web browsers.*
+
+---
+
+## 🏰 Project Overview
+
+**Lokarta: Come Into The Light** is a retro-inspired, turn-based grid simulation and real-time canvas rendering 2D roguelike RPG. Built entirely with native web standards (ES Modules, Web Workers, HTML5 Canvas 2D, Web Audio API, and IndexedDB), Lokarta delivers a complete, offline-capable dungeon crawler experience without requiring backend servers, API endpoints, or external database infrastructure.
+
+### Key Highlights
+
+- **Zero-Backend Architecture:** Self-contained static client application. Runs directly in any modern browser via standard HTTP static file servers.
+- **Off-Thread Simulation & Worker RPC:** Procedural floor generation and state persistence run off the UI thread in a dedicated Web Worker (`game-worker.js`), communicated via a Promise-wrapped RPC client bridge (`game-client.js`).
+- **20-Floor Procedural Dungeon & 4 Biomes:** Deterministic Mulberry32 PRNG dungeon generation on a $40 \times 40$ tile matrix with Breadth-First Search (BFS) connectivity verification. Progresses across 4 biomes (Subterranean Crypt, Catacombs of Whispers, Shadow Vaults, Abyssal Sanctum) culminating in the Floor 20 Abyssal Overlord boss fight.
+- **Dynamic Line-of-Sight (LOS) Lighting:** Raycasted Bresenham fog of war algorithm with dynamic vision radii (Base FOV: 10 tiles, Torch: 14 tiles, Light Spell: 12 tiles).
+- **4 Playable Vocations & 2.5x Class Mastery:** Play as Magician, Archer, Fighter, or Paladin with unique stat growth curves and a $2.5\times$ Native Class Mastery damage/healing multiplier for aligned gear and abilities.
+- **Fate Grant Leveling System:** 5-card draft reward selection upon leveling up (up to Level 20 cap), offering vocation-aligned skills, stat boosts, and gear.
+- **Real-Time Web Audio Synthesizer:** 11 procedural sound effects (footsteps, spell sparks, bow snaps, holy chimes, level-up fanfares) generated dynamically in code without audio asset files.
+- **Offline Save Persistence:** Local database persistence (`lokarta_browser_db`) via IndexedDB storing characters, action bars, equipment paperdolls, backpacks, profile settings, and generated floor states.
+
+---
+
+## 🚀 Quickstart & Server Setup
+
+Because Lokarta uses ES Modules and dedicated Web Workers, files must be served over HTTP/HTTPS rather than opened directly via `file://`.
+
+### Launching the Game
+
+Use the provided root launcher script:
+
+```bash
+./run.sh
+```
+
+`run.sh` automatically detects available HTTP static servers in priority order:
+1. `python3 -m http.server -d html 3000`
+2. `npx serve html -l 3000`
+3. `python -m SimpleHTTPServer 3000`
+
+Once launched, open your web browser and navigate to:
+**`http://localhost:3000`**
+
+### Customizing the Server Port
+
+Override the default port (`3000`) using the `PORT` environment variable:
+
+```bash
+PORT=8080 ./run.sh
+```
+
+---
+
+## 🧪 Automated Testing
+
+Lokarta includes a comprehensive, zero-dependency automated unit test suite built for the native Node.js test runner (`node:test`).
+
+### Prerequisites
+- Node.js v18.0.0 or higher.
+
+### Executing Tests
+
+Run the test suite from the repository root:
+
+```bash
+node --test html/tests/engine.test.mjs
+```
+
+### Test Suite Coverage (9 Suites, 25/25 Passing)
+
+- **Floor Generator (1–20):** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, biome mapping, and Floor 20 Abyssal Overlord stats (600 HP, 20 ATK, 6 DEF).
+- **GridMap & Tile Bounds:** Tests matrix initialization, tile opacity/walkability checks, and item placement/removal.
+- **LightingSystem & 10-Tile FOV:** Verifies FOV radius calculations (Base 10, Torch 14, Spell 12), Bresenham raycasting, and wall occlusion.
+- **ProgressionSystem & 4 Vocations:** Verifies initial archetype vitals, XP level curves (`level * 100`), and stat growth.
+- **CombatSystem & 2.5x Mastery:** Verifies native class item identification, $2.5\times$ damage/healing multiplier scaling, Archer arrow consumption, and Paladin prayers/strikes.
+- **InventorySystem & Stacking:** Tests item pickup priorities (Action Slots 0–9 before Backpack), paperdoll equipment slots, unequip logic, and stack limits.
+- **FateGrantSystem:** Verifies 5-card draft reward generation and inventory placement.
+- **GestureEngine:** Validates key mapping for hotkeys `1`–`9` and `0` to slots 0–9.
+- **GameClient & Worker Protocol:** Tests client initialization and worker RPC lifecycle communication.
+
+---
+
+## 🏗️ Architecture & Module Structure
+
+The client application is structured into modular vanilla ES JavaScript components residing under `html/`:
+
+| Module / Asset | Layer | Thread Context | Primary Responsibility |
+| :--- | :--- | :--- | :--- |
+| [`html/index.html`](file:///Users/jarad/git/lokarta-v3/html/index.html) | View / DOM | Main UI Thread | HTML5 layout container, Canvas element, HUD overlays, and modal views. |
+| [`html/styles.css`](file:///Users/jarad/git/lokarta-v3/html/styles.css) | Presentation | Main UI Thread | Responsive layout styling, retro HUD theme, inventory slots, modal dialogues. |
+| [`html/app.js`](file:///Users/jarad/git/lokarta-v3/html/app.js) | UI Controller | Main UI Thread | 10 Hz fixed simulation step, 60 FPS requestAnimationFrame lerp renderer, camera offset, DOM handlers. |
+| [`html/audio.js`](file:///Users/jarad/git/lokarta-v3/html/audio.js) | Audio Subsystem | Main UI Thread | Web Audio API sound synthesizer managing 11 procedural sound routines. |
+| [`html/game-client.js`](file:///Users/jarad/git/lokarta-v3/html/game-client.js) | RPC Client | Main UI Thread | Promise-wrapped Web Worker RPC client managing async postMessage request lifecycle and timeouts. |
+| [`html/game-worker.js`](file:///Users/jarad/git/lokarta-v3/html/game-worker.js) | Worker Dispatcher | Web Worker Thread | Background RPC handler managing floor generation dispatches, state updates, and storage I/O. |
+| [`html/engine.js`](file:///Users/jarad/git/lokarta-v3/html/engine.js) | Core Engine | Shared | Subsystems: GridMap, LightingSystem, ProgressionSystem, CombatSystem, EntityAI, InventorySystem, FateGrantSystem, GestureEngine. |
+| [`html/floor-generator.js`](file:///Users/jarad/git/lokarta-v3/html/floor-generator.js) | Dungeon Generator | Web Worker Thread | Mulberry32 PRNG procedural floor generator with BFS path connectivity validation. |
+| [`html/storage.js`](file:///Users/jarad/git/lokarta-v3/html/storage.js) | Data Storage | Web Worker Thread | IndexedDB manager (`lokarta_browser_db`) for `profile`, `characters`, `dungeon_floors`, and `game_settings`. |
+| [`html/tests/engine.test.mjs`](file:///Users/jarad/git/lokarta-v3/html/tests/engine.test.mjs) | Test Suite | CLI / Node.js | Automated unit test suite run via native Node.js test runner. |
+
+---
+
+## 🎮 Controls & Gameplay Summary
+
+### Keyboard Controls
+- **Movement:** `W`, `A`, `S`, `D` or Arrow Keys $\uparrow, \leftarrow, \downarrow, \rightarrow$.
+- **Action Bar Shortcuts:** Keys `1` through `9` map to Action Bar slots 0–8; Key `0` maps to slot 9.
+- **Interact / Stairs:** Step directly onto stairs at tile position $(35,35)$ to advance to the next floor.
+
+### Touch & Mobile Gestures
+- **Swipe:** Directional swipe movements for player navigation.
+- **Tap:** Tap HUD elements, action bar slots, or floor items for interaction and item usage.
+
+### Character Inventory Layout
+- **10-Slot Action Bar (Slots 0–9):** Hotbar for immediate skill activation or consumable item usage (potions, torches).
+- **6-Slot Backpack:** General storage for non-hotbar inventory items.
+- **4-Slot Paperdoll Equipment:** Equippable slots: `main_hand`, `off_hand`, `armor`, and `relic`.
+
+---
+
+## 📖 Reverse-Engineered Documentation Index
+
+Complete technical documentation and specifications reverse-engineered from the ground-truth application codebase:
+
+- **Concept Specification:** [`concept.md`](file:///Users/jarad/git/lokarta-v3/concept.md) — Product identity, target audience, stack summary, vocation specs, and biome catalog.
+- **Technical Architecture:** [`docs/architecture.md`](file:///Users/jarad/git/lokarta-v3/docs/architecture.md) — Detailed subsystem architecture, RPC protocols, IndexedDB schemas, rendering lerp formulas, and audio graphs.
+- **Verification Report:** [`docs/verification-report.md`](file:///Users/jarad/git/lokarta-v3/docs/verification-report.md) — Stage 8 test execution evidence, verification matrix, and compliance audit.
+- **Environment & System Notes:** [`environment-notes.md`](file:///Users/jarad/git/lokarta-v3/environment-notes.md) — Browser API specifications, server setups, and test runner guidelines.
+- **Feature Briefs:** [`features/briefs/`](file:///Users/jarad/git/lokarta-v3/features/briefs/)
+  - [`01-dungeon-generator.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/01-dungeon-generator.md) — Procedural generation, PRNG, and BFS connectivity.
+  - [`02-lighting-and-los.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/02-lighting-and-los.md) — Bresenham LOS raycasting and dynamic fog of war.
+  - [`03-combat-and-abilities.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/03-combat-and-abilities.md) — Turn-based combat, ability execution, and $2.5\times$ Class Mastery.
+  - [`04-vocations-and-progression.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/04-vocations-and-progression.md) — 4 playable vocations, stat scaling, and XP curves.
+  - [`05-inventory-and-storage.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/05-inventory-and-storage.md) — Action bar, backpack, paperdoll, item stacking, and IndexedDB persistence.
+  - [`06-audio-synthesizer.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/06-audio-synthesizer.md) — Procedural Web Audio API synthesizer catalog.
+  - [`07-web-worker-rpc.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/07-web-worker-rpc.md) — Web Worker thread offloading and asynchronous RPC bridge.
+  - [`08-ui-and-canvas-renderer.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/08-ui-and-canvas-renderer.md) — 10 Hz simulation loop, 60 FPS lerp Canvas rendering, and gesture engine.
+- **Feature Specification Breakdown:** [`features/`](file:///Users/jarad/git/lokarta-v3/features/) — Full specification files (`01-dungeon-generator.md` through `08-ui-and-canvas-renderer.md`).
+- **Stage Summaries:** [`summaries/`](file:///Users/jarad/git/lokarta-v3/summaries/) — Stage summaries (`01-write-concept.md` through `09-documentation.md`).
