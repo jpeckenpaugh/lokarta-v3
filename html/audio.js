@@ -60,7 +60,7 @@ export class AudioSystem {
     this.loadingPromise = (async () => {
       try {
         if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
-          const res = await fetch('./sounds.json');
+          const res = await fetch('./data/sounds.json');
           if (res.ok) {
             this.sounds = await res.json();
             return this.sounds;

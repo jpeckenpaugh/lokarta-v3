@@ -6,7 +6,7 @@ import { AudioSystem } from '../audio.js';
 
 test('AudioSystem & JSON Sound Catalog', async (t) => {
   await t.test('loads all 19 required sound definitions from sounds.json', () => {
-    const soundsPath = resolve(process.cwd(), 'html/sounds.json');
+    const soundsPath = resolve(process.cwd(), 'html/data/sounds.json');
     const soundsJson = JSON.parse(readFileSync(soundsPath, 'utf8'));
 
     const expectedKeys = [
