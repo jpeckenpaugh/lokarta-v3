@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - HUD & Interface Manager
  */
 
-import { CombatSystem, GestureEngine, InventorySystem, LightingSystem } from '../engine/index.js';
+import { GestureEngine, InventorySystem, LightingSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG } from '../data/index.js';
 
@@ -24,6 +24,8 @@ const EMOJI_TO_SVG_MAP = {
   '🧥': '1F9E5',
   '📿': '1F4FF',
   '👑': '1F451',
+  '🧢': '1F9E2',
+  '🪖': '1FA96',
   '✨': '2728',
   '💡': '1F4A1',
   '⚡': '26A1',
@@ -176,7 +178,6 @@ export class HUDManager {
           dmgBonusPct > 0 || player.skillBoosts?.bonusRange || player.skillBoosts?.bonusRegen
             ? `<div class="skill-boosts-summary">
                 <span>⚡ +${dmgBonusPct}% Damage</span>
-                <span>✨ 2.5x Class Mastery</span>
                 ${player.skillBoosts?.bonusRange ? `<span>🏹 +${player.skillBoosts.bonusRange} Range</span>` : ''}
                 ${player.skillBoosts?.bonusRegen ? `<span>❤️ +${player.skillBoosts.bonusRegen} Regen</span>` : ''}
               </div>`
@@ -322,10 +323,9 @@ export class HUDManager {
       const cdKey = item?.item_id?.replace('spell_', '') || '';
       const cd = app.player.cooldowns?.[cdKey] || 0;
       const isOnCooldown = cd > 0;
-      const isNative = isOccupied && CombatSystem.isNativeItem(item, app.player.vocation);
 
       const title = isOccupied
-        ? `${item.name} [${hotkey}] (${item.type}) - Tap / Hold / Double-Tap${isNative ? ' [★ 2.5x Mastery]' : ''}`
+        ? `${item.name} [${hotkey}] (${item.type}) - Tap / Hold / Double-Tap`
         : `Slot [${hotkey}] (Empty)`;
 
       btn.title = title;

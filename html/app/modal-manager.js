@@ -62,7 +62,7 @@ export class ModalManager {
           <h2>CHOOSE YOUR VOCATION</h2>
           <div class="subtitle">Descend into the 20 Subterranean Vaults of Lokarta</div>
         </div>
-        <p class="prompt">Select your champion. Each vocation wields unique combat mechanics & 2.5x Mastery bonuses:</p>
+        <p class="prompt">Select your champion. Each vocation wields unique combat mechanics & exclusive access to vocation-locked gear:</p>
         <div class="vocation-cards">
           <!-- Magician -->
           <div class="vocation-card" data-vocation="magician">
@@ -152,7 +152,7 @@ export class ModalManager {
               <li>Keys <code>1</code> to <code>9</code>, <code>0</code>: Execute items, spells, and weapons in the corresponding slot.</li>
               <li><strong>Multi-Modal Input:</strong> Tap (&lt;250ms), Hold/Charge (&ge;250ms), Double-Tap (&lt;300ms).</li>
               <li><strong>Weapons in Action Slots:</strong> Pressing weapon hotkey attacks targeted/in-range enemy.</li>
-              <li><strong>2.5x Class Mastery:</strong> Using native vocation equipment/spells grants 2.5x damage/healing multiplier!</li>
+              <li><strong>Vocation-Locked Equipment:</strong> Weapons, armor, and relics can only be equipped by their appropriate vocation — the class advantage is exclusive access to your class's gear!</li>
             </ul>
           </div>
           <div class="guide-section">
@@ -270,7 +270,7 @@ export class ModalManager {
         <div class="character-summary">
           <p><strong>Vocation:</strong> ${(player.vocation || 'magician').toUpperCase()}</p>
           <p><strong>Final Level:</strong> Level ${player.level || 1}</p>
-          <p><strong>Damage Boost:</strong> +${Math.round(((player.skillBoosts?.damageMultiplier || 1) - 1) * 100)}% (2.5x Mastery)</p>
+          <p><strong>Damage Boost:</strong> +${Math.round(((player.skillBoosts?.damageMultiplier || 1) - 1) * 100)}%</p>
           <p><strong>Remaining HP:</strong> ${player.hp} / ${player.max_hp}</p>
           <p><strong>Remaining MP:</strong> ${player.mana} / ${player.max_mana}</p>
         </div>

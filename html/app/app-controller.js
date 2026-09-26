@@ -777,10 +777,15 @@ export class LokartaApp {
     const catalogItem = ITEMS_CATALOG[item.item_id];
 
     const affinity = item.vocationAffinity || catalogItem?.vocationAffinity;
-    if (affinity && affinity !== 'neutral' && this.player?.vocation && affinity !== this.player.vocation) {
-      const capVoc = affinity.charAt(0).toUpperCase() + affinity.slice(1);
-      this.logCombat(`Only a ${capVoc} can use ${item.name}!`, 'warning');
-      return;
+    if (affinity && affinity !== 'neutral' && this.player?.vocation) {
+      const vocationMatches = Array.isArray(affinity) ? affinity.includes(this.player.vocation) : affinity === this.player.vocation;
+      if (!vocationMatches) {
+        const label = Array.isArray(affinity)
+          ? affinity.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join('/')
+          : (affinity.charAt(0).toUpperCase() + affinity.slice(1));
+        this.logCombat(`Only a ${label} can use ${item.name}!`, 'warning');
+        return;
+      }
     }
 
     const actionKey = item.actionKey || catalogItem?.actionKey || (

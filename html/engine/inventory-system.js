@@ -150,9 +150,14 @@ export class InventorySystem {
     }
 
     const affinity = item.vocationAffinity || catalogItem?.vocationAffinity;
-    if (affinity && affinity !== 'neutral' && player?.vocation && affinity !== player.vocation) {
-      const capVoc = affinity.charAt(0).toUpperCase() + affinity.slice(1);
-      return { success: false, message: `Only a ${capVoc} can equip ${item.name}!` };
+    if (affinity && affinity !== 'neutral' && player?.vocation) {
+      const vocationMatches = Array.isArray(affinity) ? affinity.includes(player.vocation) : affinity === player.vocation;
+      if (!vocationMatches) {
+        const label = Array.isArray(affinity)
+          ? affinity.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join('/')
+          : (affinity.charAt(0).toUpperCase() + affinity.slice(1));
+        return { success: false, message: `Only a ${label} can equip ${item.name}!` };
+      }
     }
 
     if (!player.paperdoll) {

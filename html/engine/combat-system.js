@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
-import { ABILITIES_CATALOG, ITEMS_CATALOG, MONSTERS_CATALOG } from '../data/index.js';
+import { ABILITIES_CATALOG, MONSTERS_CATALOG } from '../data/index.js';
 
 export class CombatSystem {
   static decrementCooldowns(player, deltaSec) {
@@ -24,23 +24,6 @@ export class CombatSystem {
 
   static randomBetween(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
-  static isNativeItem(item, vocation) {
-    if (!item) return false;
-    const affinity = item.vocationAffinity || ITEMS_CATALOG[item.item_id]?.vocationAffinity;
-    if (affinity) return affinity === vocation;
-
-    const itemId = item.item_id || '';
-    if (vocation === 'magician') return itemId.includes('wand') || itemId.includes('spark') || itemId.includes('beam') || itemId.includes('scepter') || item.type === 'spell';
-    if (vocation === 'archer') return itemId.includes('bow') || itemId.includes('arrow') || itemId.includes('shot');
-    if (vocation === 'fighter') return itemId.includes('sword') || itemId.includes('slash') || itemId.includes('cleave') || itemId.includes('broadsword') || itemId.includes('fortify');
-    if (vocation === 'paladin') return itemId.includes('warhammer') || itemId.includes('holy') || itemId.includes('prayer') || itemId.includes('radiance') || itemId.includes('hammer');
-    return false;
-  }
-
-  static getVocationMultiplier(item, vocation) {
-    return CombatSystem.isNativeItem(item, vocation) ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0;
   }
 
   static findArrowItem(player) {
@@ -123,7 +106,7 @@ export class CombatSystem {
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.wand_spark = CONFIG.MAGICIAN_SPARK_COOLDOWN_SEC;
 
-    const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'magician' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
+    const mult = player.skillBoosts?.damageMultiplier || 1.0;
     const baseDmg = (item && typeof item.damage === 'number') ? item.damage : CombatSystem.randomBetween(CONFIG.MAGICIAN_SPARK_DAMAGE_MIN, CONFIG.MAGICIAN_SPARK_DAMAGE_MAX);
     const damage = Math.round(baseDmg * mult);
 
@@ -205,7 +188,7 @@ export class CombatSystem {
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.energy_beam = CONFIG.MAGICIAN_BEAM_COOLDOWN_SEC;
 
-    const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'magician' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
+    const mult = player.skillBoosts?.damageMultiplier || 1.0;
 
     const fVecs = {
       up: { fX: 0, fY: -1, pX: 1, pY: 0 },
@@ -323,7 +306,8 @@ export class CombatSystem {
       return { success: false, message: 'Bow Shot is on cooldown.' };
     }
 
-    const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'archer' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
+    const mult = player.skillBoosts?.damageMultiplier || 1.0;
+
     const bonusRng = player.skillBoosts?.bonusRange || 0;
 
     const dist = Math.hypot(target.x - player.x, target.y - player.y);
@@ -362,7 +346,7 @@ export class CombatSystem {
 
     let defeatedMonsterId;
     let droppedLoot;
-    let message = `You fired an arrow at ${target.name} for ${damage} damage${player.vocation === 'archer' ? ' (2.5x Class Mastery!)' : ''}.`;
+    let message = `You fired an arrow at ${target.name} for ${damage} damage.`;
 
     if (target.hp <= 0) {
       defeatedMonsterId = target.id;
@@ -388,7 +372,8 @@ export class CombatSystem {
       return { success: false, message: 'Power Shot is on cooldown.' };
     }
 
-    const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'archer' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
+    const mult = player.skillBoosts?.damageMultiplier || 1.0;
+
     const bonusRng = player.skillBoosts?.bonusRange || 0;
 
     const dist = Math.hypot(target.x - player.x, target.y - player.y);
@@ -427,7 +412,7 @@ export class CombatSystem {
 
     let defeatedMonsterId;
     let droppedLoot;
-    let message = `Power Shot strikes ${target.name} for ${damage} heavy damage${player.vocation === 'archer' ? ' (2.5x Class Mastery!)' : ''}!`;
+    let message = `Power Shot strikes ${target.name} for ${damage} heavy damage!`;
 
     if (target.hp <= 0) {
       defeatedMonsterId = target.id;
@@ -461,14 +446,14 @@ export class CombatSystem {
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.slash = CONFIG.FIGHTER_SLASH_COOLDOWN_SEC;
 
-    const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'fighter' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
+    const mult = player.skillBoosts?.damageMultiplier || 1.0;
     const baseDmg = CombatSystem.randomBetween(CONFIG.FIGHTER_SLASH_DAMAGE_MIN, CONFIG.FIGHTER_SLASH_DAMAGE_MAX);
     const damage = Math.round(baseDmg * mult);
     target.hp -= damage;
 
     let defeatedMonsterId;
     let droppedLoot;
-    let message = `You slashed ${target.name} for ${damage} physical damage${player.vocation === 'fighter' ? ' (2.5x Class Mastery!)' : ''}.`;
+    let message = `You slashed ${target.name} for ${damage} physical damage.`;
 
     if (target.hp <= 0) {
       defeatedMonsterId = target.id;
@@ -506,14 +491,14 @@ export class CombatSystem {
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.holy_strike = CONFIG.PALADIN_HOLY_STRIKE_COOLDOWN_SEC;
 
-    const mult = (player.skillBoosts?.damageMultiplier || 1.0) * (player.vocation === 'paladin' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0);
+    const mult = player.skillBoosts?.damageMultiplier || 1.0;
     const baseDmg = CombatSystem.randomBetween(CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MIN, CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MAX);
     const damage = Math.round(baseDmg * mult);
     target.hp -= damage;
 
     let defeatedMonsterId;
     let droppedLoot;
-    let message = `Holy Strike smites ${target.name} for ${damage} holy damage${player.vocation === 'paladin' ? ' (2.5x Class Mastery!)' : ''}.`;
+    let message = `Holy Strike smites ${target.name} for ${damage} holy damage.`;
 
     if (target.hp <= 0) {
       defeatedMonsterId = target.id;
@@ -550,7 +535,7 @@ export class CombatSystem {
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.healing_prayer = CONFIG.PALADIN_HEAL_COOLDOWN_SEC;
 
-    const mult = player.vocation === 'paladin' ? CONFIG.NATIVE_CLASS_MULTIPLIER : 1.0;
+    const mult = player.skillBoosts?.damageMultiplier || 1.0;
     const baseHeal = CombatSystem.randomBetween(CONFIG.PALADIN_HEAL_MIN, CONFIG.PALADIN_HEAL_MAX);
     const healAmount = Math.round(baseHeal * mult);
     const restored = Math.min(healAmount, player.max_hp - player.hp);
@@ -558,7 +543,7 @@ export class CombatSystem {
 
     return {
       success: true,
-      message: `Healing Prayer channeled! Restored +${restored} HP (${player.hp}/${player.max_hp})${player.vocation === 'paladin' ? ' (2.5x Mastery!)' : ''}.`,
+      message: `Healing Prayer channeled! Restored +${restored} HP (${player.hp}/${player.max_hp}).`,
       healAmount: restored,
     };
   }

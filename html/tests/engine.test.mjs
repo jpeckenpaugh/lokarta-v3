@@ -5,7 +5,7 @@
  * 2. GridMap & Tile Bounds
  * 3. LightingSystem & LOS (10-Tile FOV)
  * 4. ProgressionSystem & 4 Vocations Leveling
- * 5. CombatSystem & 2.5x Native Class Mastery
+ * 5. CombatSystem (No Class Multiplier) & Vocation-Locked Equipment
  * 6. InventorySystem (10 Action Slots, 6-Slot Backpack, 4-Slot Paperdoll)
  * 7. FateGrantSystem (5-Card Draft Offer & Placement)
  * 8. GestureEngine (Keys 1-9, 0 & Tap/Hold/Double-Tap)
@@ -308,10 +308,10 @@ describe('ProgressionSystem & 4 Vocations Leveling', () => {
 });
 
 // ============================================================================
-// 5. CombatSystem & 2.5x Native Class Mastery
+// 5. CombatSystem (No Class Multiplier) & Vocation-Locked Equipment
 // ============================================================================
 
-describe('CombatSystem & 2.5x Native Class Mastery', () => {
+describe('CombatSystem (No Class Multiplier) & Vocation-Locked Equipment', () => {
   let grid;
 
   beforeEach(() => {
@@ -323,13 +323,26 @@ describe('CombatSystem & 2.5x Native Class Mastery', () => {
     }
   });
 
-  it('correctly identifies native items for 4 vocations', () => {
-    assert.equal(CombatSystem.isNativeItem({ item_id: 'apprentice_wand', type: 'weapon' }, 'magician'), true);
-    assert.equal(CombatSystem.isNativeItem({ item_id: 'spell_wand_spark', type: 'spell' }, 'magician'), true);
-    assert.equal(CombatSystem.isNativeItem({ item_id: 'wooden_bow', type: 'weapon' }, 'archer'), true);
-    assert.equal(CombatSystem.isNativeItem({ item_id: 'tempered_broadsword', type: 'weapon' }, 'fighter'), true);
-    assert.equal(CombatSystem.isNativeItem({ item_id: 'consecrated_warhammer', type: 'weapon' }, 'paladin'), true);
-    assert.equal(CombatSystem.isNativeItem({ item_id: 'wooden_bow', type: 'weapon' }, 'fighter'), false);
+  it('does not apply a legacy native-class multiplier (damage uses skillBoosts only)', () => {
+    // Magician wielding a native weapon: base damage only, no 2.5x multiplier
+    const mag = createPlayer('magician');
+    mag.x = 2;
+    mag.y = 2;
+    const monster = { id: 'm1', name: 'Skeleton', type: 'crypt_skeleton', x: 4, y: 2, hp: 100, max_hp: 100 };
+
+    const magRes = CombatSystem.executeWandSpark(mag, monster, grid, { damage: 100, manaCost: 1 });
+    assert.equal(magRes.success, true);
+    assert.equal(magRes.damageDealt, 100); // Base 1.0x skillBoosts - no class multiplier
+    assert.equal(magRes.message.includes('Class Mastery'), false);
+
+    // skillBoosts.damageMultiplier still scales damage (the real damage-boost path)
+    const boosted = createPlayer('magician');
+    boosted.x = 2;
+    boosted.y = 2;
+    boosted.skillBoosts.damageMultiplier = 2.5;
+    const boostedRes = CombatSystem.executeWandSpark(boosted, monster, grid, { damage: 100, manaCost: 1 });
+    assert.equal(boostedRes.success, true);
+    assert.equal(boostedRes.damageDealt, 250); // 100 * skillBoots 2.5x, not class-based
   });
 
   it('applies 1.0x native base damage on spells and weapons without legacy multiplier', () => {
@@ -431,6 +444,66 @@ describe('InventorySystem & Stacking', () => {
     assert.equal(player.paperdoll.off_hand.item_id, 'buckler');
     assert.equal(player.paperdoll.armor.item_id, 'plate_armor');
     assert.equal(player.paperdoll.relic.item_id, 'relic_champions_crest');
+  });
+
+  it('rejects vocation-locked gear for the wrong class and accepts the correct class (array-aware)', () => {
+    // Buckler/plate/crest are shared fighter+paladin gear (array affinity ["fighter","paladin"])
+    const archer = createPlayer('archer');
+    archer.action_bar[0] = { item_id: 'buckler', name: 'Reinforced Buckler', type: 'offhand', slot: 'off_hand', quantity: 1 };
+    const rejectArcher = InventorySystem.equipItem(archer, 'action_bar', 0);
+    assert.equal(rejectArcher.success, false);
+    assert.ok(rejectArcher.message.includes('Only a'));
+
+    const magician = createPlayer('magician');
+    magician.action_bar[0] = { item_id: 'plate_armor', name: 'Knight Plate Armor', type: 'armor', slot: 'armor', quantity: 1 };
+    const rejectMagician = InventorySystem.equipItem(magician, 'action_bar', 0);
+    assert.equal(rejectMagician.success, false);
+
+    // Both Fighter and Paladin can equip the shared fighter/paladin gear
+    const fighter = createPlayer('fighter');
+    fighter.action_bar[0] = { item_id: 'buckler', name: 'Reinforced Buckler', type: 'offhand', slot: 'off_hand', quantity: 1 };
+    const fRes = InventorySystem.equipItem(fighter, 'action_bar', 0);
+    assert.equal(fRes.success, true);
+    assert.equal(fighter.paperdoll.off_hand.item_id, 'buckler');
+
+    const paladin = createPlayer('paladin');
+    paladin.action_bar[0] = { item_id: 'plate_armor', name: 'Knight Plate Armor', type: 'armor', slot: 'armor', quantity: 1 };
+    const pRes = InventorySystem.equipItem(paladin, 'action_bar', 0);
+    assert.equal(pRes.success, true);
+    assert.equal(paladin.paperdoll.armor.item_id, 'plate_armor');
+  });
+
+  it('enforces class-specific gear affinity (archer/fighter/paladin sets)', () => {
+    // Archer set: archer_hood equips for archers only
+    const archer = createPlayer('archer');
+    archer.action_bar[0] = { item_id: 'archer_hood', name: "Archer's Hood", type: 'relic', slot: 'relic', quantity: 1 };
+    const ok = InventorySystem.equipItem(archer, 'action_bar', 0);
+    assert.equal(ok.success, true);
+    assert.equal(archer.paperdoll.relic.item_id, 'archer_hood');
+
+    const fighter = createPlayer('fighter');
+    fighter.action_bar[0] = { item_id: 'archer_hood', name: "Archer's Hood", type: 'relic', slot: 'relic', quantity: 1 };
+    assert.equal(InventorySystem.equipItem(fighter, 'action_bar', 0).success, false);
+
+    // Fighter set: iron_helm for fighters only
+    const fg = createPlayer('fighter');
+    fg.action_bar[0] = { item_id: 'iron_helm', name: 'Iron Helm', type: 'relic', slot: 'relic', quantity: 1 };
+    assert.equal(InventorySystem.equipItem(fg, 'action_bar', 0).success, true);
+    assert.equal(fg.paperdoll.relic.item_id, 'iron_helm');
+
+    const archer2 = createPlayer('archer');
+    archer2.action_bar[0] = { item_id: 'iron_helm', name: 'Iron Helm', type: 'relic', slot: 'relic', quantity: 1 };
+    assert.equal(InventorySystem.equipItem(archer2, 'action_bar', 0).success, false);
+
+    // Paladin set: holy_crown for paladins only
+    const pal = createPlayer('paladin');
+    pal.action_bar[0] = { item_id: 'holy_crown', name: 'Holy Crown', type: 'relic', slot: 'relic', quantity: 1 };
+    assert.equal(InventorySystem.equipItem(pal, 'action_bar', 0).success, true);
+    assert.equal(pal.paperdoll.relic.item_id, 'holy_crown');
+
+    const fighter2 = createPlayer('fighter');
+    fighter2.action_bar[0] = { item_id: 'holy_crown', name: 'Holy Crown', type: 'relic', slot: 'relic', quantity: 1 };
+    assert.equal(InventorySystem.equipItem(fighter2, 'action_bar', 0).success, false);
   });
 
   it('unequips items from paperdoll back to action bar or backpack', () => {

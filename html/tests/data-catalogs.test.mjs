@@ -20,7 +20,7 @@ import {
 test('JSON Data Catalogs', async (t) => {
   await t.test('loads and validates cards.json catalog', () => {
     assert.ok(Array.isArray(CARDS_CATALOG), 'CARDS_CATALOG must be an array');
-    assert.equal(CARDS_CATALOG.length, 22, 'CARDS_CATALOG must contain 22 draft cards');
+    assert.equal(CARDS_CATALOG.length, 27, 'CARDS_CATALOG must contain 27 draft cards');
 
     for (const card of CARDS_CATALOG) {
       assert.ok(card.id, 'Card must have id');
@@ -64,6 +64,54 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(ITEMS_CATALOG['apprentice_wand'].maxStack, 1);
   });
 
+  await t.test('loads the 5 new vocation-locked items with required fields', () => {
+    const requiredFields = ['name', 'type', 'slot', 'stat_bonus', 'icon', 'svgCode', 'vocationAffinity', 'maxStack'];
+    const newItems = {
+      hunter_quiver: { slot: 'off_hand', type: 'offhand', affinity: 'archer' },
+      hunter_leathers: { slot: 'armor', type: 'armor', affinity: 'archer' },
+      archer_hood: { slot: 'relic', type: 'relic', affinity: 'archer' },
+      iron_helm: { slot: 'relic', type: 'relic', affinity: 'fighter' },
+      holy_crown: { slot: 'relic', type: 'relic', affinity: 'paladin' },
+    };
+
+    for (const [itemId, spec] of Object.entries(newItems)) {
+      const item = ITEMS_CATALOG[itemId];
+      assert.ok(item, `Missing new item definition for ${itemId}`);
+      for (const field of requiredFields) {
+        assert.ok(item[field] !== undefined, `Item ${itemId} must specify ${field}`);
+      }
+      assert.equal(item.slot, spec.slot, `Item ${itemId} must occupy slot ${spec.slot}`);
+      assert.equal(item.type, spec.type, `Item ${itemId} must be type ${spec.type}`);
+      assert.equal(item.maxStack, 1, `Item ${itemId} must have maxStack 1`);
+      const matchesAffinity = item.vocationAffinity === spec.affinity
+        || (Array.isArray(item.vocationAffinity) && item.vocationAffinity.includes(spec.affinity));
+      assert.ok(matchesAffinity, `Item ${itemId} must carry vocationAffinity including ${spec.affinity}`);
+    }
+
+    // New items each have a grantable draft card
+    const cardByItem = new Map(CARDS_CATALOG.map(c => [c.item?.item_id, c]));
+    for (const itemId of Object.keys(newItems)) {
+      const card = cardByItem.get(itemId);
+      assert.ok(card, `Missing draft card for new item ${itemId}`);
+    }
+  });
+
+  await t.test('ensures every equippable item carries vocationAffinity (or neutral)', () => {
+    for (const [itemId, item] of Object.entries(ITEMS_CATALOG)) {
+      if (!item.slot) continue; // non-equippable (consumables, ammo, spell-only items)
+      assert.ok(
+        item.vocationAffinity,
+        `Equippable item ${itemId} must carry vocationAffinity (use "neutral" for all-class gear)`
+      );
+      assert.ok(
+        item.vocationAffinity === 'neutral'
+          || typeof item.vocationAffinity === 'string'
+          || (Array.isArray(item.vocationAffinity) && item.vocationAffinity.length > 0),
+        `Item ${itemId} has an invalid vocationAffinity value`
+      );
+    }
+  });
+
   await t.test('loads and validates vocations.json catalog', () => {
     const vocations = ['magician', 'archer', 'fighter', 'paladin'];
     assert.equal(Object.keys(VOCATIONS_CATALOG).length, 4);
@@ -75,6 +123,7 @@ test('JSON Data Catalogs', async (t) => {
       assert.ok(voc.mana > 0, `Vocation ${key} must have mana > 0`);
       assert.ok(voc.hpPerLevel > 0, `Vocation ${key} must have hpPerLevel > 0`);
       assert.ok(voc.damageStep > 0, `Vocation ${key} must have damageStep > 0`);
+      assert.ok(Array.isArray(voc.nativeEquipment) && voc.nativeEquipment.length > 0, `Vocation ${key} must list nativeEquipment`);
     }
   });
 

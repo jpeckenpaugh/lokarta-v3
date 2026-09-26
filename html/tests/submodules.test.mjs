@@ -36,8 +36,15 @@ test('Modular Engine Submodules', async (t) => {
   });
 
   await t.test('verifies CombatSystem submodule', () => {
-    const isNative = CombatSystem.isNativeItem({ item_id: 'apprentice_wand', type: 'weapon' }, 'magician');
-    assert.equal(isNative, true);
+    assert.equal(CONFIG.NATIVE_CLASS_MULTIPLIER, undefined, 'NATIVE_CLASS_MULTIPLIER must be removed');
+    const p = createPlayer('magician');
+    p.x = 2;
+    p.y = 2;
+    const grid = new GridMap(10, 10);
+    const target = { id: 'm1', name: 'Rat', type: 'giant_rat', x: 4, y: 2, hp: 100, max_hp: 100 };
+    const res = CombatSystem.executeWandSpark(p, target, grid, { damage: 100, manaCost: 1 });
+    assert.equal(res.success, true);
+    assert.equal(res.damageDealt, 100); // Base 1.0x skillBoosts - no legacy class multiplier
   });
 
   await t.test('verifies EntityAI submodule', () => {

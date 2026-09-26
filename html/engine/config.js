@@ -34,9 +34,6 @@ export const CONFIG = {
   LIGHT_SPELL_DURATION_SEC: ABILITIES_CATALOG.magician_light.durationSec || 30,
   AMBIENT_LIGHT_RADIUS: 4,
 
-  // Class Mastery
-  NATIVE_CLASS_MULTIPLIER: 1.0,
-
   // Abilities & Combat Base Values (Driven by ABILITIES_CATALOG)
   MAGICIAN_SPARK_DAMAGE_MIN: ABILITIES_CATALOG.magician_spark.damageMin,
   MAGICIAN_SPARK_DAMAGE_MAX: ABILITIES_CATALOG.magician_spark.damageMax,
