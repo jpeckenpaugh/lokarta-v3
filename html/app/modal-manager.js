@@ -151,7 +151,7 @@ export class ModalManager {
             <ul class="guide-list">
               <li>Keys <code>1</code> to <code>9</code>, <code>0</code>: Execute items, spells, and weapons in the corresponding slot.</li>
               <li><strong>Multi-Modal Input:</strong> Tap (&lt;250ms), Hold/Charge (&ge;250ms), Double-Tap (&lt;300ms).</li>
-              <li><strong>Weapons in Action Slots:</strong> Pressing weapon hotkey attacks targeted/in-range enemy.</li>
+              <li><strong>Weapons in Action Slots:</strong> Pressing a weapon hotkey (Q/W or 1-9,0) always swings — Swords, Cleaves, and Holy Strikes animate toward your facing and hit every enemy inside the reach.</li>
               <li><strong>Vocation-Locked Equipment:</strong> Weapons, armor, and relics can only be equipped by their appropriate vocation — the class advantage is exclusive access to your class's gear!</li>
             </ul>
           </div>

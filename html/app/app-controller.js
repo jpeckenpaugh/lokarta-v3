@@ -842,18 +842,16 @@ export class LokartaApp {
         this.handleCombatResult(res, target.x, target.y);
       },
       cleave: () => {
-        const target = this.getTargetMonster(2.5);
-        if (!target) return this.logCombat('No enemy within melee reach for Cleave.', 'warning');
         soundFX.play('hit');
-        const res = CombatSystem.executeSlash(this.player, target, this.gridMap);
-        this.handleCombatResult(res, target.x, target.y);
+        const target = this.getTargetMonster(2.5);
+        const res = CombatSystem.executeSlash(this.player, target, this.gridMap, { monsters: this.monsters });
+        this.handleCombatResult(res, res.hitX ?? null, res.hitY ?? null);
       },
       slash: () => {
-        const target = this.getTargetMonster(2.5);
-        if (!target) return this.logCombat('No enemy within melee reach.', 'warning');
         soundFX.play('hit');
-        const res = CombatSystem.executeSlash(this.player, target, this.gridMap);
-        this.handleCombatResult(res, target.x, target.y);
+        const target = this.getTargetMonster(2.5);
+        const res = CombatSystem.executeSlash(this.player, target, this.gridMap, { monsters: this.monsters });
+        this.handleCombatResult(res, res.hitX ?? null, res.hitY ?? null);
       },
       healing_prayer: () => {
         const res = CombatSystem.executeHealingPrayer(this.player);
@@ -866,11 +864,10 @@ export class LokartaApp {
         }
       },
       holy_strike: () => {
-        const target = this.getTargetMonster(1.5);
-        if (!target) return this.logCombat('No adjacent enemy for Holy Strike.', 'warning');
         soundFX.play('hit');
-        const res = CombatSystem.executeHolyStrike(this.player, target, this.gridMap);
-        this.handleCombatResult(res, target.x, target.y);
+        const target = this.getTargetMonster(2.5);
+        const res = CombatSystem.executeHolyStrike(this.player, target, this.gridMap, { monsters: this.monsters });
+        this.handleCombatResult(res, res.hitX ?? null, res.hitY ?? null);
       },
     };
 

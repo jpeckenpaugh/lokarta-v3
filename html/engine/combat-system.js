@@ -26,6 +26,58 @@ export class CombatSystem {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
+  /** Cardinal facing vectors used to orient melee free swings (LOK-9). */
+  static FACING_VECTORS = {
+    up: { dx: 0, dy: -1 },
+    down: { dx: 0, dy: 1 },
+    left: { dx: -1, dy: 0 },
+    right: { dx: 1, dy: 0 },
+  };
+
+  /**
+   * Finds the nearest living monster inside a melee damage area: within `reach`
+   * tiles of the player AND inside the facing arc (90-degree sweep centered on
+   * the facing direction). Requires line of sight when a gridMap is provided.
+   * Used by swing-always melee to register damage without a pre-picked target.
+   *
+   * @param {object} player
+   * @param {Array} monsters
+   * @param {number} reach Reach in tiles (e.g. 2.5).
+   * @param {string} facing 'up'|'down'|'left'|'right'.
+   * @param {object|null} gridMap
+   * @returns {object|null} nearest in-area monster, or null.
+   */
+  static findMonsterInMeleeArea(player, monsters = [], reach, facing = 'right', gridMap = null) {
+    const fv = CombatSystem.FACING_VECTORS[facing] || CombatSystem.FACING_VECTORS.right;
+    const facingAngle = Math.atan2(fv.dy, fv.dx);
+    const sweepHalf = (90 * Math.PI) / 180 / 2;
+
+    let best = null;
+    let bestDist = Infinity;
+
+    for (const m of monsters) {
+      if (!m || m.hp <= 0) continue;
+      const dx = m.x - player.x;
+      const dy = m.y - player.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > reach || dist < 0.001) continue;
+
+      const dirAngle = Math.atan2(dy, dx);
+      let diff = Math.abs(dirAngle - facingAngle);
+      diff = Math.min(diff, Math.PI * 2 - diff);
+      if (diff > sweepHalf) continue;
+
+      if (gridMap && !LightingSystem.hasLineOfSight(gridMap, player.x, player.y, m.x, m.y)) continue;
+
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = m;
+      }
+    }
+
+    return best;
+  }
+
   static findArrowItem(player) {
     // Check Action Bar first
     if (player.action_bar) {
@@ -434,49 +486,82 @@ export class CombatSystem {
    * Executes Melee Slash for Fighter / Weapons.
    * Shared by Fighter and Paladin basic melee. Reach extends one space beyond
    * adjacent (threshold ~2.5 tiles) per the board's "melee reach +1" ask.
+   *
+   * Swing-always (LOK-9): the swing ALWAYS executes once cooldown permits —
+   * `target` may be null (free swing). The swoosh is emitted oriented toward
+   * `player.facing` when there is no target in reach. Damage only registers on
+   * monsters inside the damage area (within reach and the facing arc); with no
+   * enemy in range the swing still animates (e.g. "Your swing cuts the air.")
+   * and still consumes the cooldown.
+   *
+   * @param {object} player
+   * @param {object|null} target Pre-picked/selected enemy; nullable for free swings.
+   * @param {object} gridMap
+   * @param {object} [opts] Optional `{ monsters: [], facing: 'up'|'down'|'left'|'right' }`
+   *   used to resolve damage for free swings (no target / out-of-reach target).
    */
-  static executeSlash(player, target, gridMap) {
+  static executeSlash(player, target, gridMap, opts = {}) {
     if (player.cooldowns?.slash > 0) {
       return { success: false, message: 'Slash is on cooldown.' };
-    }
-
-    const dist = Math.hypot(target.x - player.x, target.y - player.y);
-    if (dist > 2.5) {
-      return { success: false, message: 'Target is too far for a melee strike (reach is one space beyond adjacent).' };
     }
 
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.slash = CONFIG.FIGHTER_SLASH_COOLDOWN_SEC;
 
+    const reach = 2.5;
+    const facing = opts.facing || player.facing || 'right';
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
-    const baseDmg = CombatSystem.randomBetween(CONFIG.FIGHTER_SLASH_DAMAGE_MIN, CONFIG.FIGHTER_SLASH_DAMAGE_MAX);
-    const damage = Math.round(baseDmg * mult);
-    target.hp -= damage;
 
-    let defeatedMonsterId;
-    let droppedLoot;
-    let message = `You slashed ${target.name} for ${damage} physical damage.`;
-
-    if (target.hp <= 0) {
-      defeatedMonsterId = target.id;
-      droppedLoot = CombatSystem.generateMonsterLoot(target);
-      message += ` ${target.name} was slain!`;
+    let hitMonster = null;
+    if (target && Math.hypot(target.x - player.x, target.y - player.y) <= reach) {
+      hitMonster = target;
+    } else {
+      hitMonster = CombatSystem.findMonsterInMeleeArea(player, opts.monsters || [], reach, facing, gridMap);
     }
 
-    // Basic "swoosh" arc/swipe in front of the player, oriented toward the target.
+    let damage;
+    let defeatedMonsterId;
+    let droppedLoot;
+    let message;
+    let hitX = null;
+    let hitY = null;
+
+    if (hitMonster) {
+      const baseDmg = CombatSystem.randomBetween(CONFIG.FIGHTER_SLASH_DAMAGE_MIN, CONFIG.FIGHTER_SLASH_DAMAGE_MAX);
+      damage = Math.round(baseDmg * mult);
+      hitMonster.hp -= damage;
+      hitX = hitMonster.x;
+      hitY = hitMonster.y;
+      message = `You slashed ${hitMonster.name} for ${damage} physical damage.`;
+
+      if (hitMonster.hp <= 0) {
+        defeatedMonsterId = hitMonster.id;
+        droppedLoot = CombatSystem.generateMonsterLoot(hitMonster);
+        message += ` ${hitMonster.name} was slain!`;
+      }
+    } else {
+      message = 'Your swing cuts the air.';
+    }
+
+    // Basic "swoosh" arc/swipe oriented toward the hit monster, or toward the
+    // player's facing on a free swing. Arc radius spans the ~2-tile reach.
+    const fv = CombatSystem.FACING_VECTORS[facing] || CombatSystem.FACING_VECTORS.right;
+    const swooshTargetX = hitX ?? (player.x + fv.dx * reach);
+    const swooshTargetY = hitY ?? (player.y + fv.dy * reach);
+
     const swoosh = {
       id: `swoosh_${Date.now()}_${Math.random()}`,
       type: 'swoosh',
       sourceX: player.x,
       sourceY: player.y,
-      targetX: target.x,
-      targetY: target.y,
+      targetX: swooshTargetX,
+      targetY: swooshTargetY,
       elapsedMs: 0,
       durationMs: 280,
       color: '#e2e8f0',
       visual: {
         glowColor: '#ffffff',
-        arcRadiusTiles: 0.9,
+        arcRadiusTiles: 2.0,
         arcSweepDeg: 90,
       },
     };
@@ -488,13 +573,19 @@ export class CombatSystem {
       projectiles: [swoosh],
       defeatedMonsterId,
       droppedLoot,
+      hitX,
+      hitY,
     };
   }
 
   /**
    * Executes Holy Strike for Paladin.
+   * Paladin weapon parity (LOK-9): reach extends one space beyond adjacent
+   * (same ~2.5 tiles as the fighter slash), the strike emits a swoosh, and the
+   * swing always executes (target nullable, facing-oriented free swing). Mana
+   * cost and cooldown are consumed on every executing swing.
    */
-  static executeHolyStrike(player, target, gridMap) {
+  static executeHolyStrike(player, target, gridMap, opts = {}) {
     if (player.cooldowns?.holy_strike > 0) {
       return { success: false, message: 'Holy Strike is on cooldown.' };
     }
@@ -503,36 +594,76 @@ export class CombatSystem {
       return { success: false, message: 'Not enough Mana for Holy Strike.' };
     }
 
-    const dist = Math.hypot(target.x - player.x, target.y - player.y);
-    if (dist > 1.5) {
-      return { success: false, message: 'Target is too far for Holy Strike.' };
-    }
-
     player.mana -= CONFIG.PALADIN_HOLY_STRIKE_MANA_COST;
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.holy_strike = CONFIG.PALADIN_HOLY_STRIKE_COOLDOWN_SEC;
 
+    const reach = 2.5;
+    const facing = opts.facing || player.facing || 'right';
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
-    const baseDmg = CombatSystem.randomBetween(CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MIN, CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MAX);
-    const damage = Math.round(baseDmg * mult);
-    target.hp -= damage;
 
+    let hitMonster = null;
+    if (target && Math.hypot(target.x - player.x, target.y - player.y) <= reach) {
+      hitMonster = target;
+    } else {
+      hitMonster = CombatSystem.findMonsterInMeleeArea(player, opts.monsters || [], reach, facing, gridMap);
+    }
+
+    let damage;
     let defeatedMonsterId;
     let droppedLoot;
-    let message = `Holy Strike smites ${target.name} for ${damage} holy damage.`;
+    let message;
+    let hitX = null;
+    let hitY = null;
 
-    if (target.hp <= 0) {
-      defeatedMonsterId = target.id;
-      droppedLoot = CombatSystem.generateMonsterLoot(target);
-      message += ` ${target.name} was slain!`;
+    if (hitMonster) {
+      const baseDmg = CombatSystem.randomBetween(CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MIN, CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MAX);
+      damage = Math.round(baseDmg * mult);
+      hitMonster.hp -= damage;
+      hitX = hitMonster.x;
+      hitY = hitMonster.y;
+      message = `Holy Strike smites ${hitMonster.name} for ${damage} holy damage.`;
+
+      if (hitMonster.hp <= 0) {
+        defeatedMonsterId = hitMonster.id;
+        droppedLoot = CombatSystem.generateMonsterLoot(hitMonster);
+        message += ` ${hitMonster.name} was slain!`;
+      }
+    } else {
+      message = 'Your holy swing cuts the air.';
     }
+
+    // Holy-looking swoosh, same shape as the fighter slash (holy gold accents).
+    const fv = CombatSystem.FACING_VECTORS[facing] || CombatSystem.FACING_VECTORS.right;
+    const swooshTargetX = hitX ?? (player.x + fv.dx * reach);
+    const swooshTargetY = hitY ?? (player.y + fv.dy * reach);
+
+    const swoosh = {
+      id: `swoosh_${Date.now()}_${Math.random()}`,
+      type: 'swoosh',
+      sourceX: player.x,
+      sourceY: player.y,
+      targetX: swooshTargetX,
+      targetY: swooshTargetY,
+      elapsedMs: 0,
+      durationMs: 280,
+      color: '#fbbf24',
+      visual: {
+        glowColor: '#ffd700',
+        arcRadiusTiles: 2.0,
+        arcSweepDeg: 90,
+      },
+    };
 
     return {
       success: true,
       message,
       damageDealt: damage,
+      projectiles: [swoosh],
       defeatedMonsterId,
       droppedLoot,
+      hitX,
+      hitY,
     };
   }
 

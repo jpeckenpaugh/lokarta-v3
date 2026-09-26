@@ -397,7 +397,7 @@ describe('CombatSystem (No Class Multiplier) & Vocation-Locked Equipment', () =>
     assert.ok(fgtRes.damageDealt >= CONFIG.FIGHTER_SLASH_DAMAGE_MIN);
   });
 
-  it('extends Fighter melee reach one space beyond adjacent and rejects out-of-range targets', () => {
+  it('extends Fighter melee reach one space beyond adjacent; out-of-reach targets whiff as a free swing', () => {
     // Player at (2,2). Orthogonal range-2 target at (4,2) -> dist 2.0 (in reach).
     const fgt = createPlayer('fighter');
     fgt.x = 2;
@@ -415,17 +415,21 @@ describe('CombatSystem (No Class Multiplier) & Vocation-Locked Equipment', () =>
     const diag2Res = CombatSystem.executeSlash(fgt2, diag2, grid);
     assert.equal(diag2Res.success, true, 'diagonal range-2 target must be within melee reach');
 
-    // Out of reach: target at (5,2) -> dist 3.0 (one more space beyond) must be rejected.
+    // Out of reach: target at (5,2) -> dist 3.0. Swing-always: the swing still
+    // executes as a free swing (swoosh, no damage to the far target).
     const fgt3 = createPlayer('fighter');
     fgt3.x = 2;
     fgt3.y = 2;
     const far = { id: 'm3', name: 'Skeleton', type: 'crypt_skeleton', x: 5, y: 2, hp: 100, max_hp: 100 };
     const farRes = CombatSystem.executeSlash(fgt3, far, grid);
-    assert.equal(farRes.success, false, 'target beyond one space of melee reach must be rejected');
-    assert.match(farRes.message, /too far/i);
+    assert.equal(farRes.success, true, 'swing-always: an out-of-reach target still executes a swing');
+    assert.equal(far.hp, 100, 'an out-of-reach target must not take damage');
+    assert.match(farRes.message, /cuts the air/i);
+    const farSwoosh = farRes.projectiles.find(p => p.type === 'swoosh');
+    assert.ok(farSwoosh, 'the free swing still emits a swoosh');
   });
 
-  it('extends Paladin basic melee reach one space beyond adjacent and rejects out-of-range targets', () => {
+  it('extends Paladin basic melee reach one space beyond adjacent; out-of-reach targets whiff as a free swing', () => {
     const pal = createPlayer('paladin');
     pal.x = 2;
     pal.y = 2;
@@ -438,7 +442,8 @@ describe('CombatSystem (No Class Multiplier) & Vocation-Locked Equipment', () =>
     palFar.y = 2;
     const far = { id: 'm2', name: 'Skeleton', type: 'crypt_skeleton', x: 5, y: 2, hp: 100, max_hp: 100 };
     const farRes = CombatSystem.executeSlash(palFar, far, grid);
-    assert.equal(farRes.success, false, 'Paladin basic melee must reject an out-of-range target');
+    assert.equal(farRes.success, true, 'swing-always: Paladin basic melee still swings for an out-of-reach target');
+    assert.equal(far.hp, 100, 'out-of-reach target must not take damage');
   });
 
   it('emits a swoosh animation in the melee swing result', () => {
@@ -457,6 +462,73 @@ describe('CombatSystem (No Class Multiplier) & Vocation-Locked Equipment', () =>
     assert.equal(swoosh.targetX, target.x);
     assert.equal(swoosh.targetY, target.y);
     assert.ok(swoosh.durationMs > 0, 'swoosh must have a positive duration');
+  });
+
+  it('emits a swoosh with an arc radius that spans the ~2-tile melee reach', () => {
+    const fgt = createPlayer('fighter');
+    fgt.x = 2;
+    fgt.y = 2;
+    const target = { id: 'm1', name: 'Skeleton', type: 'crypt_skeleton', x: 4, y: 2, hp: 100, max_hp: 100 };
+
+    const res = CombatSystem.executeSlash(fgt, target, grid);
+    assert.equal(res.success, true);
+    const swoosh = res.projectiles.find(p => p.type === 'swoosh');
+    assert.ok(swoosh, 'melee swing must emit a swoosh projectile');
+    assert.ok(
+      swoosh.visual.arcRadiusTiles >= 1.6,
+      `fighter swoosh arcRadiusTiles (${swoosh.visual.arcRadiusTiles}) must span the ~2-tile melee reach`
+    );
+  });
+
+  it('Holy Strike hits one space beyond adjacent and emits a swoosh', () => {
+    const pal = createPlayer('paladin');
+    pal.x = 2;
+    pal.y = 2;
+    pal.mana = CONFIG.PALADIN_HOLY_STRIKE_MANA_COST + 10;
+    const range2 = { id: 'm1', name: 'Skeleton', type: 'crypt_skeleton', x: 4, y: 2, hp: 100, max_hp: 100 };
+
+    const res = CombatSystem.executeHolyStrike(pal, range2, grid);
+    assert.equal(res.success, true, 'Holy Strike must hit a target one space beyond adjacent');
+    assert.ok(res.damageDealt >= CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MIN, 'damage must register on the in-reach target');
+    assert.equal(pal.mana, CONFIG.PALADIN_HOLY_STRIKE_MANA_COST, 'Holy Strike mana cost is consumed');
+    const swoosh = res.projectiles.find(p => p.type === 'swoosh');
+    assert.ok(swoosh, 'Holy Strike must emit a swoosh');
+    assert.equal(swoosh.targetX, range2.x, 'Holy Strike swoosh is oriented toward the struck target');
+    assert.equal(swoosh.targetY, range2.y);
+  });
+
+  it('a melee swing with no enemy in range still executes (swoosh, no damage, cooldown consumed)', () => {
+    const fgt = createPlayer('fighter');
+    fgt.x = 2;
+    fgt.y = 2;
+    fgt.facing = 'right';
+
+    const res = CombatSystem.executeSlash(fgt, null, grid);
+    assert.equal(res.success, true, 'swing must execute with no enemy in range');
+    assert.equal(res.damageDealt, undefined, 'no damage registers when the damage area is empty');
+    assert.match(res.message, /cuts the air/i);
+    const swoosh = res.projectiles.find(p => p.type === 'swoosh');
+    assert.ok(swoosh, 'the free swing emits a swoosh');
+    assert.equal(fgt.cooldowns.slash, CONFIG.FIGHTER_SLASH_COOLDOWN_SEC, 'the free swing still consumes the cooldown');
+  });
+
+  it('a free swing damages an enemy inside the damage area (reach + facing arc)', () => {
+    const fgt = createPlayer('fighter');
+    fgt.x = 2;
+    fgt.y = 2;
+    fgt.facing = 'right';
+    // Enemy directly ahead of the player at range 2 (inside reach and the 90° facing arc).
+    const ahead = { id: 'm1', name: 'Skeleton', type: 'crypt_skeleton', x: 4, y: 2, hp: 100, max_hp: 100 };
+    // Enemy behind the player at range 2 (inside reach but outside the facing arc).
+    const behind = { id: 'm2', name: 'Skeleton', type: 'crypt_skeleton', x: 0, y: 2, hp: 100, max_hp: 100 };
+
+    const res = CombatSystem.executeSlash(fgt, null, grid, { monsters: [ahead, behind], facing: 'right' });
+    assert.equal(res.success, true);
+    assert.ok(res.damageDealt >= CONFIG.FIGHTER_SLASH_DAMAGE_MIN, 'enemy inside the damage area must take damage');
+    assert.equal(ahead.hp, 100 - res.damageDealt, 'the in-arc enemy takes the swing damage');
+    assert.equal(behind.hp, 100, 'an enemy outside the facing arc is not hit');
+    const swoosh = res.projectiles.find(p => p.type === 'swoosh');
+    assert.ok(swoosh, 'the damaging free swing still emits a swoosh');
   });
 
   it('executes Archer Bow Shot and consumes arrows from Action Bar or Backpack', () => {
