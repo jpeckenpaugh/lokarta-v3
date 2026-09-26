@@ -54,7 +54,7 @@ Calculates gesture type based on press duration (`CONFIG` in `engine.js`):
 ## 5. Constraints
 
 - Render loop skips entity rendering for tiles outside visible FOV.
-- Canvas maintains $32 \text{ px}$ grid tile units (`CONFIG.GRID_SIZE = 32`).
+- Canvas maintains $64 \text{ px}$ grid tile units (`CONFIG.GRID_SIZE = 64`) so tile art can be enriched in future passes.
 
 ---
 

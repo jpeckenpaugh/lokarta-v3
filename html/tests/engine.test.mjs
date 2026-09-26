@@ -19,6 +19,7 @@ import {
   generateFloor,
   getBiomeForFloor,
   BIOMES,
+  FLOOR_TEMPLATE_VERSION,
 } from '../services/floor-generator.js';
 
 import {
@@ -37,6 +38,7 @@ import {
 } from '../engine/index.js';
 
 import { GameClient } from '../worker/game-client.js';
+import { isStaleFloor } from '../worker/game-worker.js';
 
 // ============================================================================
 // 1. Floor Generator (1-20)
@@ -114,6 +116,81 @@ describe('Floor Generator (1-20)', () => {
     }
   });
 
+  it('uses 64px tiles (CONFIG.GRID_SIZE = 64) for the graphics overhaul', () => {
+    assert.equal(CONFIG.GRID_SIZE, 64, 'tile size must be 64x64 pixels to prepare for richer art');
+  });
+
+  it('keeps exterior walls exactly 1 tile thick on all floors', () => {
+    for (let f = 1; f <= 20; f++) {
+      const floor = generateFloor(f);
+      const t = floor.tiles;
+
+      // The outer ring (rows 0/39, cols 0/39) is wall and nothing more.
+      for (let x = 0; x < 40; x++) {
+        assert.equal(t[0][x], TILE_TYPES.WALL, `floor ${f}: exterior top (0,${x}) must be wall`);
+        assert.equal(t[39][x], TILE_TYPES.WALL, `floor ${f}: exterior bottom (39,${x}) must be wall`);
+      }
+      for (let y = 0; y < 40; y++) {
+        assert.equal(t[y][0], TILE_TYPES.WALL, `floor ${f}: exterior left (${y},0) must be wall`);
+        assert.equal(t[y][39], TILE_TYPES.WALL, `floor ${f}: exterior right (${y},39) must be wall`);
+      }
+
+      // The ring is exactly 1 tile thick: the first interior row/col is open floor.
+      assert.notEqual(t[1][1], TILE_TYPES.WALL, `floor ${f}: (1,1) must not be wall (exterior is 1 tile thick)`);
+      assert.notEqual(t[1][38], TILE_TYPES.WALL, `floor ${f}: (1,38) must not be wall`);
+      assert.notEqual(t[38][1], TILE_TYPES.WALL, `floor ${f}: (38,1) must not be wall`);
+      assert.notEqual(t[38][38], TILE_TYPES.WALL, `floor ${f}: (38,38) must not be wall`);
+    }
+  });
+
+  it('keeps internal room walls 1 tile thick (no 2x2 solid wall blocks) on all floors', () => {
+    for (let f = 1; f <= 20; f++) {
+      const floor = generateFloor(f);
+      const t = floor.tiles;
+
+      for (let y = 0; y < 39; y++) {
+        for (let x = 0; x < 39; x++) {
+          const solid2x2 =
+            t[y][x] === TILE_TYPES.WALL &&
+            t[y][x + 1] === TILE_TYPES.WALL &&
+            t[y + 1][x] === TILE_TYPES.WALL &&
+            t[y + 1][x + 1] === TILE_TYPES.WALL;
+          assert.equal(solid2x2, false, `floor ${f}: 2x2 solid wall block at (${x},${y}) - internal walls must be 1 tile thick`);
+        }
+      }
+    }
+  });
+
+  it('recovers significant internal floor space vs the legacy thick-walled layout', () => {
+    for (let f = 1; f <= 20; f++) {
+      const floor = generateFloor(f);
+      let walls = 0;
+      for (let y = 0; y < floor.height; y++) {
+        for (let x = 0; x < floor.width; x++) {
+          if (floor.tiles[y][x] === TILE_TYPES.WALL) walls++;
+        }
+      }
+      // Legacy 40x40 layout used ~705-709 wall tiles; 1-tile walls use ~280-284,
+      // reclaiming ~48% of the map as walkable interior space.
+      assert.ok(
+        walls <= 320,
+        `floor ${f}: expected 1-tile walls to keep wall count low, got ${walls} wall tiles`
+      );
+    }
+  });
+
+  it('stamps every floor with the current template version so cached floors are invalidated', () => {
+    assert.ok(FLOOR_TEMPLATE_VERSION >= 2, 'template version must be bumped for the 1-tile-wall overhaul');
+    for (let f = 1; f <= 20; f++) {
+      const floor = generateFloor(f);
+      assert.equal(
+        floor.template_version,
+        FLOOR_TEMPLATE_VERSION,
+        `floor ${f} must be stamped with the current template version`
+      );
+    }
+  });
+
   it('assigns correct biomes for floors 1 to 20', () => {
     for (let f = 1; f <= 5; f++) assert.equal(getBiomeForFloor(f).name, BIOMES.CRYPT.name);
     for (let f = 6; f <= 10; f++) assert.equal(getBiomeForFloor(f).name, BIOMES.CATACOMBS.name);
@@ -135,7 +212,7 @@ describe('Floor Generator (1-20)', () => {
   });
 
   it('replaces the spawn-adjacent torch with arrows x22 on floor 1 only', () => {
-    // Spawn room is [2,2,8,8]; the torch slot sits at (6,6), visible at game start.
+    // Spawn room is [1,1,11,11]; the torch slot sits at (6,6), visible at game start.
     const floor1 = generateFloor(1);
     const spawnCoords = floor1.spawn_coords;
     assert.deepEqual(spawnCoords, { x: 2, y: 2 });
@@ -954,5 +1031,24 @@ describe('GameClient & Worker Protocol', () => {
     assert.equal(nData.player.vocation, 'paladin');
 
     client.terminate();
+  });
+
+  it('flags cached floors from older templates as stale so they regenerate', () => {
+    // Missing floor -> stale
+    assert.equal(isStaleFloor(null), true);
+    assert.equal(isStaleFloor(undefined), true);
+
+    // Floor stamped with the current template -> fresh
+    assert.equal(isStaleFloor({ template_version: FLOOR_TEMPLATE_VERSION }), false);
+
+    // Floor baked by the legacy thick-walled layout (v1 / no stamp) -> stale
+    assert.equal(isStaleFloor({ template_version: 1 }), true);
+    assert.equal(isStaleFloor({ floor_number: 2 }), true);
+    assert.equal(isStaleFloor({ floor_number: 2, template_version: FLOOR_TEMPLATE_VERSION - 1 }), true);
+
+    // Regression: every freshly generated floor is considered fresh
+    for (let f = 1; f <= 20; f++) {
+      assert.equal(isStaleFloor(generateFloor(f)), false, `floor ${f} from current template must not be stale`);
+    }
   });
 });

@@ -12,7 +12,7 @@ export const TILE_TYPES = {
 };
 
 export const CONFIG = {
-  GRID_SIZE: 32, // pixels per tile
+  GRID_SIZE: 64, // pixels per tile
   MAP_WIDTH: 40,
   MAP_HEIGHT: 40,
   TICK_INTERVAL_MS: 100, // 10 Hz fixed simulation tick

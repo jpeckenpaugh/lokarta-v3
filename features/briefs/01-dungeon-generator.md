@@ -78,6 +78,7 @@ Floor depth ($1..20$) maps strictly to 4 biomes defined in `BIOMES` (`floor-gene
 ## 5. Constraints
 
 - Grid boundaries ($40 \times 40$) are fixed; outer frame is uncarved solid Wall.
+- Exterior walls are exactly 1 tile thick (rows $0/39$, cols $0/39$); internal room walls are 1 tile thick, reclaiming interior spacing for gameplay.
 - Player spawn is strictly forced to `(2, 2)`; exit stairs strictly forced to `(35, 35)`.
 - Maximum generator retry count on BFS failure is 10 attempts.
 

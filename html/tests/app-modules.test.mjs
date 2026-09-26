@@ -44,7 +44,7 @@ test('App Submodules & Root Re-exports', async (t) => {
 
   await t.test('verifies Beam Wave swept-up carrying and collision resolution', () => {
     globalThis.soundFX = { play: () => {}, playAt: () => {} };
-    globalThis.CONFIG = { GRID_SIZE: 32 };
+    globalThis.CONFIG = { GRID_SIZE: 64 };
     const mockApp = Object.create(LokartaApp.prototype);
     mockApp.particles = [];
     mockApp.floatingTexts = [];

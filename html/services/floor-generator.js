@@ -12,6 +12,14 @@ export const TILE_TYPES = {
   DOOR: 3,
 };
 
+/**
+ * Version of the current dungeon floor-generation template.
+ * Bumped whenever the template/layout logic changes so cached floors from
+ * older templates can be detected and regenerated (see game-worker.js).
+ * v1 = legacy thick-walled layout; v2 = 1-tile-thick walls + 64px overhaul.
+ */
+export const FLOOR_TEMPLATE_VERSION = DUNGEONS_CATALOG.standard_40x40?.templateVersion || 1;
+
 export const BIOMES = {
   CRYPT: {
     name: BIOMES_CATALOG.crypt.name,
@@ -154,11 +162,11 @@ export function generateFloor(floorNumber = 1, seed = null) {
 
   // Add decorative internal pillars in center rooms on select floors
   if (floorId % 2 === 1) {
-    // Center Hall pillars
-    if (matrix[17] && matrix[17][18] !== undefined) matrix[17][18] = TILE_TYPES.WALL;
-    if (matrix[17] && matrix[17][23] !== undefined) matrix[17][23] = TILE_TYPES.WALL;
-    if (matrix[22] && matrix[22][18] !== undefined) matrix[22][18] = TILE_TYPES.WALL;
-    if (matrix[22] && matrix[22][23] !== undefined) matrix[22][23] = TILE_TYPES.WALL;
+    // Center Hall pillars (room 5 [13,13,25,26])
+    if (matrix[18] && matrix[18][18] !== undefined) matrix[18][18] = TILE_TYPES.WALL;
+    if (matrix[18] && matrix[18][23] !== undefined) matrix[18][23] = TILE_TYPES.WALL;
+    if (matrix[23] && matrix[23][18] !== undefined) matrix[23][18] = TILE_TYPES.WALL;
+    if (matrix[23] && matrix[23][23] !== undefined) matrix[23][23] = TILE_TYPES.WALL;
   }
 
   // 3. Carve connecting corridors (width of 2 tiles for comfortable navigation)
@@ -378,6 +386,7 @@ export function generateFloor(floorNumber = 1, seed = null) {
   return {
     floor_number: floorId,
     id: floorId,
+    template_version: FLOOR_TEMPLATE_VERSION,
     name: floorName,
     biome: biomeName,
     width,

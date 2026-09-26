@@ -118,7 +118,7 @@ html/
 | `GestureEngine` | Touch gesture & keyboard input mapping via `KEYBINDINGS_CATALOG`. | `handleKeyDown(event)`, `handleTouchStart(e)`, `handleTouchEnd(e)`, `onGesture(callback)` |
 
 ### 3.2 Configuration Parameters (`CONFIG`)
-- **Map Dimensions:** Grid size = 32px, Width = 40 tiles, Height = 40 tiles.
+- **Map Dimensions:** Grid size = 64px, Width = 40 tiles, Height = 40 tiles.
 - **Simulation Timing:** Fixed tick interval = 100 ms (10 Hz).
 - **Inventory Layout:** 10 Action Bar slots (0–9), 6 Backpack slots, 4 Paperdoll slots (`main_hand`, `off_hand`, `armor`, `relic`).
 - **Lighting Radii:** Base FOV = 10 tiles, Torch = +2 radius (12 tiles), Light Spell = +3/+2/+1 degrading radius (30s duration), Ambient = 4 tiles.
