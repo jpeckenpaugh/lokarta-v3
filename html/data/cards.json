@@ -144,6 +144,57 @@
     }
   },
   {
+    "id": "card_hunter_quiver",
+    "name": "Hunter's Quiver",
+    "rarity": "common",
+    "icon": "🏹",
+    "description": "A fletched quiver of spare arrows worn at the hip, steadying the archer's draw.",
+    "statBonusText": "+3 Armor",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "hunter_quiver",
+      "name": "Hunter's Quiver",
+      "type": "offhand",
+      "quantity": 1,
+      "stat_bonus": 3,
+      "icon": "🏹"
+    }
+  },
+  {
+    "id": "card_hunter_leathers",
+    "name": "Hunter's Leathers",
+    "rarity": "rare",
+    "icon": "🧥",
+    "description": "Supple cured-hide armor granting swift mobility without sacrificing protection.",
+    "statBonusText": "+5 Armor",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "hunter_leathers",
+      "name": "Hunter's Leathers",
+      "type": "armor",
+      "quantity": 1,
+      "stat_bonus": 5,
+      "icon": "🧥"
+    }
+  },
+  {
+    "id": "card_archer_hood",
+    "name": "Archer's Hood",
+    "rarity": "rare",
+    "icon": "🧢",
+    "description": "A woven leather hood keeping the hunter's eyes sharp and focused in the gloom.",
+    "statBonusText": "+4 Armor",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "archer_hood",
+      "name": "Archer's Hood",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 4,
+      "icon": "🧢"
+    }
+  },
+  {
     "id": "card_iron_shortsword",
     "name": "Iron Shortsword & Slash",
     "rarity": "common",
@@ -214,6 +265,23 @@
       "quantity": 1,
       "stat_bonus": 7,
       "icon": "🗡️"
+    }
+  },
+  {
+    "id": "card_iron_helm",
+    "name": "Iron Helm",
+    "rarity": "rare",
+    "icon": "🪖",
+    "description": "A forged iron helm guarding the Legion fighter's head through heavy melee.",
+    "statBonusText": "+6 Armor",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "iron_helm",
+      "name": "Iron Helm",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 6,
+      "icon": "🪖"
     }
   },
   {
@@ -288,6 +356,23 @@
       "quantity": 1,
       "stat_bonus": 6,
       "icon": "⚒️"
+    }
+  },
+  {
+    "id": "card_holy_crown",
+    "name": "Holy Crown",
+    "rarity": "rare",
+    "icon": "👑",
+    "description": "A consecrated crown radiating the Paladin's sacred devotion and protection.",
+    "statBonusText": "+7 Armor",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "holy_crown",
+      "name": "Holy Crown",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 7,
+      "icon": "👑"
     }
   },
   {

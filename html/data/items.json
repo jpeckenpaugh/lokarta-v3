@@ -108,6 +108,39 @@
     "grantedAmmo": { "item_id": "arrows", "quantity": 20 },
     "maxStack": 1
   },
+  "hunter_quiver": {
+    "item_id": "hunter_quiver",
+    "name": "Hunter's Quiver",
+    "type": "offhand",
+    "slot": "off_hand",
+    "stat_bonus": 3,
+    "vocationAffinity": "archer",
+    "icon": "🏹",
+    "svgCode": "1F3F9",
+    "maxStack": 1
+  },
+  "hunter_leathers": {
+    "item_id": "hunter_leathers",
+    "name": "Hunter's Leathers",
+    "type": "armor",
+    "slot": "armor",
+    "stat_bonus": 5,
+    "vocationAffinity": "archer",
+    "icon": "🧥",
+    "svgCode": "1F9E5",
+    "maxStack": 1
+  },
+  "archer_hood": {
+    "item_id": "archer_hood",
+    "name": "Archer's Hood",
+    "type": "relic",
+    "slot": "relic",
+    "stat_bonus": 4,
+    "vocationAffinity": "archer",
+    "icon": "🧢",
+    "svgCode": "1F9E2",
+    "maxStack": 1
+  },
   "tempered_broadsword": {
     "item_id": "tempered_broadsword",
     "name": "Tempered Broadsword",
@@ -118,6 +151,17 @@
     "icon": "🗡️",
     "svgCode": "2694",
     "actionKey": "slash",
+    "maxStack": 1
+  },
+  "iron_helm": {
+    "item_id": "iron_helm",
+    "name": "Iron Helm",
+    "type": "relic",
+    "slot": "relic",
+    "stat_bonus": 6,
+    "vocationAffinity": "fighter",
+    "icon": "🪖",
+    "svgCode": "1FA96",
     "maxStack": 1
   },
   "consecrated_warhammer": {
@@ -132,12 +176,24 @@
     "actionKey": "holy_strike",
     "maxStack": 1
   },
+  "holy_crown": {
+    "item_id": "holy_crown",
+    "name": "Holy Crown",
+    "type": "relic",
+    "slot": "relic",
+    "stat_bonus": 7,
+    "vocationAffinity": "paladin",
+    "icon": "👑",
+    "svgCode": "1F451",
+    "maxStack": 1
+  },
   "buckler": {
     "item_id": "buckler",
     "name": "Reinforced Buckler",
     "type": "offhand",
     "slot": "off_hand",
     "stat_bonus": 4,
+    "vocationAffinity": ["fighter", "paladin"],
     "icon": "🛡️",
     "svgCode": "1F6E1",
     "maxStack": 1
@@ -148,6 +204,7 @@
     "type": "armor",
     "slot": "armor",
     "stat_bonus": 8,
+    "vocationAffinity": ["fighter", "paladin"],
     "icon": "🦺",
     "svgCode": "1F9BA",
     "maxStack": 1
@@ -179,6 +236,7 @@
     "hpBonus": 5,
     "manaBonus": 5,
     "prayerPulseSec": 10,
+    "vocationAffinity": "neutral",
     "icon": "📿",
     "svgCode": "1F4FF",
     "maxStack": 1,
@@ -195,6 +253,7 @@
     "type": "relic",
     "slot": "relic",
     "stat_bonus": 15,
+    "vocationAffinity": ["fighter", "paladin"],
     "icon": "👑",
     "svgCode": "1F4FF",
     "maxStack": 1
