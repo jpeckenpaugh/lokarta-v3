@@ -33,7 +33,7 @@
     "damageStep": 0.12,
     "eyeColor": "#e9d8a6",
     "regenResource": "hp",
-    "nativeEquipment": ["wooden_bow", "composite_bow", "hunter_quiver", "hunter_leathers", "archer_hood"],
+    "nativeEquipment": ["composite_bow", "grey_stalker_quiver", "hunter_leathers", "archer_hood"],
     "description": "Deadly long-range sniper utilizing fletched arrows and precision burst.",
     "renderTheme": {
       "primary": "#15803d",
@@ -54,7 +54,7 @@
     "damageStep": 0.15,
     "eyeColor": "#f87171",
     "regenResource": "hp",
-    "nativeEquipment": ["tempered_broadsword", "buckler", "plate_armor", "iron_helm"],
+    "nativeEquipment": ["tempered_broadsword", "vanguard_shield", "plate_armor", "iron_helm"],
     "description": "Resilient front-line warrior using heavy broadswords, cleaves, and defensive stances.",
     "renderTheme": {
       "primary": "#475569",
@@ -75,7 +75,7 @@
     "damageStep": 0.11,
     "eyeColor": "#38bdf8",
     "regenResource": "hp",
-    "nativeEquipment": ["consecrated_warhammer", "buckler", "plate_armor", "holy_crown"],
+    "nativeEquipment": ["consecrated_warhammer", "aegis_shield", "plate_armor", "holy_crown"],
     "description": "Holy champion striking with sacred warhammers, area light, and restorative prayers.",
     "renderTheme": {
       "primary": "#0284c7",

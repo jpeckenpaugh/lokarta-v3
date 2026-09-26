@@ -3,6 +3,7 @@
  */
 
 import { CARDS_CATALOG, ITEMS_CATALOG } from '../data/index.js';
+import { InventorySystem } from './inventory-system.js';
 
 export class FateGrantSystem {
   static CARD_DATABASE = CARDS_CATALOG;
@@ -181,30 +182,96 @@ export class FateGrantSystem {
           item.itemLevel = Math.min(5, (item.itemLevel || 1) + 1);
           const spec = catalogEntry.upgradeSpec || {};
           const rank = item.itemLevel;
+          const notes = [];
 
-          if (spec.randomDamageInc || spec.rangeInc || spec.manaCostInc) {
-            const dmgInc = card.upgradeDmgInc || (spec.randomDamageInc ? (Math.floor(Math.random() * (spec.randomDamageInc[1] - spec.randomDamageInc[0] + 1)) + spec.randomDamageInc[0]) : 0);
+          // --- Offense escalations (weapons / staff / wand) ---
+          if (spec.randomDamageInc) {
+            const dmgInc = card.upgradeDmgInc || (Math.floor(Math.random() * (spec.randomDamageInc[1] - spec.randomDamageInc[0] + 1)) + spec.randomDamageInc[0]);
             if (dmgInc) item.damage = (item.damage || catalogEntry.damageMin || 12) + dmgInc;
-            if (spec.rangeInc) item.range = (item.range || catalogEntry.range || 5) + spec.rangeInc;
-            if (spec.manaCostInc) item.manaCost = (item.manaCost || catalogEntry.manaCost || 1) + spec.manaCostInc;
-            result.addedToHotbar.push(`${item.name} Upgraded to Rank ${rank}`);
-          } else if (spec.stepDamageInc) {
-            item.stepDamageBonus = (item.stepDamageBonus || 0) + spec.stepDamageInc;
-            if (spec.rangeInc) item.range = (item.range || catalogEntry.range || 4) + spec.rangeInc;
-            if (spec.manaCostInc) item.manaCost = (item.manaCost || catalogEntry.manaCost || 5) + spec.manaCostInc;
-            result.addedToHotbar.push(`${item.name} Upgraded to Rank ${rank}`);
-          } else if (spec.maxHpInc || spec.maxMpInc) {
-            player.max_hp = (player.max_hp || 100) + (spec.maxHpInc || 0);
-            player.max_mana = (player.max_mana || 100) + (spec.maxMpInc || 0);
-            player.hp = Math.min(player.max_hp, (player.hp || 100) + (spec.maxHpInc || 0));
-            player.mana = Math.min(player.max_mana, (player.mana || 100) + (spec.maxMpInc || 0));
-            result.addedToHotbar.push(`${item.name} Upgraded to Rank ${rank}`);
-          } else if (spec.mpPulseInc) {
-            const cooldownSec = Math.max(12, 22 - 2 * rank);
-            result.addedToHotbar.push(`${item.name} Upgraded to Rank ${rank} (Power Pulse: +${rank} MP / ${cooldownSec}s)`);
-          } else {
-            result.addedToHotbar.push(`${item.name} Upgraded to Rank ${rank}`);
+            notes.push(`+${dmgInc || 0} Dmg`);
           }
+          if (spec.rangeInc) {
+            item.range = (item.range || catalogEntry.range || 5) + spec.rangeInc;
+            notes.push('+1 Range');
+          }
+          if (spec.manaCostInc) {
+            item.manaCost = (item.manaCost || catalogEntry.manaCost || 1) + spec.manaCostInc;
+            notes.push(`+${spec.manaCostInc} MP`);
+          }
+          if (spec.stepDamageInc) {
+            item.stepDamageBonus = (item.stepDamageBonus || 0) + spec.stepDamageInc;
+            notes.push(`+${spec.stepDamageInc} Wave Dmg`);
+          }
+
+          // --- Stat escalations (equivalent on any slot) ---
+          if (spec.maxHpInc) {
+            player.max_hp = (player.max_hp || 100) + spec.maxHpInc;
+            player.hp = Math.min(player.max_hp, (player.hp || 100) + spec.maxHpInc);
+            notes.push(`+${spec.maxHpInc} Max HP`);
+          }
+          if (spec.maxMpInc) {
+            player.max_mana = (player.max_mana || 100) + spec.maxMpInc;
+            player.mana = Math.min(player.max_mana, (player.mana || 100) + spec.maxMpInc);
+            notes.push(`+${spec.maxMpInc} Max MP`);
+          }
+          if (spec.mpPulseInc) {
+            const pulseSec = Math.max(12, 22 - 2 * rank);
+            notes.push(`Pulse +${rank} MP / ${pulseSec}s`);
+          }
+
+          // --- LOK-12 Golden spec keys ---
+          if (spec.arrowCapacityInc) {
+            item.arrowCapacity = (item.arrowCapacity || 25) + spec.arrowCapacityInc;
+            notes.push(`+${spec.arrowCapacityInc} Cap`);
+          }
+          if (spec.ammoRegenSecReduction) {
+            item.ammoRegenSec = Math.max(2.5, (item.ammoRegenSec || 5) - spec.ammoRegenSecReduction);
+            notes.push(`Regen ${item.ammoRegenSec.toFixed(1)}s`);
+          }
+          if (spec.dodgePctInc) {
+            item.dodgePct = (item.dodgePct || 0) + spec.dodgePctInc;
+            notes.push(`+${spec.dodgePctInc}% Dodge`);
+          }
+          if (spec.critChanceInc) {
+            item.critChance = (item.critChance || 0) + spec.critChanceInc;
+            notes.push(`+${spec.critChanceInc}% Crit`);
+          }
+          if (spec.critMultInc) {
+            item.critMult = (item.critMult || 0) + spec.critMultInc;
+            notes.push(`+${spec.critMultInc.toFixed(2)} Crit Mult`);
+          }
+          if (spec.mitigationPctInc) {
+            item.mitigationPct = (item.mitigationPct || 0) + spec.mitigationPctInc;
+            notes.push(`+${spec.mitigationPctInc}% Mitig`);
+          }
+          if (spec.healPowerPctInc) {
+            item.healPowerPct = (item.healPowerPct || 0) + spec.healPowerPctInc;
+            notes.push(`+${spec.healPowerPctInc}% Heal`);
+          }
+          if (spec.stunInc) {
+            item.stunSec = (item.stunSec || 0) + spec.stunInc;
+            notes.push(`+${spec.stunInc.toFixed(1)}s Stun`);
+          }
+          if (spec.shieldAbsorbInc) {
+            item.shieldAbsorb = (item.shieldAbsorb || 0) + spec.shieldAbsorbInc;
+            notes.push(`+${spec.shieldAbsorbInc} Absorb`);
+          }
+          if (spec.shieldDurationInc) {
+            item.shieldDuration = (item.shieldDuration || 0) + spec.shieldDurationInc;
+            notes.push(`+${spec.shieldDurationInc}s Bubble`);
+          }
+          // Functional at use time (CombatSystem.getEffectiveManaCost /
+          // getEffectiveCooldown); the item rank already drives the reduction.
+          if (spec.shieldManaCostReduction) {
+            notes.push(`-${spec.shieldManaCostReduction} MP`);
+          }
+          if (spec.cooldownReductionSec) {
+            notes.push(`-${spec.cooldownReductionSec}s CD`);
+          }
+
+          result.addedToHotbar.push(
+            `${item.name} Upgraded to Rank ${rank}${notes.length ? ` (${notes.join(', ')})` : ''}`
+          );
           continue;
         }
       }
@@ -217,8 +284,27 @@ export class FateGrantSystem {
         itemToPlace.damage = Math.floor(Math.random() * (16 - 12 + 1)) + 12;
       }
 
-      // Auto-assign staff to main_hand, wand to off_hand, armor to armor, or relic to relic slot if paperdoll slot is empty
+      // Merge functional catalog fields the card payload omits (LOK-12 Golden
+      // gear relies on equipped instances carrying actionKey/cooldown/ammo/
+      // absorb fields even when placed via card payloads that only carry the
+      // cosmetic fields).
       const catalogItem = ITEMS_CATALOG[itemToPlace.item_id];
+      const FUNCTIONAL_ITEM_KEYS = [
+        'slot', 'damageMin', 'damageMax', 'range', 'cooldown', 'manaCost',
+        'actionKey', 'arrowCapacity', 'arrowCount', 'ammoRegenSec',
+        'pushbackRange', 'stunSec', 'shieldAbsorb', 'shieldDuration',
+        'dodgePct', 'critChance', 'critMult', 'mitigationPct',
+        'hpBonus', 'manaBonus', 'healPowerPct', 'grantedAmmo', 'upgradeSpec',
+      ];
+      if (catalogItem) {
+        for (const key of FUNCTIONAL_ITEM_KEYS) {
+          if (itemToPlace[key] === undefined && catalogItem[key] !== undefined) {
+            itemToPlace[key] = catalogItem[key];
+          }
+        }
+      }
+
+      // Auto-assign staff to main_hand, wand to off_hand, armor to armor, or relic to relic slot if paperdoll slot is empty
       const targetSlot = itemToPlace.slot || catalogItem?.slot;
       if (!player.paperdoll) {
         player.paperdoll = { main_hand: null, off_hand: null, armor: null, relic: null };
@@ -226,14 +312,9 @@ export class FateGrantSystem {
 
       if (targetSlot && (targetSlot === 'main_hand' || targetSlot === 'off_hand' || targetSlot === 'armor' || targetSlot === 'relic') && !player.paperdoll[targetSlot]) {
         player.paperdoll[targetSlot] = itemToPlace;
-        if (targetSlot === 'relic' && itemToPlace.item_id === 'relic_luminous_amulet') {
-          const rank = itemToPlace.itemLevel || 1;
-          const hpMpBonus = rank * 5;
-          player.max_hp = (player.max_hp || 100) + hpMpBonus;
-          player.max_mana = (player.max_mana || 100) + hpMpBonus;
-          player.hp = Math.min(player.max_hp, (player.hp || 100) + hpMpBonus);
-          player.mana = Math.min(player.max_mana, (player.mana || 100) + hpMpBonus);
-        }
+        // General equippable recompute: hpBonus/manaBonus now work on any slot
+        // (replaces the amulet-only special case).
+        InventorySystem.recomputeGearBonuses(player);
         result.addedToHotbar.push(`${itemToPlace.name} (Equipped to ${targetSlot.replace('_', ' ')})`);
         continue;
       }

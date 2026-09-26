@@ -32,6 +32,21 @@ export class InventorySystem {
     const maxStack = InventorySystem.getMaxStack(groundItem.item_id);
     let totalPickedUp = 0;
 
+    // 0. Floor arrow drops fill the equipped quiver first (Grey Stalker arrow
+    //    economy); any remainder spills to the `arrows` reserve stack below.
+    if (groundItem.item_id === 'arrows') {
+      const quiver = player.paperdoll?.off_hand;
+      if (quiver && typeof quiver.arrowCount === 'number' && typeof quiver.arrowCapacity === 'number') {
+        const space = quiver.arrowCapacity - quiver.arrowCount;
+        if (space > 0) {
+          const toFill = Math.min(space, groundItem.quantity);
+          quiver.arrowCount += toFill;
+          groundItem.quantity -= toFill;
+          totalPickedUp += toFill;
+        }
+      }
+    }
+
     // 1. Stack into Action Bar if stackable
     if (maxStack > 1 && player.action_bar) {
       for (let i = 0; i < player.action_bar.length; i++) {
@@ -132,6 +147,51 @@ export class InventorySystem {
     };
   }
 
+  /**
+   * Recomputes the player's max HP/MP against the equipped gear's
+   * `hpBonus` / `manaBonus` totals (LOK-12: generalizes the amulet special
+   * case so any slot's bonuses work). Applies only the delta between the
+   * previously-applied bonus and the current equipped total, so re-equipping
+   * never double-counts. Positive deltas bump current HP/MP by the gain;
+   * negative deltas clamp current values to the new max.
+   *
+   * Legacy saves that predate `_gearBonusMaxHp` are treated as already having
+   * their bonuses baked in (no re-application, no double count).
+   */
+  static recomputeGearBonuses(player) {
+    if (!player?.paperdoll) return;
+
+    let hpBonus = 0;
+    let manaBonus = 0;
+    for (const slotName of Object.keys(player.paperdoll)) {
+      const equipped = player.paperdoll[slotName];
+      if (!equipped) continue;
+      hpBonus += equipped.hpBonus || 0;
+      manaBonus += equipped.manaBonus || 0;
+    }
+
+    if (player._gearBonusMaxHp === undefined || player._gearBonusMaxMana === undefined) {
+      // First time: assume the pre-existing bonuses are already applied.
+      player._gearBonusMaxHp = hpBonus;
+      player._gearBonusMaxMana = manaBonus;
+      return;
+    }
+
+    const deltaHp = hpBonus - player._gearBonusMaxHp;
+    const deltaMana = manaBonus - player._gearBonusMaxMana;
+
+    if (deltaHp !== 0 || deltaMana !== 0) {
+      player.max_hp = Math.max(1, (player.max_hp || 1) + deltaHp);
+      player.max_mana = Math.max(1, (player.max_mana || 1) + deltaMana);
+      if (deltaHp > 0) player.hp = Math.min(player.max_hp, (player.hp || 0) + deltaHp);
+      if (deltaMana > 0) player.mana = Math.min(player.max_mana, (player.mana || 0) + deltaMana);
+      player.hp = Math.min(player.max_hp, player.hp || 0);
+      player.mana = Math.min(player.max_mana, player.mana || 0);
+      player._gearBonusMaxHp = hpBonus;
+      player._gearBonusMaxMana = manaBonus;
+    }
+  }
+
   static equipItem(player, source, slotIndex) {
     const list = source === 'action_bar' ? player.action_bar : player.backpack;
     if (!list || slotIndex < 0 || slotIndex >= list.length) {
@@ -184,6 +244,10 @@ export class InventorySystem {
       list[slotIndex] = currentlyEquipped;
     }
 
+    // Recompute max HP/MP from the post-swap paperdoll (hpBonus/manaBonus on
+    // any slot; generalizes the old amulet-only special case).
+    InventorySystem.recomputeGearBonuses(player);
+
     return {
       success: true,
       message: `Equipped ${item.name} in ${targetSlot.replace('_', ' ')}.`,
@@ -204,6 +268,7 @@ export class InventorySystem {
       if (emptyActionIdx !== -1) {
         player.paperdoll[slotName] = null;
         player.action_bar[emptyActionIdx] = item;
+        InventorySystem.recomputeGearBonuses(player);
         return { success: true, message: `Unequipped ${item.name} to Action Slot ${emptyActionIdx + 1}.`, item };
       }
     }
@@ -214,6 +279,7 @@ export class InventorySystem {
       if (emptyBpIdx !== -1) {
         player.paperdoll[slotName] = null;
         player.backpack[emptyBpIdx] = item;
+        InventorySystem.recomputeGearBonuses(player);
         return { success: true, message: `Unequipped ${item.name} to Backpack Slot ${emptyBpIdx + 1}.`, item };
       }
     }

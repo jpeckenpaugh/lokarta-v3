@@ -20,7 +20,7 @@ import {
 test('JSON Data Catalogs', async (t) => {
   await t.test('loads and validates cards.json catalog', () => {
     assert.ok(Array.isArray(CARDS_CATALOG), 'CARDS_CATALOG must be an array');
-    assert.equal(CARDS_CATALOG.length, 27, 'CARDS_CATALOG must contain 27 draft cards');
+    assert.equal(CARDS_CATALOG.length, 30, 'CARDS_CATALOG must contain 30 draft cards');
 
     for (const card of CARDS_CATALOG) {
       assert.ok(card.id, 'Card must have id');

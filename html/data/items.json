@@ -101,12 +101,22 @@
     "type": "weapon",
     "slot": "main_hand",
     "stat_bonus": 6,
+    "damageMin": 14,
+    "damageMax": 18,
+    "range": 6,
+    "cooldown": 1.0,
     "vocationAffinity": "archer",
     "icon": "🏹",
     "svgCode": "1F3F9",
     "actionKey": "bow_shot",
     "grantedAmmo": { "item_id": "arrows", "quantity": 20 },
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "randomDamageInc": [5, 8],
+      "rangeInc": 1,
+      "statBonusTextPattern": "+{dmgInc} Dmg, +1 Range",
+      "descriptionPattern": "Level Up Composite Longbow (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Damage, +1 Targeting Range."
+    }
   },
   "hunter_quiver": {
     "item_id": "hunter_quiver",
@@ -119,16 +129,42 @@
     "svgCode": "1F3F9",
     "maxStack": 1
   },
+  "grey_stalker_quiver": {
+    "item_id": "grey_stalker_quiver",
+    "name": "Grey Stalker Quiver",
+    "type": "offhand",
+    "slot": "off_hand",
+    "stat_bonus": 3,
+    "arrowCapacity": 25,
+    "arrowCount": 25,
+    "ammoRegenSec": 5,
+    "vocationAffinity": "archer",
+    "icon": "🏹",
+    "svgCode": "1F3F9",
+    "maxStack": 1,
+    "upgradeSpec": {
+      "arrowCapacityInc": 5,
+      "ammoRegenSecReduction": 0.5,
+      "statBonusTextPattern": "+5 Cap, Faster Regen",
+      "descriptionPattern": "Level Up Grey Stalker Quiver (Rank {prevRank} ➔ {nextRank}): +5 Arrow Capacity, Arrow Regen interval reduced by 0.5s."
+    }
+  },
   "hunter_leathers": {
     "item_id": "hunter_leathers",
     "name": "Hunter's Leathers",
     "type": "armor",
     "slot": "armor",
     "stat_bonus": 5,
+    "dodgePct": 10,
     "vocationAffinity": "archer",
     "icon": "🧥",
     "svgCode": "1F9E5",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "dodgePctInc": 2,
+      "statBonusTextPattern": "+2% Dodge",
+      "descriptionPattern": "Level Up Hunter's Leathers (Rank {prevRank} ➔ {nextRank}): +2% Dodge chance."
+    }
   },
   "archer_hood": {
     "item_id": "archer_hood",
@@ -136,10 +172,18 @@
     "type": "relic",
     "slot": "relic",
     "stat_bonus": 4,
+    "critChance": 10,
+    "critMult": 1.25,
     "vocationAffinity": "archer",
     "icon": "🧢",
     "svgCode": "1F9E2",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "critChanceInc": 1,
+      "critMultInc": 0.05,
+      "statBonusTextPattern": "+1% Crit, +0.05 Crit Multiplier",
+      "descriptionPattern": "Level Up Archer's Hood (Rank {prevRank} ➔ {nextRank}): +1% Crit Chance, +0.05 Crit Multiplier."
+    }
   },
   "tempered_broadsword": {
     "item_id": "tempered_broadsword",
@@ -147,11 +191,20 @@
     "type": "weapon",
     "slot": "main_hand",
     "stat_bonus": 7,
+    "damageMin": 16,
+    "damageMax": 22,
+    "range": 2.5,
+    "cooldown": 0.8,
     "vocationAffinity": "fighter",
     "icon": "🗡️",
     "svgCode": "2694",
     "actionKey": "slash",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "randomDamageInc": [4, 6],
+      "statBonusTextPattern": "+{dmgInc} Dmg",
+      "descriptionPattern": "Level Up Tempered Broadsword (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Slash Damage."
+    }
   },
   "iron_helm": {
     "item_id": "iron_helm",
@@ -159,10 +212,37 @@
     "type": "relic",
     "slot": "relic",
     "stat_bonus": 6,
+    "hpBonus": 15,
     "vocationAffinity": "fighter",
     "icon": "🪖",
     "svgCode": "1FA96",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "maxHpInc": 10,
+      "statBonusTextPattern": "+10 Max HP",
+      "descriptionPattern": "Level Up Iron Helm (Rank {prevRank} ➔ {nextRank}): +10 Max HP."
+    }
+  },
+  "vanguard_shield": {
+    "item_id": "vanguard_shield",
+    "name": "Vanguard Shield",
+    "type": "offhand",
+    "slot": "off_hand",
+    "stat_bonus": 4,
+    "actionKey": "shield_bash",
+    "cooldown": 10,
+    "pushbackRange": 1,
+    "stunSec": 1.0,
+    "vocationAffinity": "fighter",
+    "icon": "🛡️",
+    "svgCode": "1F6E1",
+    "maxStack": 1,
+    "upgradeSpec": {
+      "stunInc": 0.5,
+      "cooldownReductionSec": 1,
+      "statBonusTextPattern": "+0.5s Stun, -1s Cooldown",
+      "descriptionPattern": "Level Up Vanguard Shield (Rank {prevRank} ➔ {nextRank}): +0.5s Bash Stun, -1s Shield Bash Cooldown."
+    }
   },
   "consecrated_warhammer": {
     "item_id": "consecrated_warhammer",
@@ -170,11 +250,21 @@
     "type": "weapon",
     "slot": "main_hand",
     "stat_bonus": 6,
+    "damageMin": 18,
+    "damageMax": 26,
+    "range": 2.5,
+    "manaCost": 10,
+    "cooldown": 1.2,
     "vocationAffinity": "paladin",
     "icon": "⚒️",
     "svgCode": "2692",
     "actionKey": "holy_strike",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "randomDamageInc": [4, 6],
+      "statBonusTextPattern": "+{dmgInc} Dmg",
+      "descriptionPattern": "Level Up Consecrated Warhammer (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Holy Strike Damage."
+    }
   },
   "holy_crown": {
     "item_id": "holy_crown",
@@ -182,10 +272,40 @@
     "type": "relic",
     "slot": "relic",
     "stat_bonus": 7,
+    "manaBonus": 20,
+    "healPowerPct": 15,
     "vocationAffinity": "paladin",
     "icon": "👑",
     "svgCode": "1F451",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "maxMpInc": 10,
+      "healPowerPctInc": 3,
+      "statBonusTextPattern": "+10 Max MP, +3% Heal Power",
+      "descriptionPattern": "Level Up Holy Crown (Rank {prevRank} ➔ {nextRank}): +10 Max MP, +3% Healing Power."
+    }
+  },
+  "aegis_shield": {
+    "item_id": "aegis_shield",
+    "name": "Aegis Shield",
+    "type": "offhand",
+    "slot": "off_hand",
+    "stat_bonus": 4,
+    "actionKey": "holy_shield",
+    "manaCost": 15,
+    "shieldAbsorb": 10,
+    "shieldDuration": 30,
+    "vocationAffinity": "paladin",
+    "icon": "🛡️",
+    "svgCode": "1F6E1",
+    "maxStack": 1,
+    "upgradeSpec": {
+      "shieldAbsorbInc": 5,
+      "shieldDurationInc": 4,
+      "shieldManaCostReduction": 2,
+      "statBonusTextPattern": "+5 Absorb, +4s Duration, -2 MP",
+      "descriptionPattern": "Level Up Aegis Shield (Rank {prevRank} ➔ {nextRank}): +5 Bubble Absorb, +4s Bubble Duration, -2 MP Cost."
+    }
   },
   "buckler": {
     "item_id": "buckler",
@@ -204,10 +324,16 @@
     "type": "armor",
     "slot": "armor",
     "stat_bonus": 8,
+    "mitigationPct": 10,
     "vocationAffinity": ["fighter", "paladin"],
     "icon": "🦺",
     "svgCode": "1F9BA",
-    "maxStack": 1
+    "maxStack": 1,
+    "upgradeSpec": {
+      "mitigationPctInc": 1,
+      "statBonusTextPattern": "+1% Damage Mitigation",
+      "descriptionPattern": "Level Up Knight Plate Armor (Rank {prevRank} ➔ {nextRank}): +1% Damage Mitigation."
+    }
   },
   "apprentice_cape": {
     "item_id": "apprentice_cape",

@@ -5,6 +5,7 @@
 import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
 import { MONSTERS_CATALOG } from '../data/index.js';
+import { CombatSystem } from './combat-system.js';
 
 const AI_HANDLERS = {
   standoff: (monster, player, gridMap, monsters, mData) =>
@@ -163,10 +164,19 @@ export class EntityAI {
       if (monster.attackCooldown <= 0) {
         monster.attackCooldown = monster.attackCadence || 1.5;
         const damage = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
-        player.hp = Math.max(0, player.hp - damage);
+        // LOK-12 damage-intercept seam: dodge / fortify / mitigation / bubble absorb.
+        const hit = CombatSystem.applyIncomingDamage(player, damage);
+        let message;
+        if (hit.dodged) {
+          message = `${monster.name} lunges at you, but you dodge it!`;
+        } else {
+          message = `${monster.name} attacks you for ${damage} physical damage!`;
+        }
         return {
-          damageToPlayer: damage,
-          message: `${monster.name} attacks you for ${damage} physical damage!`,
+          damageToPlayer: hit.damageToPlayer,
+          absorbed: hit.absorbed,
+          dodged: hit.dodged,
+          message,
         };
       }
       return null;
@@ -205,7 +215,8 @@ export class EntityAI {
       const minDmg = mData?.damageMin ?? (cultist.type === 'elite_cultist' ? 14 : CONFIG.CULTIST_DAMAGE_MIN);
       const maxDmg = mData?.damageMax ?? (cultist.type === 'elite_cultist' ? 22 : CONFIG.CULTIST_DAMAGE_MAX);
       const damage = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
-      player.hp = Math.max(0, player.hp - damage);
+      // LOK-12 damage-intercept seam: dodge / fortify / mitigation / bubble absorb.
+      const hit = CombatSystem.applyIncomingDamage(player, damage);
 
       const projectile = {
         id: `proj_shadow_${Date.now()}_${Math.random()}`,
@@ -221,9 +232,15 @@ export class EntityAI {
         color: '#9933ff',
       };
 
+      const message = hit.dodged
+        ? `${cultist.name} hurls a Shadow Bolt at you, but you dodge it!`
+        : `${cultist.name} casts Shadow Bolt at you for ${damage} dark damage!`;
+
       return {
-        damageToPlayer: damage,
-        message: `${cultist.name} casts Shadow Bolt at you for ${damage} dark damage!`,
+        damageToPlayer: hit.damageToPlayer,
+        absorbed: hit.absorbed,
+        dodged: hit.dodged,
+        message,
         projectiles: [projectile],
       };
     }

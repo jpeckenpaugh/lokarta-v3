@@ -50,6 +50,8 @@ export class LokartaApp {
     this.lastAnimTime = 0;
     this.keysDown = new Set();
     this.regenAccumulator = 0;
+    this.ammoRegenAccumulator = 0; // Grey Stalker quiver arrow regen (5 s cadence)
+    this._lastQuiverRef = null; // quiver swap detection resets the accumulator
 
     this.canvas = document.getElementById('game-canvas');
     this.renderer = new CanvasRenderer(this.canvas);
@@ -231,6 +233,47 @@ export class LokartaApp {
     CombatSystem.decrementCooldowns(this.player, deltaSec);
     CombatSystem.decrementSpellTimers(this.player, deltaSec);
 
+    // Holy Shield bubble decay: bubble pops when its duration hits 0.
+    if (this.player.shieldDurationSec > 0) {
+      this.player.shieldDurationSec = Math.max(0, this.player.shieldDurationSec - deltaSec);
+      if (this.player.shieldDurationSec <= 0) {
+        this.player.shieldAbsorb = 0;
+      }
+    }
+
+    // Fortify Stance decay: -50% incoming damage for 10 s.
+    if (this.player.fortifyTimer > 0) {
+      this.player.fortifyTimer = Math.max(0, this.player.fortifyTimer - deltaSec);
+      if (this.player.fortifyTimer <= 0) {
+        this.player.fortifyActive = false;
+      }
+    }
+
+    // Grey Stalker quiver arrow regen: +1 arrow per ammoRegenSec (5 s base)
+    // while below capacity. The accumulator resets on regen and on quiver swap.
+    const quiver = this.player.paperdoll?.off_hand;
+    if (quiver !== this._lastQuiverRef) {
+      this._lastQuiverRef = quiver;
+      this.ammoRegenAccumulator = 0;
+    }
+    if (quiver && typeof quiver.arrowCount === 'number' && typeof quiver.arrowCapacity === 'number') {
+      if (quiver.arrowCount < quiver.arrowCapacity) {
+        const regenSec = (quiver.ammoRegenSec || 5);
+        this.ammoRegenAccumulator += deltaSec;
+        if (this.ammoRegenAccumulator >= regenSec) {
+          const gained = Math.min(
+            quiver.arrowCapacity - quiver.arrowCount,
+            Math.floor(this.ammoRegenAccumulator / regenSec)
+          );
+          quiver.arrowCount += gained;
+          this.ammoRegenAccumulator %= regenSec;
+          this.addFloatingText(`+${gained} Arrow`, this.player.x, this.player.y, '#ddaa44');
+        }
+      } else {
+        this.ammoRegenAccumulator = 0;
+      }
+    }
+
     // Passive regeneration (every 5 seconds)
     const bonusRegen = this.player.skillBoosts?.bonusRegen || 0;
     this.regenAccumulator += deltaSec;
@@ -322,10 +365,20 @@ export class LokartaApp {
     for (const res of aiResults) {
       if (res.message) this.logCombat(res.message, 'combat');
       if (res.projectiles) this.projectiles.push(...res.projectiles);
-      if (res.damageToPlayer && res.damageToPlayer > 0) {
+      if (res.dodged) {
+        soundFX.play('monsterAttack');
+        this.addFloatingText('DODGE!', this.player.x, this.player.y, '#22c55e');
+      } else if (res.damageToPlayer && res.damageToPlayer > 0) {
         soundFX.play('monsterAttack');
         soundFX.play('playerHurt');
         this.addFloatingText(`-${res.damageToPlayer}`, this.player.x, this.player.y, '#ef4444');
+        if (res.absorbed && res.absorbed > 0) {
+          this.logCombat(`Your holy shield absorbed ${res.absorbed} of the blow.`, 'spell');
+        }
+      } else if (res.absorbed && res.absorbed > 0) {
+        // Hit fully absorbed by the bubble — no HP lost.
+        soundFX.play('monsterAttack');
+        this.addFloatingText(`shield -${res.absorbed}`, this.player.x, this.player.y, '#38bdf8');
       }
     }
 
@@ -828,30 +881,63 @@ export class LokartaApp {
         }
       },
       power_shot: () => {
-        const target = this.getTargetMonster(CONFIG.ARCHER_POWER_SHOT_RANGE);
+        const bow = this.player.paperdoll?.main_hand;
+        const maxRange = (bow && typeof bow.range === 'number') ? bow.range : CONFIG.ARCHER_POWER_SHOT_RANGE;
+        const target = this.getTargetMonster(maxRange);
         if (!target) return this.logCombat('No enemy in range for Power Shot.', 'warning');
         soundFX.play('powerShot');
-        const res = CombatSystem.executePowerShot(this.player, target, this.gridMap);
+        const res = CombatSystem.executePowerShot(this.player, target, this.gridMap, bow);
         this.handleCombatResult(res, target.x, target.y);
       },
       bow_shot: () => {
-        const target = this.getTargetMonster(CONFIG.ARCHER_BOW_RANGE);
+        const bow = this.player.paperdoll?.main_hand;
+        const maxRange = (bow && typeof bow.range === 'number') ? bow.range : CONFIG.ARCHER_BOW_RANGE;
+        const target = this.getTargetMonster(maxRange);
         if (!target) return this.logCombat('No enemy in range for Bow Shot.', 'warning');
         soundFX.play('bowShot');
-        const res = CombatSystem.executeBowShot(this.player, target, this.gridMap);
+        const res = CombatSystem.executeBowShot(this.player, target, this.gridMap, bow);
         this.handleCombatResult(res, target.x, target.y);
       },
       cleave: () => {
         soundFX.play('hit');
-        const target = this.getTargetMonster(2.5);
-        const res = CombatSystem.executeSlash(this.player, target, this.gridMap, { monsters: this.monsters });
-        this.handleCombatResult(res, res.hitX ?? null, res.hitY ?? null);
+        const res = CombatSystem.executeCleave(this.player, this.gridMap, this.monsters, item);
+        if (!res.success) {
+          this.logCombat(res.message, 'warning');
+          return;
+        }
+        this.logCombat(res.message, 'combat');
+        if (res.projectiles) this.projectiles.push(...res.projectiles);
+        for (const hit of res.hits || []) {
+          this.addFloatingText(`-${hit.damage}`, hit.monster.x, hit.monster.y, '#ffdd44');
+          if (hit.defeated && hit.monster.id) {
+            this.handleCombatResult({
+              success: true,
+              defeatedMonsterId: hit.monster.id,
+              droppedLoot: CombatSystem.generateMonsterLoot(hit.monster),
+            }, hit.monster.x, hit.monster.y);
+          }
+        }
       },
       slash: () => {
         soundFX.play('hit');
         const target = this.getTargetMonster(2.5);
-        const res = CombatSystem.executeSlash(this.player, target, this.gridMap, { monsters: this.monsters });
+        const res = CombatSystem.executeSlash(this.player, target, this.gridMap, { monsters: this.monsters, item: this.player.paperdoll?.main_hand });
         this.handleCombatResult(res, res.hitX ?? null, res.hitY ?? null);
+      },
+      shield_bash: () => {
+        soundFX.play('hit');
+        const res = CombatSystem.executeShieldBash(this.player, this.gridMap, this.monsters, item);
+        this.handleCombatResult(res, null, null);
+      },
+      holy_shield: () => {
+        soundFX.play('lightSpell');
+        const res = CombatSystem.executeHolyShield(this.player, item);
+        this.handleCombatResult(res, null, null);
+      },
+      fortify: () => {
+        soundFX.play('lightSpell');
+        const res = CombatSystem.executeFortify(this.player, item);
+        this.handleCombatResult(res, null, null);
       },
       healing_prayer: () => {
         const res = CombatSystem.executeHealingPrayer(this.player);
@@ -866,7 +952,7 @@ export class LokartaApp {
       holy_strike: () => {
         soundFX.play('hit');
         const target = this.getTargetMonster(2.5);
-        const res = CombatSystem.executeHolyStrike(this.player, target, this.gridMap, { monsters: this.monsters });
+        const res = CombatSystem.executeHolyStrike(this.player, target, this.gridMap, { monsters: this.monsters, item: this.player.paperdoll?.main_hand });
         this.handleCombatResult(res, res.hitX ?? null, res.hitY ?? null);
       },
     };

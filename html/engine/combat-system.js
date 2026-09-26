@@ -26,6 +26,103 @@ export class CombatSystem {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
+  /**
+   * Sums a numeric stat across every equipped paperdoll slot (armor, relic,
+   * main/off hand). Used to read defensive and utility stats that the LOK-12
+   * Golden sets place on gear (dodgePct, mitigationPct, critChance, critMult,
+   * healPowerPct). Returns 0 when nothing is equipped with the key.
+   */
+  static getEquippedStat(player, statKey) {
+    if (!player?.paperdoll) return 0;
+    let total = 0;
+    for (const slotName of Object.keys(player.paperdoll)) {
+      const equipped = player.paperdoll[slotName];
+      if (equipped && typeof equipped[statKey] === 'number') {
+        total += equipped[statKey];
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Effective action cooldown for an equipped item's action
+   * (e.g. vanguard_shield shield_bash). Each rank of an item carrying
+   * `upgradeSpec.cooldownReductionSec` shortens the base `item.cooldown`:
+   *   effectiveCooldown = max(1, base - sum(cooldownReductionSec per rank))
+   * where "sum per rank" totals over every rank gained beyond 1.
+   */
+  static getEffectiveCooldown(item) {
+    if (!item || typeof item.cooldown !== 'number') return null;
+    const rank = item.itemLevel || 1;
+    const perRank = item.upgradeSpec?.cooldownReductionSec || 0;
+    return Math.max(1, item.cooldown - perRank * (rank - 1));
+  }
+
+  /**
+   * Effective mana cost for an equipped item's active (e.g. aegis_shield
+   * holy_shield). `upgradeSpec.shieldManaCostReduction` shortens the base
+   * `item.manaCost` by `reductionSec * (rank - 1)`, flooring at 1 MP.
+   */
+  static getEffectiveManaCost(item) {
+    if (!item || typeof item.manaCost !== 'number') return null;
+    const rank = item.itemLevel || 1;
+    const perRank = item.upgradeSpec?.shieldManaCostReduction || 0;
+    return Math.max(1, item.manaCost - perRank * (rank - 1));
+  }
+
+  /**
+   * Central incoming-damage application seam (LOK-12 Slice 0). Applies, in
+   * order: the equipped dodge roll (chance to avoid the hit entirely), the
+   * Fighter Fortify halving (while `player.fortifyActive`), the equipped flat
+   * mitigation %, then the Paladin holy bubble absorb. The remainder lands on
+   * player HP (clamped at 0).
+   *
+   * @returns {{ damageToPlayer: number, absorbed: number, dodged: boolean, rawDamage: number }}
+   */
+  static applyIncomingDamage(player, damage) {
+    if (!player || damage <= 0) {
+      return { damageToPlayer: 0, absorbed: 0, dodged: false, rawDamage: damage || 0 };
+    }
+
+    // 1. Dodge: chance to avoid the hit entirely from equipped dodgePct.
+    const dodgePct = CombatSystem.getEquippedStat(player, 'dodgePct');
+    if (dodgePct > 0 && Math.random() * 100 < dodgePct) {
+      return { damageToPlayer: 0, absorbed: 0, dodged: true, rawDamage: damage };
+    }
+
+    let dmg = damage;
+
+    // 2. Fortify Stance: halve incoming damage while active (10 s).
+    if (player.fortifyActive) {
+      dmg = Math.round(dmg * 0.5);
+    }
+
+    // 3. Mitigation: flat % reduction from equipped mitigationPct (plate_armor).
+    const mitigationPct = CombatSystem.getEquippedStat(player, 'mitigationPct');
+    if (mitigationPct > 0 && dmg > 0) {
+      dmg -= Math.round(dmg * (mitigationPct / 100));
+    }
+
+    // 4. Holy bubble: absorb up to player.shieldAbsorb remaining damage.
+    let absorbed = 0;
+    if (player.shieldAbsorb > 0 && dmg > 0) {
+      absorbed = Math.min(player.shieldAbsorb, dmg);
+      player.shieldAbsorb -= absorbed;
+      if (player.shieldAbsorb < 0) player.shieldAbsorb = 0;
+      dmg -= absorbed;
+    }
+
+    const finalDamage = Math.max(0, Math.floor(dmg));
+    player.hp = Math.max(0, player.hp - finalDamage);
+
+    return {
+      damageToPlayer: Math.min(finalDamage, player.hp === 0 && finalDamage > 0 ? finalDamage : finalDamage),
+      absorbed,
+      dodged: false,
+      rawDamage: damage,
+    };
+  }
+
   /** Cardinal facing vectors used to orient melee free swings (LOK-9). */
   static FACING_VECTORS = {
     up: { dx: 0, dy: -1 },
@@ -101,6 +198,16 @@ export class CombatSystem {
   }
 
   static consumeArrow(player) {
+    // 1. Prefer the equipped quiver's arrow reserve (Grey Stalker).
+    //    Its arrowCount is consumed first; the action_bar/backpack fallback
+    //    only engages while the quiver is empty.
+    const quiver = player.paperdoll?.off_hand;
+    if (quiver && typeof quiver.arrowCount === 'number' && quiver.arrowCount > 0) {
+      quiver.arrowCount -= 1;
+      return true;
+    }
+
+    // 2. Fall back to Action Bar / Backpack `arrows` stacks.
     const arrowSlot = CombatSystem.findArrowItem(player);
     if (!arrowSlot) return false;
 
@@ -353,7 +460,7 @@ export class CombatSystem {
   /**
    * Executes Archer Bow Shot ability.
    */
-  static executeBowShot(player, target, gridMap) {
+  static executeBowShot(player, target, gridMap, item = null) {
     if (player.cooldowns?.bow_shot > 0) {
       return { success: false, message: 'Bow Shot is on cooldown.' };
     }
@@ -361,9 +468,10 @@ export class CombatSystem {
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
 
     const bonusRng = player.skillBoosts?.bonusRange || 0;
+    const itemRange = (item && typeof item.range === 'number') ? item.range : CONFIG.ARCHER_BOW_RANGE;
 
     const dist = Math.hypot(target.x - player.x, target.y - player.y);
-    if (dist > (CONFIG.ARCHER_BOW_RANGE + bonusRng) + 0.5) {
+    if (dist > (itemRange + bonusRng) + 0.5) {
       return { success: false, message: 'Target is out of range for Bow Shot.' };
     }
 
@@ -378,8 +486,21 @@ export class CombatSystem {
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.bow_shot = CONFIG.ARCHER_BOW_COOLDOWN_SEC;
 
-    const baseDmg = CombatSystem.randomBetween(CONFIG.ARCHER_BOW_DAMAGE_MIN, CONFIG.ARCHER_BOW_DAMAGE_MAX);
-    const damage = Math.round(baseDmg * mult);
+    // Damage parity (the executeWandSpark pattern): embedded item.damage first,
+    // CONFIG fallback otherwise; crit roll reads equipped critChance/critMult.
+    const baseDmg = (item && typeof item.damage === 'number')
+      ? item.damage
+      : CombatSystem.randomBetween(CONFIG.ARCHER_BOW_DAMAGE_MIN, CONFIG.ARCHER_BOW_DAMAGE_MAX);
+    let damage = Math.round(baseDmg * mult);
+
+    const critChance = CombatSystem.getEquippedStat(player, 'critChance');
+    const critMult = CombatSystem.getEquippedStat(player, 'critMult') || 1.0;
+    let isCrit = false;
+    if (critChance > 0 && Math.random() * 100 < critChance) {
+      damage = Math.round(damage * critMult);
+      isCrit = true;
+    }
+
     target.hp -= damage;
 
     const projectile = {
@@ -398,7 +519,9 @@ export class CombatSystem {
 
     let defeatedMonsterId;
     let droppedLoot;
-    let message = `You fired an arrow at ${target.name} for ${damage} damage.`;
+    let message = isCrit
+      ? `CRITICAL! Your arrow pierces ${target.name} for ${damage} damage!`
+      : `You fired an arrow at ${target.name} for ${damage} damage.`;
 
     if (target.hp <= 0) {
       defeatedMonsterId = target.id;
@@ -410,6 +533,7 @@ export class CombatSystem {
       success: true,
       message,
       damageDealt: damage,
+      isCrit,
       projectiles: [projectile],
       defeatedMonsterId,
       droppedLoot,
@@ -419,7 +543,7 @@ export class CombatSystem {
   /**
    * Executes Archer Power Shot ability.
    */
-  static executePowerShot(player, target, gridMap) {
+  static executePowerShot(player, target, gridMap, item = null) {
     if (player.cooldowns?.power_shot > 0) {
       return { success: false, message: 'Power Shot is on cooldown.' };
     }
@@ -427,9 +551,10 @@ export class CombatSystem {
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
 
     const bonusRng = player.skillBoosts?.bonusRange || 0;
+    const itemRange = (item && typeof item.range === 'number') ? item.range : CONFIG.ARCHER_POWER_SHOT_RANGE;
 
     const dist = Math.hypot(target.x - player.x, target.y - player.y);
-    if (dist > (CONFIG.ARCHER_POWER_SHOT_RANGE + bonusRng) + 0.5) {
+    if (dist > (itemRange + bonusRng) + 0.5) {
       return { success: false, message: 'Target is out of range for Power Shot.' };
     }
 
@@ -444,8 +569,21 @@ export class CombatSystem {
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.power_shot = CONFIG.ARCHER_POWER_SHOT_COOLDOWN_SEC;
 
-    const baseDmg = CombatSystem.randomBetween(CONFIG.ARCHER_POWER_SHOT_DAMAGE_MIN, CONFIG.ARCHER_POWER_SHOT_DAMAGE_MAX);
-    const damage = Math.round(baseDmg * mult);
+    // Damage parity: embedded item.damage first, CONFIG fallback, crit roll
+    // from equipped critChance/critMult (archer_hood).
+    const baseDmg = (item && typeof item.damage === 'number')
+      ? item.damage
+      : CombatSystem.randomBetween(CONFIG.ARCHER_POWER_SHOT_DAMAGE_MIN, CONFIG.ARCHER_POWER_SHOT_DAMAGE_MAX);
+    let damage = Math.round(baseDmg * mult);
+
+    const critChance = CombatSystem.getEquippedStat(player, 'critChance');
+    const critMult = CombatSystem.getEquippedStat(player, 'critMult') || 1.0;
+    let isCrit = false;
+    if (critChance > 0 && Math.random() * 100 < critChance) {
+      damage = Math.round(damage * critMult);
+      isCrit = true;
+    }
+
     target.hp -= damage;
 
     const projectile = {
@@ -464,7 +602,9 @@ export class CombatSystem {
 
     let defeatedMonsterId;
     let droppedLoot;
-    let message = `Power Shot strikes ${target.name} for ${damage} heavy damage!`;
+    let message = isCrit
+      ? `CRITICAL! Power Shot strikes ${target.name} for ${damage} heavy damage!`
+      : `Power Shot strikes ${target.name} for ${damage} heavy damage!`;
 
     if (target.hp <= 0) {
       defeatedMonsterId = target.id;
@@ -476,6 +616,7 @@ export class CombatSystem {
       success: true,
       message,
       damageDealt: damage,
+      isCrit,
       projectiles: [projectile],
       defeatedMonsterId,
       droppedLoot,
@@ -511,6 +652,7 @@ export class CombatSystem {
     const reach = 2.5;
     const facing = opts.facing || player.facing || 'right';
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
+    const weaponItem = opts.item || player.paperdoll?.main_hand || null;
 
     let hitMonster = null;
     if (target && Math.hypot(target.x - player.x, target.y - player.y) <= reach) {
@@ -527,7 +669,9 @@ export class CombatSystem {
     let hitY = null;
 
     if (hitMonster) {
-      const baseDmg = CombatSystem.randomBetween(CONFIG.FIGHTER_SLASH_DAMAGE_MIN, CONFIG.FIGHTER_SLASH_DAMAGE_MAX);
+      const baseDmg = (weaponItem && typeof weaponItem.damage === 'number')
+        ? weaponItem.damage
+        : CombatSystem.randomBetween(CONFIG.FIGHTER_SLASH_DAMAGE_MIN, CONFIG.FIGHTER_SLASH_DAMAGE_MAX);
       damage = Math.round(baseDmg * mult);
       hitMonster.hp -= damage;
       hitX = hitMonster.x;
@@ -601,6 +745,7 @@ export class CombatSystem {
     const reach = 2.5;
     const facing = opts.facing || player.facing || 'right';
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
+    const weaponItem = opts.item || player.paperdoll?.main_hand || null;
 
     let hitMonster = null;
     if (target && Math.hypot(target.x - player.x, target.y - player.y) <= reach) {
@@ -617,7 +762,9 @@ export class CombatSystem {
     let hitY = null;
 
     if (hitMonster) {
-      const baseDmg = CombatSystem.randomBetween(CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MIN, CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MAX);
+      const baseDmg = (weaponItem && typeof weaponItem.damage === 'number')
+        ? weaponItem.damage
+        : CombatSystem.randomBetween(CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MIN, CONFIG.PALADIN_HOLY_STRIKE_DAMAGE_MAX);
       damage = Math.round(baseDmg * mult);
       hitMonster.hp -= damage;
       hitX = hitMonster.x;
@@ -688,8 +835,10 @@ export class CombatSystem {
     player.cooldowns.healing_prayer = CONFIG.PALADIN_HEAL_COOLDOWN_SEC;
 
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
+    const healPowerPct = CombatSystem.getEquippedStat(player, 'healPowerPct');
+    const healBoost = 1 + (healPowerPct || 0) / 100;
     const baseHeal = CombatSystem.randomBetween(CONFIG.PALADIN_HEAL_MIN, CONFIG.PALADIN_HEAL_MAX);
-    const healAmount = Math.round(baseHeal * mult);
+    const healAmount = Math.round(baseHeal * mult * healBoost);
     const restored = Math.min(healAmount, player.max_hp - player.hp);
     player.hp = Math.min(player.max_hp, player.hp + healAmount);
 
@@ -697,6 +846,218 @@ export class CombatSystem {
       success: true,
       message: `Healing Prayer channeled! Restored +${restored} HP (${player.hp}/${player.max_hp}).`,
       healAmount: restored,
+    };
+  }
+
+  /**
+   * Executes the Fighter's Vanguard Shield Bash (LOK-12 Golden Set).
+   * Pushes every monster adjacent to the player (Manhattan distance 1, the
+   * same adjacency `entity-ai.js` uses) `pushbackRange` tiles away from the
+   * player, reusing `gridMap.isWalkable` and the monster occupancy rules
+   * (monsters stop against walls / occupied tiles). Every adjacent monster is
+   * stunned via the existing engine-wired `monster.stunTimer`.
+   *
+   * Cooldown-gated on `player.cooldowns.shield_bash`; the effective cooldown
+   * is `item.cooldown` reduced by `cooldownReductionSec` per rank (rank 1:
+   * 10 s, rank 5: 6 s).
+   */
+  static executeShieldBash(player, gridMap, monsters = [], item = null) {
+    if (!item) {
+      return { success: false, message: 'No shield equipped for Shield Bash.' };
+    }
+
+    const effectiveCooldown = CombatSystem.getEffectiveCooldown(item);
+    if (player.cooldowns?.shield_bash > 0) {
+      return { success: false, message: 'Shield Bash is on cooldown.' };
+    }
+
+    if (!player.cooldowns) player.cooldowns = {};
+    player.cooldowns.shield_bash = effectiveCooldown;
+
+    const pushbackRange = item.pushbackRange || 1;
+    const stunSec = item.stunSec || 1.0;
+
+    const occupiedTiles = new Set();
+    for (const m of monsters) {
+      if (m && m.hp > 0) occupiedTiles.add(`${m.x},${m.y}`);
+    }
+
+    const affected = [];
+    let pushedMonsters = 0;
+
+    for (const m of monsters) {
+      if (!m || m.hp <= 0) continue;
+      const distManhattan = Math.abs(m.x - player.x) + Math.abs(m.y - player.y);
+      if (distManhattan !== 1) continue;
+
+      // Away direction from the player (per-axis sign; ants move cardinally).
+      const dx = Math.sign(m.x - player.x);
+      const dy = Math.sign(m.y - player.y);
+
+      let moved = 0;
+      let toX = m.x;
+      let toY = m.y;
+      for (let step = 0; step < pushbackRange; step++) {
+        const nx = toX + dx;
+        const ny = toY + dy;
+        if (!gridMap.isWalkable(nx, ny)) break; // wall / out of bounds -> stop
+        if (nx === player.x && ny === player.y) break; // never shove into the player
+        if (occupiedTiles.has(`${nx},${ny}`)) break; // tile occupied by another monster
+        occupiedTiles.delete(`${m.x},${m.y}`);
+        toX = nx;
+        toY = ny;
+        occupiedTiles.add(`${toX},${toY}`);
+        moved += 1;
+      }
+
+      if (moved > 0) {
+        m.x = toX;
+        m.y = toY;
+        pushedMonsters += 1;
+      }
+
+      // Stun every adjacent (pushed OR wall-stopped) monster.
+      m.stunTimer = Math.max(m.stunTimer || 0, stunSec);
+      affected.push({ monster: m, pushed: moved > 0 });
+    }
+
+    const message = affected.length > 0
+      ? `Shield Bash! ${pushedMonsters} monster${pushedMonsters === 1 ? '' : 's'} shoved back and stunned for ${stunSec.toFixed(1)}s (${effectiveCooldown}s CD).`
+      : `Shield Bash! No monsters adjacent to shove (${effectiveCooldown}s CD).`;
+
+    return { success: true, message, affected, pushedCount: pushedMonsters, cooldownSet: effectiveCooldown };
+  }
+
+  /**
+   * Executes the Paladin's Aegis Holy Shield (LOK-12 Golden Set).
+   * Mana-gated like `executeHolyStrike`: costs `item.manaCost` (15 base,
+   * `shieldManaCostReduction` 2 per rank → 7 MP at rank 5). On success sets
+   * `player.shieldAbsorb` and `player.shieldDurationSec`; the damage-intercept
+   * seam lives in `CombatSystem.applyIncomingDamage` and the 30 s decay in
+   * `app-controller.tick()`.
+   */
+  static executeHolyShield(player, item = null) {
+    if (!item) {
+      return { success: false, message: 'No shield equipped for Holy Shield.' };
+    }
+
+    const manaCost = CombatSystem.getEffectiveManaCost(item);
+    if (player.mana < manaCost) {
+      return { success: false, message: `Not enough Mana to cast Holy Shield (${manaCost} MP).` };
+    }
+
+    player.mana -= manaCost;
+    player.shieldAbsorb = item.shieldAbsorb || 0;
+    player.shieldDurationSec = item.shieldDuration || 0;
+
+    return {
+      success: true,
+      message: `Holy Shield envelops you! Bubble absorbs ${player.shieldAbsorb} damage for ${player.shieldDurationSec}s (${manaCost} MP).`,
+      shieldAbsorb: player.shieldAbsorb,
+      shieldDurationSec: player.shieldDurationSec,
+      manaCost,
+    };
+  }
+
+  /**
+   * Executes the Fighter's Cleave — the advertised WIDE multi-target sweep
+   * (previously mis-routed to the single-target `executeSlash`). Hits every
+   * monster within the ~2.5-tile melee reach regardless of facing arc, dealing
+   * heavy cleave damage to each. Mana- and cooldown-gated.
+   *
+   * @returns {{ success, message, damageDealt, hits: [{monster, damage, defeated}], projectiles }}
+   */
+  static executeCleave(player, gridMap, monsters = [], item = null) {
+    if (player.cooldowns?.cleave > 0) {
+      return { success: false, message: 'Cleave is on cooldown.' };
+    }
+
+    const manaCost = CONFIG.FIGHTER_CLEAVE_MANA_COST;
+    if (player.mana < manaCost) {
+      return { success: false, message: 'Not enough Mana for Cleave.' };
+    }
+
+    player.mana -= manaCost;
+    if (!player.cooldowns) player.cooldowns = {};
+    player.cooldowns.cleave = CONFIG.FIGHTER_CLEAVE_COOLDOWN_SEC;
+
+    const reach = 2.5;
+    const mult = player.skillBoosts?.damageMultiplier || 1.0;
+
+    const hits = [];
+    let totalDamage = 0;
+    for (const m of monsters) {
+      if (!m || m.hp <= 0) continue;
+      const dist = Math.hypot(m.x - player.x, m.y - player.y);
+      if (dist > reach) continue;
+
+      const baseDmg = CombatSystem.randomBetween(CONFIG.FIGHTER_CLEAVE_DAMAGE_MIN, CONFIG.FIGHTER_CLEAVE_DAMAGE_MAX);
+      const damage = Math.round(baseDmg * mult);
+      m.hp -= damage;
+      totalDamage += damage;
+      hits.push({ monster: m, damage, defeated: m.hp <= 0 });
+    }
+
+    // Wide-sweep swoosh arc (larger arc than the single-target slash).
+    const swoosh = {
+      id: `swoosh_cleave_${Date.now()}_${Math.random()}`,
+      type: 'swoosh',
+      sourceX: player.x,
+      sourceY: player.y,
+      targetX: player.x + (player.facing === 'left' ? -1 : 1) * reach,
+      targetY: player.y + (player.facing === 'up' ? -1 : player.facing === 'down' ? 1 : 0) * reach,
+      elapsedMs: 0,
+      durationMs: 300,
+      color: '#e2e8f0',
+      visual: {
+        glowColor: '#ffffff',
+        arcRadiusTiles: 2.5,
+        arcSweepDeg: 220,
+      },
+    };
+
+    const message = hits.length > 0
+      ? `Whirlwind Cleave! You swept ${hits.length} monster${hits.length === 1 ? '' : 's'} for ${totalDamage} total damage.`
+      : 'Your cleave sweeps empty air.';
+
+    return {
+      success: true,
+      message,
+      damageDealt: totalDamage,
+      hits,
+      projectiles: [swoosh],
+    };
+  }
+
+  /**
+   * Executes the Fighter's Fortify Stance (-50% incoming damage / 10 s).
+   * Previously advertised by `card_fighter_fortify` but not wired to any
+   * handler; registered now as the missing LOK-12 engine seam. Mana- and
+   * cooldown-gated; `player.fortifyActive` halves damage in
+   * `CombatSystem.applyIncomingDamage` while `player.fortifyTimer` counts down
+   * in `app-controller.tick()`.
+   */
+  static executeFortify(player, item = null) {
+    if (player.cooldowns?.fortify > 0) {
+      return { success: false, message: 'Fortify is on cooldown.' };
+    }
+
+    const manaCost = (item && typeof item.manaCost === 'number') ? item.manaCost : 15;
+    if (player.mana < manaCost) {
+      return { success: false, message: 'Not enough Mana for Fortify.' };
+    }
+
+    player.mana -= manaCost;
+    if (!player.cooldowns) player.cooldowns = {};
+    player.cooldowns.fortify = (item && typeof item.cooldown === 'number') ? item.cooldown : 12;
+
+    player.fortifyActive = true;
+    player.fortifyTimer = 10;
+
+    return {
+      success: true,
+      message: 'Fortify Stance! Incoming damage reduced by 50% for 10 seconds.',
+      fortifyTimer: player.fortifyTimer,
     };
   }
 

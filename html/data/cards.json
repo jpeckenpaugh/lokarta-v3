@@ -144,6 +144,23 @@
     }
   },
   {
+    "id": "card_grey_stalker_quiver",
+    "name": "Grey Stalker Quiver",
+    "rarity": "rare",
+    "icon": "🏹",
+    "description": "A hunting quiver that regenerates arrows over time: starts full (25/25) and regrows 1 arrow every 5 seconds.",
+    "statBonusText": "25 Arrows, Regen 1/5s",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "grey_stalker_quiver",
+      "name": "Grey Stalker Quiver",
+      "type": "offhand",
+      "quantity": 1,
+      "stat_bonus": 3,
+      "icon": "🏹"
+    }
+  },
+  {
     "id": "card_hunter_quiver",
     "name": "Hunter's Quiver",
     "rarity": "common",
@@ -405,6 +422,40 @@
       "quantity": 3,
       "stat_bonus": 40,
       "icon": "🔷"
+    }
+  },
+  {
+    "id": "card_vanguard_shield",
+    "name": "Vanguard Shield",
+    "rarity": "rare",
+    "icon": "🛡️",
+    "description": "An active iron-tipped war shield. Shield Bash shoves adjacent monsters back and stuns them for 1 second (10s cooldown).",
+    "statBonusText": "Shield Bash: Push + Stun 1s (10s CD)",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "vanguard_shield",
+      "name": "Vanguard Shield",
+      "type": "offhand",
+      "quantity": 1,
+      "stat_bonus": 4,
+      "icon": "🛡️"
+    }
+  },
+  {
+    "id": "card_aegis_shield",
+    "name": "Aegis Shield",
+    "rarity": "rare",
+    "icon": "🛡️",
+    "description": "A consecrated shield channeling a protective bubble. Holy Shield absorbs 10 damage for 30 seconds (15 MP).",
+    "statBonusText": "Holy Shield: Absorb 10 / 30s (15 MP)",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "aegis_shield",
+      "name": "Aegis Shield",
+      "type": "offhand",
+      "quantity": 1,
+      "stat_bonus": 4,
+      "icon": "🛡️"
     }
   },
   {

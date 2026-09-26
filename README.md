@@ -64,10 +64,10 @@ Lokarta includes a comprehensive, zero-dependency automated unit test suite buil
 Run all test suites from the repository root:
 
 ```bash
-node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs
+node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs html/tests/golden-sets.test.mjs
 ```
 
-### Test Suite Coverage (5 Test Suites, 65/65 Passing)
+### Test Suite Coverage (6 Test Suites, 98/98 Passing)
 
 - **Floor Generator (1–20):** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, biome mapping, and Floor 20 Abyssal Overlord stats (600 HP, 20 ATK, 6 DEF).
 - **GridMap & Tile Bounds:** Tests matrix initialization, tile opacity/walkability checks, and item placement/removal.
@@ -76,6 +76,7 @@ node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/subm
 - **CombatSystem (No Class Multiplier) & Vocation-Locked Equipment:** Verifies damage/healing uses only `skillBoosts.damageMultiplier` (no legacy class multiplier), Archer arrow consumption, Paladin prayers/strikes, and that vocation-locked gear (including shared `["fighter","paladin"]` arrays) is rejected for the wrong class and accepted for the right one.
 - **InventorySystem & Stacking:** Tests item pickup priorities (Action Slots 0–9 before Backpack), paperdoll equipment slots, unequip logic, and stack limits from `items.json`.
 - **FateGrantSystem:** Verifies 5-card draft reward generation from `cards.json` and inventory placement.
+- **LOK-15 Golden Equipment Sets:** Verifies the four Golden sets (Magician untouched; Archer Grey Stalker quiver regen/consume/fill; Fighter Vanguard shield bash push+stun+cooldown, wide cleave, fortify; Paladin Radiant Crusader mana-gated holy bubble with absorb intercept) plus rank-to-5 upgrade paths, draft offers, and the Slice-3 monster damage re-tune.
 - **GestureEngine:** Validates key mapping for hotkeys `1`–`9` and `0` to slots 0–9.
 - **GameClient & Worker Protocol:** Tests client initialization and worker RPC lifecycle communication.
 - **JSON Data Catalogs:** Validates schema structure and completeness across all 11 JSON catalogs under `html/data/`.
@@ -97,7 +98,7 @@ The client application is structured into clean, modular vanilla ES JavaScript s
 | [`html/engine/`](file:///Users/jarad/git/lokarta-v3/html/engine/) | Core Engine | Shared | Submodules: `config.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `entity-ai.js`, `inventory-system.js`, `fate-grant-system.js`, `gesture-engine.js`. |
 | [`html/services/`](file:///Users/jarad/git/lokarta-v3/html/services/) | Services | Shared / Worker | Floor generator (`floor-generator.js`) and IndexedDB persistence (`storage.js`). |
 | [`html/worker/`](file:///Users/jarad/git/lokarta-v3/html/worker/) | Worker RPC | Web Worker Thread | RPC Client (`game-client.js`) and background worker dispatcher (`game-worker.js`). |
-| [`html/tests/`](file:///Users/jarad/git/lokarta-v3/html/tests/) | Test Suite | CLI / Node.js | Automated unit test suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`). |
+| [`html/tests/`](file:///Users/jarad/git/lokarta-v3/html/tests/) | Test Suite | CLI / Node.js | Automated unit test suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`). |
 
 ---
 
