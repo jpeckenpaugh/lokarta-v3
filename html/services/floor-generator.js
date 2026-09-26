@@ -154,11 +154,11 @@ export function generateFloor(floorNumber = 1, seed = null) {
 
   // Add decorative internal pillars in center rooms on select floors
   if (floorId % 2 === 1) {
-    // Center Hall pillars
-    if (matrix[17] && matrix[17][18] !== undefined) matrix[17][18] = TILE_TYPES.WALL;
-    if (matrix[17] && matrix[17][23] !== undefined) matrix[17][23] = TILE_TYPES.WALL;
-    if (matrix[22] && matrix[22][18] !== undefined) matrix[22][18] = TILE_TYPES.WALL;
-    if (matrix[22] && matrix[22][23] !== undefined) matrix[22][23] = TILE_TYPES.WALL;
+    // Center Hall pillars (room 5 [13,13,25,26])
+    if (matrix[18] && matrix[18][18] !== undefined) matrix[18][18] = TILE_TYPES.WALL;
+    if (matrix[18] && matrix[18][23] !== undefined) matrix[18][23] = TILE_TYPES.WALL;
+    if (matrix[23] && matrix[23][18] !== undefined) matrix[23][18] = TILE_TYPES.WALL;
+    if (matrix[23] && matrix[23][23] !== undefined) matrix[23][23] = TILE_TYPES.WALL;
   }
 
   // 3. Carve connecting corridors (width of 2 tiles for comfortable navigation)

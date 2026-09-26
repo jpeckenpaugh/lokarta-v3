@@ -57,4 +57,5 @@ The **Procedural Dungeon Generator** produces 20 deterministic, $40 \times 40$ t
 ## 5. Operational Constraints & Boundaries
 
 - Zero dependency on main-thread UI components; pure functional generator safe for execution inside Web Workers.
-- Grid boundaries ($x=0, x=39, y=0, y=39$) must remain uncarved wall tiles to prevent out-of-bounds entity movement.
+- Grid boundaries ($x=0, x=39, y=0, y=39$) must remain uncarved wall tiles to prevent out-of-bounds entity movement. Exterior walls are exactly 1 tile thick (the first interior row/col is open floor).
+- Internal room walls are exactly 1 tile thick: template rooms are laid out so adjacent rooms share a single wall band (see `dungeons.json`), maximizing walkable interior space.
