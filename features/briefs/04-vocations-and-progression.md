@@ -9,24 +9,24 @@ The **Vocations and Character Progression** feature manages character archetypes
 ## 2. Implemented Behavior
 
 ### 2.1 Playable Character Vocations & Growth Curves
-The 4 playable vocations (`DEFAULT_ARCHETYPES` in `engine.js`) possess initial vitals and per-level stat growth curves (`ProgressionSystem.addXp`):
+The 4 playable vocations (`DEFAULT_ARCHETYPES` in `engine.js`) possess initial vitals and per-level stat growth curves (`ProgressionSystem.addXp`). Each vocation also declares a `nativeEquipment` item-id list in `vocations.json` (**vocation-locked gear** — weapons/armor/relics can only be equipped by their appropriate vocation; there is **no** class damage/healing multiplier):
 
 - **Magician:**
   - Base Vitals: 60 HP, 150 MP.
   - Per-Level Growth: +8 HP, +16 MP.
-  - Mastery Domain: Wand Spark, Light Spell, Energy Beam, Arcane Wands.
+  - Locked Gear & Abilities: Arcane Wands, Beam Staff, Apprentice's Cape (native equipment: `apprentice_wand`, `astral_scepter`, `apprentice_cape`); Wand Spark, Light Spell, Energy Beam.
 - **Archer:**
   - Base Vitals: 90 HP, 80 MP.
   - Per-Level Growth: +14 HP, +8 MP.
-  - Mastery Domain: Bow Shot, Power Shot, Longbows, Crossbows, Arrows.
+  - Locked Gear & Abilities: Bows, Longbows, Hunter's Quiver, Hunter's Leathers, Archer's Hood (native equipment: `wooden_bow`, `composite_bow`, `hunter_quiver`, `hunter_leathers`, `archer_hood`); Bow Shot, Power Shot, Arrows.
 - **Fighter:**
   - Base Vitals: 140 HP, 30 MP.
   - Per-Level Growth: +18 HP, +4 MP.
-  - Mastery Domain: Slash, Heavy Cleave, Heavy Swords, Shields.
+  - Locked Gear & Abilities: Tempered Broadsword, Reinforced Buckler, Knight Plate Armor, Iron Helm (native equipment: `tempered_broadsword`, `buckler`, `plate_armor`, `iron_helm`); Slash, Heavy Cleave. Buckler/Plate/Crest are shared with Paladin (`vocationAffinity: ["fighter","paladin"]`).
 - **Paladin:**
   - Base Vitals: 120 HP, 90 MP.
   - Per-Level Growth: +15 HP, +10 MP.
-  - Mastery Domain: Holy Strike, Healing Prayer, Warhammers, Shields.
+  - Locked Gear & Abilities: Consecrated Warhammer, Reinforced Buckler, Knight Plate Armor, Holy Crown (native equipment: `consecrated_warhammer`, `buckler`, `plate_armor`, `holy_crown`); Holy Strike, Healing Prayer. Buckler/Plate/Crest are shared with Fighter.
 
 ### 2.2 Leveling Formula & Level 20 Cap
 - **Leveling Formula:** Required XP to reach the next level is calculated by `ProgressionSystem.getXpForLevel(level)`:

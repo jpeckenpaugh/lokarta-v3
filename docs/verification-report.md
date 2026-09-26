@@ -63,12 +63,12 @@ The native Node.js test suite [`html/tests/engine.test.mjs`](file:///Users/jarad
   ✔ supports 4 playable vocations with correct starting stats and empty inventories (0.09325ms)
   ✔ awards XP and scales stats per level for all 4 vocations (0.115375ms)
 ✔ ProgressionSystem & 4 Vocations Leveling (0.243167ms)
-▶ CombatSystem & 2.5x Native Class Mastery
-  ✔ correctly identifies native items for 4 vocations (0.264584ms)
-  ✔ applies 2.5x native class mastery multiplier on spells and weapons (0.236ms)
-  ✔ executes Archer Bow Shot and consumes arrows from Action Bar or Backpack (0.152167ms)
-  ✔ executes Paladin Healing Prayer and Holy Strike (0.1555ms)
-✔ CombatSystem & 2.5x Native Class Mastery (0.949875ms)
+▶ CombatSystem (No Class Multiplier) & Vocation-Locked Equipment
+  ✔ does not apply a legacy native-class multiplier (damage uses skillBoosts only)
+  ✔ rejects vocation-locked gear for the wrong class and accepts the correct class (array-aware)
+  ✔ executes Archer Bow Shot and consumes arrows from Action Bar or Backpack
+  ✔ executes Paladin Healing Prayer and Holy Strike
+✔ CombatSystem (No Class Multiplier) & Vocation-Locked Equipment
 ▶ InventorySystem & Stacking
   ✔ automatically picks up floor items into lowest empty Action Slot (0..9) first (0.182333ms)
   ✔ equips items to 4 paperdoll slots (main_hand, off_hand, armor, relic) (0.095292ms)
@@ -104,7 +104,7 @@ Each reverse-engineered feature brief under `features/briefs/` was mapped to aut
 | :--- | :--- | :--- | :--- | :---: |
 | **01-dungeon-generator** | `floor-generator.js` | 6 tests in Suite 1 (`Floor Generator (1-20)`) passed. Verifies PRNG Mulberry32 determinism, 40x40 grid, spawn (2,2), exit (35,35), BFS path connectivity across floors 1-20, biome tiers, and Floor 20 boss. | Verified exact matrix boundaries and boss parameters (600 HP, 20 ATK, 6 DEF). | **PASS** |
 | **02-lighting-and-los** | `engine.js` (`LightingSystem`, `GridMap`) | 3 tests in Suite 2 (`GridMap`) & 3 tests in Suite 3 (`LightingSystem`) passed. Verifies FOV radii (Base 10, Torch 14, Spell 12), Bresenham LOS raycasting, and wall occlusion. | Verified light circle casting and wall occlusion algorithms. | **PASS** |
-| **03-combat-and-abilities** | `engine.js` (`CombatSystem`) | 4 tests in Suite 5 (`CombatSystem`) passed. Verifies native weapon identification, 2.5x Class Mastery multiplier, Archer arrow consumption, and Paladin Heal/Holy Strike. | Verified damage formulas: `Math.round(base * 2.5)` for native class actions. | **PASS** |
+| **03-combat-and-abilities** | `CombatSystem` + `InventorySystem` (equip path) | 4+ tests in Suite 5 (`CombatSystem`) plus equip-rejection tests in Suite 6 (`InventorySystem`) passed. Verifies no class multiplier (damage scales from `skillBoosts.damageMultiplier` only), vocation-locked equipment (wrong-class rejections incl. shared `["fighter","paladin"]` arrays; correct class accepted), Archer arrow consumption, and Paladin Heal/Holy Strike. | Verified no `NATIVE_CLASS_MULTIPLIER`, `isNativeItem`, or `getVocationMultiplier` remains in runtime code or UI strings; `buckler`/`plate_armor`/`relic_champions_crest` now carry `vocationAffinity`. | **PASS** |
 | **04-vocations-and-progression** | `engine.js` (`ProgressionSystem`) | 2 tests in Suite 4 (`ProgressionSystem`) passed. Verifies 4 vocations (Magician, Archer, Fighter, Paladin), starting vitals, XP level curves (`level * 100`), and stat growth. | Verified archetype vitals: Magician (60/150), Archer (90/80), Fighter (140/30), Paladin (120/90). | **PASS** |
 | **05-inventory-and-storage** | `engine.js` (`InventorySystem`), `storage.js` | 3 tests in Suite 6 (`InventorySystem`) passed. Verifies pickup order (Action slots 0..9 before Backpack 0..5), Paperdoll equip/unequip, and item stacking limits. | Verified IndexedDB schema (`lokarta_browser_db` stores: `profile`, `characters`, `dungeon_floors`, `game_settings`). | **PASS** |
 | **06-audio-synthesizer** | `audio.js` | Indirectly verified via RPC profile sound preference. Sound effects synthesized dynamically via native `AudioContext`. | Static audit of 11 Web Audio sound synthesizer routines (`playFootstep`, `playWandSpark`, `playLightSpell`, etc.). | **PASS** |

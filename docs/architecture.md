@@ -111,7 +111,7 @@ html/
 | `GridMap` | 2D tile map matrix management, walkability, opacity checks, entity placement. | `loadFromMatrix(matrix)`, `isWalkable(x, y)`, `isOpaque(x, y)`, `setTile(x, y, type)`, `addItem(x, y, item)`, `removeItem(x, y, itemId)` |
 | `LightingSystem` | Spatial circular radius field-of-view (FOV) & fog of war calculation. | `computePlayerRadius(player)`, `updateLighting(gridMap, player, ambientLights, monsters)`, `castLightCircle(gridMap, originX, originY, radius)` |
 | `ProgressionSystem` | Character level scaling, XP increments, vitals growth across 4 vocations. | `createPlayer(vocation)`, `addXp(player, amount)`, `getVitalsForLevel(vocation, level)`, `calculateNextXp(level)` |
-| `CombatSystem` | Turn-based attack resolution, 2.5x Native Class Mastery scaling, ability execution. | `executeAbility(player, abilityId, targetX, targetY, grid, monsters)`, `calculateDamage(attacker, weapon/ability)`, `updateCooldowns(entity, deltaSec)` |
+| `CombatSystem` | Turn-based attack resolution, ability execution (no class multiplier), and vocation-locked equipment enforcement. | `executeAbility(player, abilityId, targetX, targetY, grid, monsters)`, `calculateDamage(attacker, weapon/ability)`, `updateCooldowns(entity, deltaSec)` |
 | `EntityAI` | Monster turn cadence, aggro range checks, pathfinding toward player via `AI_HANDLERS` map. | `processMonsterTurns(monsters, player, grid, deltaSec)`, `findPath(monster, targetX, targetY, grid)` |
 | `InventorySystem` | Action bar, backpack, paperdoll equipment management, item stacking. | `addItemToInventory(player, item)`, `equipItem(player, item, slot)`, `unequipItem(player, slot)`, `useItem(player, itemSlot)` |
 | `FateGrantSystem` | 5-card draft reward generation on level up. | `generateDraftCards(player, floorNumber)`, `applyCardReward(player, card)` |
@@ -122,7 +122,7 @@ html/
 - **Simulation Timing:** Fixed tick interval = 100 ms (10 Hz).
 - **Inventory Layout:** 10 Action Bar slots (0–9), 6 Backpack slots, 4 Paperdoll slots (`main_hand`, `off_hand`, `armor`, `relic`).
 - **Lighting Radii:** Base FOV = 10 tiles, Torch = +2 radius (12 tiles), Light Spell = +3/+2/+1 degrading radius (30s duration), Ambient = 4 tiles.
-- **Native Class Mastery Multiplier:** $2.5\times$ damage/healing bonus when weapon/ability aligns with character vocation.
+- **Vocation-Locked Equipment:** Every equippable item carries a `vocationAffinity` (`"magician"`, `"archer"`, `"fighter"`, `"paladin"`, `"neutral"`, or an array like `["fighter","paladin"]`) in `items.json`; only the matching vocation can equip/use it. Damage/healing scales solely from `skillBoosts.damageMultiplier` — there is **no** class multiplier.
 
 ### 3.3 Character Archetypes & Stat Growth
 - **Magician:** Base HP 60 (+8/level), Base MP 150 (+16/level). Native: Arcane Wands, Wand Spark, Light, Energy Beam.
@@ -323,7 +323,7 @@ This architecture specification accurately documents the ground-truth codebase i
 1. Floor generator determinism, grid boundaries, spawn/stairs placement, and BFS connectivity across floors 1–20.
 2. GridMap walkability and tile bounds.
 3. Raycasted line-of-sight visibility and torch/spell radii adjustments.
-4. Character progression, vocation stat scaling, and 2.5x native class mastery.
+4. Character progression, vocation stat scaling, and vocation-locked equipment enforcement (no class multiplier).
 5. Action bar, backpack, and paperdoll inventory mechanics.
 6. 5-card draft fate grants on level up.
 7. Hotkey and gesture input processing.

@@ -34,7 +34,7 @@ Lokarta is built as a pure web-native client application utilizing modern standa
 ## Seed Data & Character Vocations
 
 ### 1. Playable Vocations
-The game supports 4 distinct playable vocations, each possessing unique stat growth per level and a 2.5x Native Class Mastery damage/healing multiplier when using aligned gear and abilities:
+The game supports 4 distinct playable vocations, each possessing unique stat growth per level. The class advantage is **exclusive access to vocation-locked equipment** — weapons, armor, and relics can only be equipped by their appropriate vocation (there is **no** damage/healing class multiplier):
 
 - **Magician:**
   - *Focus:* Ranged spellcasting, illumination, and area-of-effect energy attacks.
@@ -88,7 +88,7 @@ Dungeons are procedurally generated on a $40 \times 40$ tile grid using a determ
 
 4. **Class-Based Combat & Skill Mechanics:**
    - Implements ranged spells (Wand Spark, Energy Beam), physical attacks (Bow Shot, Power Shot), and holy magic (Holy Strike, Healing Prayer).
-   - Applies a 2.5x Native Class Mastery multiplier when matching class archetype with appropriate abilities and gear.
+   - Enforces **vocation-locked equipment**: only the appropriate vocation (or shared fighter/paladin classes for `["fighter","paladin"]` gear) can equip or use an item. Damage and healing scale solely from `skillBoosts.damageMultiplier` — no class multiplier.
 
 5. **Leveling, Progression & Fate Grant System:**
    - Player leveling up to Level 20 cap based on `level * 100` XP requirement.

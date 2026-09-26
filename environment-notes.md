@@ -67,7 +67,7 @@ The test suite (`html/tests/engine.test.mjs`) validates:
 2. **GridMap & Tile Bounds:** Dimension initialization, tile types, and item management.
 3. **LightingSystem & FOV:** Vision radius computation (base 10, torch +2, degrading light spell +3/+2/+1), spatial circle lighting, and monster visibility.
 4. **ProgressionSystem:** 4 playable vocations (Magician, Archer, Fighter, Paladin), level scaling, and stat increments.
-5. **CombatSystem:** Native class item mastery (2.5x multiplier), ability execution, arrow consumption, and Paladin prayers/strikes.
+5. **CombatSystem:** Vocation-locked equipment enforcement (no class multiplier — damage/healing scales from `skillBoosts.damageMultiplier` only), ability execution, arrow consumption, and Paladin prayers/strikes.
 6. **InventorySystem:** Slot priority (action bar 0–9 before backpack), paperdoll equipment slots, and unequip functionality.
 7. **FateGrantSystem:** 5-card draft generation and card application.
 8. **GestureEngine:** Hotkey mapping for keys 1–9 and 0.

@@ -2,7 +2,7 @@
 
 ## 1. Overview & Purpose
 
-The **Tactical Combat and Vocation Abilities** feature governs turn-based combat interactions, melee and ranged attacks, spellcasting, damage/mitigation calculations, monster AI behavior, status effects, and class-specific mastery multipliers. It delivers grid-aligned turn resolution at a 10 Hz simulation tick.
+The **Tactical Combat and Vocation Abilities** feature governs turn-based combat interactions, melee and ranged attacks, spellcasting, damage/mitigation calculations, monster AI behavior, status effects, and vocation-locked equipment. It delivers grid-aligned turn resolution at a 10 Hz simulation tick.
 
 ---
 
@@ -35,8 +35,10 @@ The **Tactical Combat and Vocation Abilities** feature governs turn-based combat
   - *Holy Strike:* Melee physical + holy magic hybrid attack dealing bonus damage to undead.
   - *Healing Prayer:* Restores player HP scaling with magic power and Paladin level.
 
-### 3.3 2.5x Native Class Mastery Multiplier
-- When a player executes an ability or uses a weapon archetype native to their chosen vocation (e.g., Magician using wands/beams, Archer using longbows/power shot, Fighter using heavy swords, Paladin using holy strikes/healing), a **2.5x Class Mastery multiplier** is applied to total damage or healing output.
+### 3.3 Vocation-Locked Equipment (No Class Multiplier)
+- Equipment is **vocation-locked**: every equippable item carries a `vocationAffinity` in `items.json` (e.g. `"archer"`, `"fighter"`, `"paladin"`, `"neutral"`, or an array like `["fighter","paladin"]`), and only the matching vocation can equip or use it.
+- The class advantage is **exclusive access to class-specific gear** (e.g. Archer's Hunter set, Fighter's Legion set, Paladin's Crusader set), **not** a damage/healing multiplier.
+- Damage and healing scale solely from `skillBoosts.damageMultiplier`; there is no `NATIVE_CLASS_MULTIPLIER` and no `(2.5x Class Mastery!)` combat log messaging.
 
 ### 3.4 Damage & Hit Mechanics
 - Attack calculations evaluate attacker Attack (ATK) power against defender Armor/Defense (DEF).

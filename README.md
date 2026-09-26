@@ -14,7 +14,7 @@
 - **Off-Thread Simulation & Worker RPC:** Procedural floor generation and state persistence run off the UI thread in a dedicated Web Worker (`game-worker.js`), communicated via a Promise-wrapped RPC client bridge (`game-client.js`).
 - **20-Floor Procedural Dungeon & 4 Biomes:** Deterministic Mulberry32 PRNG dungeon generation on a $40 \times 40$ tile matrix with Breadth-First Search (BFS) connectivity verification. Progresses across 4 biomes (Subterranean Crypt, Catacombs of Whispers, Shadow Vaults, Abyssal Sanctum) culminating in the Floor 20 Abyssal Overlord boss fight.
 - **Dynamic Line-of-Sight (LOS) Lighting:** Circular radius field-of-view algorithm driven by JSON catalog specs (Base FOV: 10 tiles, Torch: +2 radius, degrading Light Spell: +3/+2/+1 radius).
-- **4 Playable Vocations & 2.5x Class Mastery:** Play as Magician, Archer, Fighter, or Paladin with unique stat growth curves and a $2.5\times$ Native Class Mastery damage/healing multiplier for aligned gear and abilities.
+- **4 Playable Vocations & Vocation-Locked Equipment:** Play as Magician, Archer, Fighter, or Paladin with unique stat growth curves. The class advantage comes from **exclusive access to vocation-locked gear** — weapons, armor, and relics can only be equipped by their appropriate vocation.
 - **Fate Grant Leveling System:** 5-card draft reward selection upon leveling up (up to Level 20 cap), offering vocation-aligned skills, stat boosts, and gear.
 - **Data-Driven JSON Catalogs:** Clean JSON data structures under `html/data/` defining 11 decoupled catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tile_themes.json`, and `keybindings.json`.
 - **Real-Time Web Audio Synthesizer:** 19 procedural sound definitions (footsteps, spell sparks, bow snaps, holy chimes, level-up fanfares, victory/defeat) driven by `html/data/sounds.json` without external audio asset files.
@@ -67,13 +67,13 @@ Run all test suites from the repository root:
 node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs
 ```
 
-### Test Suite Coverage (5 Test Suites, 57/57 Passing)
+### Test Suite Coverage (5 Test Suites, 65/65 Passing)
 
 - **Floor Generator (1–20):** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, biome mapping, and Floor 20 Abyssal Overlord stats (600 HP, 20 ATK, 6 DEF).
 - **GridMap & Tile Bounds:** Tests matrix initialization, tile opacity/walkability checks, and item placement/removal.
 - **LightingSystem & 10-Tile FOV:** Verifies FOV radius calculations (Base 10, Torch +2, degrading Light Spell +3/+2/+1), spatial circle lighting without wall occlusion.
 - **ProgressionSystem & 4 Vocations:** Verifies initial archetype vitals, XP level curves (`level * 100`), and stat growth from `vocations.json`.
-- **CombatSystem & 2.5x Mastery:** Verifies native class item identification from `items.json`, $2.5\times$ damage/healing multiplier scaling, Archer arrow consumption, and Paladin prayers/strikes.
+- **CombatSystem (No Class Multiplier) & Vocation-Locked Equipment:** Verifies damage/healing uses only `skillBoosts.damageMultiplier` (no legacy class multiplier), Archer arrow consumption, Paladin prayers/strikes, and that vocation-locked gear (including shared `["fighter","paladin"]` arrays) is rejected for the wrong class and accepted for the right one.
 - **InventorySystem & Stacking:** Tests item pickup priorities (Action Slots 0–9 before Backpack), paperdoll equipment slots, unequip logic, and stack limits from `items.json`.
 - **FateGrantSystem:** Verifies 5-card draft reward generation from `cards.json` and inventory placement.
 - **GestureEngine:** Validates key mapping for hotkeys `1`–`9` and `0` to slots 0–9.
@@ -132,7 +132,7 @@ Complete technical documentation and specifications reverse-engineered from the 
 - **Feature Briefs:** [`features/briefs/`](file:///Users/jarad/git/lokarta-v3/features/briefs/)
   - [`01-dungeon-generator.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/01-dungeon-generator.md) — Procedural generation, PRNG, and BFS connectivity.
   - [`02-lighting-and-los.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/02-lighting-and-los.md) — Circular radius lighting engine and dynamic fog of war.
-  - [`03-combat-and-abilities.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/03-combat-and-abilities.md) — Turn-based combat, ability execution, and $2.5\times$ Class Mastery.
+  - [`03-combat-and-abilities.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/03-combat-and-abilities.md) — Turn-based combat, ability execution, and vocation-locked equipment.
   - [`04-vocations-and-progression.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/04-vocations-and-progression.md) — 4 playable vocations, stat scaling, and XP curves.
   - [`05-inventory-and-storage.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/05-inventory-and-storage.md) — Action bar, backpack, paperdoll, item stacking, and IndexedDB persistence.
   - [`06-audio-synthesizer.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/06-audio-synthesizer.md) — Procedural Web Audio API synthesizer catalog.
