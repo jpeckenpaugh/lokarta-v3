@@ -12,6 +12,14 @@ export const TILE_TYPES = {
   DOOR: 3,
 };
 
+/**
+ * Version of the current dungeon floor-generation template.
+ * Bumped whenever the template/layout logic changes so cached floors from
+ * older templates can be detected and regenerated (see game-worker.js).
+ * v1 = legacy thick-walled layout; v2 = 1-tile-thick walls + 64px overhaul.
+ */
+export const FLOOR_TEMPLATE_VERSION = DUNGEONS_CATALOG.standard_40x40?.templateVersion || 1;
+
 export const BIOMES = {
   CRYPT: {
     name: BIOMES_CATALOG.crypt.name,
@@ -378,6 +386,7 @@ export function generateFloor(floorNumber = 1, seed = null) {
   return {
     floor_number: floorId,
     id: floorId,
+    template_version: FLOOR_TEMPLATE_VERSION,
     name: floorName,
     biome: biomeName,
     width,

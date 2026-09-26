@@ -19,6 +19,7 @@ import {
   generateFloor,
   getBiomeForFloor,
   BIOMES,
+  FLOOR_TEMPLATE_VERSION,
 } from '../services/floor-generator.js';
 
 import {
@@ -37,6 +38,7 @@ import {
 } from '../engine/index.js';
 
 import { GameClient } from '../worker/game-client.js';
+import { isStaleFloor } from '../worker/game-worker.js';
 
 // ============================================================================
 // 1. Floor Generator (1-20)
@@ -173,6 +175,18 @@ describe('Floor Generator (1-20)', () => {
       assert.ok(
         walls <= 320,
         `floor ${f}: expected 1-tile walls to keep wall count low, got ${walls} wall tiles`
+      );
+    }
+  });
+
+  it('stamps every floor with the current template version so cached floors are invalidated', () => {
+    assert.ok(FLOOR_TEMPLATE_VERSION >= 2, 'template version must be bumped for the 1-tile-wall overhaul');
+    for (let f = 1; f <= 20; f++) {
+      const floor = generateFloor(f);
+      assert.equal(
+        floor.template_version,
+        FLOOR_TEMPLATE_VERSION,
+        `floor ${f} must be stamped with the current template version`
       );
     }
   });
@@ -1017,5 +1031,24 @@ describe('GameClient & Worker Protocol', () => {
     assert.equal(nData.player.vocation, 'paladin');
 
     client.terminate();
+  });
+
+  it('flags cached floors from older templates as stale so they regenerate', () => {
+    // Missing floor -> stale
+    assert.equal(isStaleFloor(null), true);
+    assert.equal(isStaleFloor(undefined), true);
+
+    // Floor stamped with the current template -> fresh
+    assert.equal(isStaleFloor({ template_version: FLOOR_TEMPLATE_VERSION }), false);
+
+    // Floor baked by the legacy thick-walled layout (v1 / no stamp) -> stale
+    assert.equal(isStaleFloor({ template_version: 1 }), true);
+    assert.equal(isStaleFloor({ floor_number: 2 }), true);
+    assert.equal(isStaleFloor({ floor_number: 2, template_version: FLOOR_TEMPLATE_VERSION - 1 }), true);
+
+    // Regression: every freshly generated floor is considered fresh
+    for (let f = 1; f <= 20; f++) {
+      assert.equal(isStaleFloor(generateFloor(f)), false, `floor ${f} from current template must not be stale`);
+    }
   });
 });
