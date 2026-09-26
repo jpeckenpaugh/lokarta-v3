@@ -432,6 +432,8 @@ export class CombatSystem {
 
   /**
    * Executes Melee Slash for Fighter / Weapons.
+   * Shared by Fighter and Paladin basic melee. Reach extends one space beyond
+   * adjacent (threshold ~2.5 tiles) per the board's "melee reach +1" ask.
    */
   static executeSlash(player, target, gridMap) {
     if (player.cooldowns?.slash > 0) {
@@ -439,8 +441,8 @@ export class CombatSystem {
     }
 
     const dist = Math.hypot(target.x - player.x, target.y - player.y);
-    if (dist > 1.5) {
-      return { success: false, message: 'Target is too far for melee strike (adjacent only).' };
+    if (dist > 2.5) {
+      return { success: false, message: 'Target is too far for a melee strike (reach is one space beyond adjacent).' };
     }
 
     if (!player.cooldowns) player.cooldowns = {};
@@ -461,10 +463,29 @@ export class CombatSystem {
       message += ` ${target.name} was slain!`;
     }
 
+    // Basic "swoosh" arc/swipe in front of the player, oriented toward the target.
+    const swoosh = {
+      id: `swoosh_${Date.now()}_${Math.random()}`,
+      type: 'swoosh',
+      sourceX: player.x,
+      sourceY: player.y,
+      targetX: target.x,
+      targetY: target.y,
+      elapsedMs: 0,
+      durationMs: 280,
+      color: '#e2e8f0',
+      visual: {
+        glowColor: '#ffffff',
+        arcRadiusTiles: 0.9,
+        arcSweepDeg: 90,
+      },
+    };
+
     return {
       success: true,
       message,
       damageDealt: damage,
+      projectiles: [swoosh],
       defeatedMonsterId,
       droppedLoot,
     };

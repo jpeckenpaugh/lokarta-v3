@@ -321,13 +321,16 @@ export function generateFloor(floorNumber = 1, seed = null) {
   // 7. Item Loot Spawns
   const items = [
     {
+      // Spawn-room slot (adjacent to spawn (2,2), visible at game start).
+      // On the very first level the board wants arrows x22 here so the Archer
+      // vocation can collect ammunition immediately; higher floors keep the torch.
       x: 6,
       y: 6,
-      item_id: 'torch',
-      name: 'Wooden Torch',
-      type: 'offhand',
-      quantity: 1 + Math.floor(floorId / 5),
-      stat_bonus: 6,
+      item_id: floorId === 1 ? 'arrows' : 'torch',
+      name: floorId === 1 ? 'Arrows' : 'Wooden Torch',
+      type: floorId === 1 ? 'ammo' : 'offhand',
+      quantity: floorId === 1 ? 22 : 1 + Math.floor(floorId / 5),
+      stat_bonus: floorId === 1 ? 0 : 6,
     },
     {
       x: 17,

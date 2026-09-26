@@ -133,6 +133,36 @@ describe('Floor Generator (1-20)', () => {
     assert.equal(boss.defense, 6);
     assert.equal(boss.isBoss, true);
   });
+
+  it('replaces the spawn-adjacent torch with arrows x22 on floor 1 only', () => {
+    // Spawn room is [2,2,8,8]; the torch slot sits at (6,6), visible at game start.
+    const floor1 = generateFloor(1);
+    const spawnCoords = floor1.spawn_coords;
+    assert.deepEqual(spawnCoords, { x: 2, y: 2 });
+
+    const spawnArrows = floor1.items.find(i => i.item_id === 'arrows' && i.x === 6 && i.y === 6);
+    assert.ok(spawnArrows, 'level-1 floor must carry the spawn-adjacent arrows pickup');
+    assert.equal(spawnArrows.quantity, 22, 'exact pickup quantity must be 22');
+    assert.equal(spawnArrows.type, 'ammo');
+
+    // Adjacent / visible near the player spawn (same spawn room footprint)
+    assert.ok(
+      Math.abs(spawnArrows.x - spawnCoords.x) <= 6 && Math.abs(spawnArrows.y - spawnCoords.y) <= 6,
+      'arrows pickup must stay near the player spawn'
+    );
+
+    // Torch is gone from that slot on floor 1
+    assert.ok(
+      !floor1.items.some(i => i.item_id === 'torch' && i.x === 6 && i.y === 6),
+      'spawn-room torch must be gone from that slot on floor 1'
+    );
+
+    // Higher floors keep the torch in the spawn room untouched
+    const floor2 = generateFloor(2);
+    const torch2 = floor2.items.find(i => i.item_id === 'torch' && i.x === 6 && i.y === 6);
+    assert.ok(torch2, 'higher floors must keep the spawn-room torch');
+    assert.equal(torch2.quantity, 1 + Math.floor(2 / 5));
+  });
 });
 
 // ============================================================================
@@ -365,6 +395,68 @@ describe('CombatSystem (No Class Multiplier) & Vocation-Locked Equipment', () =>
     const fgtRes = CombatSystem.executeSlash(fgt, adjMonster, grid);
     assert.equal(fgtRes.success, true);
     assert.ok(fgtRes.damageDealt >= CONFIG.FIGHTER_SLASH_DAMAGE_MIN);
+  });
+
+  it('extends Fighter melee reach one space beyond adjacent and rejects out-of-range targets', () => {
+    // Player at (2,2). Orthogonal range-2 target at (4,2) -> dist 2.0 (in reach).
+    const fgt = createPlayer('fighter');
+    fgt.x = 2;
+    fgt.y = 2;
+    const range2 = { id: 'm1', name: 'Skeleton', type: 'crypt_skeleton', x: 4, y: 2, hp: 100, max_hp: 100 };
+    const range2Res = CombatSystem.executeSlash(fgt, range2, grid);
+    assert.equal(range2Res.success, true, 'orthogonal range-2 target must be within melee reach');
+    assert.ok(range2Res.damageDealt >= CONFIG.FIGHTER_SLASH_DAMAGE_MIN);
+
+    // Diagonal ("knight" ring) target at (4,3) -> dist ~2.24 (in reach).
+    const fgt2 = createPlayer('fighter');
+    fgt2.x = 2;
+    fgt2.y = 2;
+    const diag2 = { id: 'm2', name: 'Skeleton', type: 'crypt_skeleton', x: 4, y: 3, hp: 100, max_hp: 100 };
+    const diag2Res = CombatSystem.executeSlash(fgt2, diag2, grid);
+    assert.equal(diag2Res.success, true, 'diagonal range-2 target must be within melee reach');
+
+    // Out of reach: target at (5,2) -> dist 3.0 (one more space beyond) must be rejected.
+    const fgt3 = createPlayer('fighter');
+    fgt3.x = 2;
+    fgt3.y = 2;
+    const far = { id: 'm3', name: 'Skeleton', type: 'crypt_skeleton', x: 5, y: 2, hp: 100, max_hp: 100 };
+    const farRes = CombatSystem.executeSlash(fgt3, far, grid);
+    assert.equal(farRes.success, false, 'target beyond one space of melee reach must be rejected');
+    assert.match(farRes.message, /too far/i);
+  });
+
+  it('extends Paladin basic melee reach one space beyond adjacent and rejects out-of-range targets', () => {
+    const pal = createPlayer('paladin');
+    pal.x = 2;
+    pal.y = 2;
+    const range2 = { id: 'm1', name: 'Skeleton', type: 'crypt_skeleton', x: 4, y: 2, hp: 100, max_hp: 100 };
+    const range2Res = CombatSystem.executeSlash(pal, range2, grid);
+    assert.equal(range2Res.success, true, 'Paladin basic melee must hit a range-2 target');
+
+    const palFar = createPlayer('paladin');
+    palFar.x = 2;
+    palFar.y = 2;
+    const far = { id: 'm2', name: 'Skeleton', type: 'crypt_skeleton', x: 5, y: 2, hp: 100, max_hp: 100 };
+    const farRes = CombatSystem.executeSlash(palFar, far, grid);
+    assert.equal(farRes.success, false, 'Paladin basic melee must reject an out-of-range target');
+  });
+
+  it('emits a swoosh animation in the melee swing result', () => {
+    const fgt = createPlayer('fighter');
+    fgt.x = 2;
+    fgt.y = 2;
+    const target = { id: 'm1', name: 'Skeleton', type: 'crypt_skeleton', x: 4, y: 2, hp: 100, max_hp: 100 };
+
+    const res = CombatSystem.executeSlash(fgt, target, grid);
+    assert.equal(res.success, true);
+    assert.ok(Array.isArray(res.projectiles), 'melee swing result must carry a projectiles array');
+    const swoosh = res.projectiles.find(p => p.type === 'swoosh');
+    assert.ok(swoosh, 'melee swing must emit a swoosh projectile');
+    assert.equal(swoosh.sourceX, fgt.x);
+    assert.equal(swoosh.sourceY, fgt.y);
+    assert.equal(swoosh.targetX, target.x);
+    assert.equal(swoosh.targetY, target.y);
+    assert.ok(swoosh.durationMs > 0, 'swoosh must have a positive duration');
   });
 
   it('executes Archer Bow Shot and consumes arrows from Action Bar or Backpack', () => {

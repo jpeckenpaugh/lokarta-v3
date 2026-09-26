@@ -842,15 +842,15 @@ export class LokartaApp {
         this.handleCombatResult(res, target.x, target.y);
       },
       cleave: () => {
-        const target = this.getTargetMonster(1.5);
-        if (!target) return this.logCombat('No adjacent enemy for Cleave.', 'warning');
+        const target = this.getTargetMonster(2.5);
+        if (!target) return this.logCombat('No enemy within melee reach for Cleave.', 'warning');
         soundFX.play('hit');
         const res = CombatSystem.executeSlash(this.player, target, this.gridMap);
         this.handleCombatResult(res, target.x, target.y);
       },
       slash: () => {
-        const target = this.getTargetMonster(1.5);
-        if (!target) return this.logCombat('No adjacent enemy for melee attack.', 'warning');
+        const target = this.getTargetMonster(2.5);
+        if (!target) return this.logCombat('No enemy within melee reach.', 'warning');
         soundFX.play('hit');
         const res = CombatSystem.executeSlash(this.player, target, this.gridMap);
         this.handleCombatResult(res, target.x, target.y);

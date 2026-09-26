@@ -163,6 +163,8 @@ export class CanvasRenderer {
           }
         }
         ctx.restore();
+      } else if (p.type === 'swoosh') {
+        this.renderSwoosh(ctx, p);
       } else {
         const startPixelX = p.sourceX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
         const startPixelY = p.sourceY * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
@@ -273,6 +275,57 @@ export class CanvasRenderer {
         ctx.restore();
       }
     }
+  }
+
+  /**
+   * Draws a basic melee "swoosh": an arc/swipe in front of the player oriented
+   * toward the target, fading over the swing duration. Uses only existing
+   * rendering primitives (no new art assets).
+   */
+  renderSwoosh(ctx, p) {
+    const sw = CONFIG.GRID_SIZE;
+    const cx = p.sourceX * sw + sw / 2 - this.cameraX;
+    const cy = p.sourceY * sw + sw / 2 - this.cameraY;
+    const tx = p.targetX * sw + sw / 2 - this.cameraX;
+    const ty = p.targetY * sw + sw / 2 - this.cameraY;
+
+    const progress = Math.min(1, p.elapsedMs / (p.durationMs || 280));
+    const angle = Math.atan2(ty - cy, tx - cx);
+    const v = p.visual || {};
+    const sweep = ((v.arcSweepDeg ?? 90) * Math.PI) / 180;
+    const radius = sw * (v.arcRadiusTiles ?? 0.9);
+    const color = p.color || '#e2e8f0';
+    const glowColor = v.glowColor || '#ffffff';
+    const alpha = Math.max(0, 1 - progress);
+
+    ctx.save();
+    // Leading edge sweeps from the far side of the arc toward the target.
+    const leadEnd = angle - sweep / 2 + sweep * Math.min(1, progress * 2.2);
+
+    // Outer glow arc
+    ctx.globalAlpha = alpha * 0.45;
+    ctx.strokeStyle = glowColor;
+    ctx.lineWidth = sw * 0.2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, angle - sweep / 2, angle + sweep / 2);
+    ctx.stroke();
+
+    // White core arc (grows along the swing)
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = sw * 0.09;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, angle - sweep / 2, Math.max(angle - sweep / 2, leadEnd));
+    ctx.stroke();
+
+    // Colored tip accent at the leading edge
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = sw * 0.14;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, Math.max(angle - sweep / 2, leadEnd - sweep * 0.18), leadEnd);
+    ctx.stroke();
+    ctx.restore();
   }
 
   renderParticles(ctx, particles) {
