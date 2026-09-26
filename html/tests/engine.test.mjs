@@ -553,6 +553,77 @@ describe('FateGrantSystem', () => {
     assert.ok(hasItemPlaced);
   });
 
+  it('guarantees every level-1 grant offers >=1 main_hand and >=1 off_hand for all 4 vocations', () => {
+    const vocations = ['magician', 'archer', 'fighter', 'paladin'];
+    for (const v of vocations) {
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const offer = FateGrantSystem.generateDraftOffer(v, 1);
+        const hasMainHand = offer.cards.some((c) => FateGrantSystem.resolveCardSlot(c) === 'main_hand');
+        const hasOffHand = offer.cards.some((c) => FateGrantSystem.resolveCardSlot(c) === 'off_hand');
+        assert.ok(hasMainHand, `${v} level-1 offer must include a main_hand card (attempt ${attempt})`);
+        assert.ok(hasOffHand, `${v} level-1 offer must include an off_hand card (attempt ${attempt})`);
+        assert.equal(offer.cards.length, 5, `${v} level-1 offer stays a 5-card draft`);
+      }
+    }
+  });
+
+  it('level-1 hand-slot rule injects an offered card WITHOUT equipping or forcing selection', () => {
+    const vocations = ['magician', 'archer', 'fighter', 'paladin'];
+    for (const v of vocations) {
+      const player = createPlayer(v);
+      const offer = FateGrantSystem.generateDraftOffer(player, 1);
+
+      // The OFFER must carry both hand slots…
+      assert.ok(offer.cards.some((c) => FateGrantSystem.resolveCardSlot(c) === 'main_hand'), `${v} must offer main_hand`);
+      assert.ok(offer.cards.some((c) => FateGrantSystem.resolveCardSlot(c) === 'off_hand'), `${v} must offer off_hand`);
+
+      // …but the rule only guarantees the offer: nothing is auto-equipped and
+      // the player's paperdoll, action bar and backpack stay untouched.
+      assert.equal(player.paperdoll.main_hand, null, `${v} main_hand must not be auto-equipped`);
+      assert.equal(player.paperdoll.off_hand, null, `${v} off_hand must not be auto-equipped`);
+      assert.equal(player.paperdoll.armor, null, `${v} armor must not be auto-equipped`);
+      assert.equal(player.paperdoll.relic, null, `${v} relic must not be auto-equipped`);
+      assert.ok(player.action_bar.every((s) => s === null), `${v} action_bar must stay empty`);
+      assert.ok(player.backpack.every((s) => s === null), `${v} backpack must stay empty`);
+      assert.equal(offer.requiredSelections.min, 1);
+      assert.equal(offer.requiredSelections.max, 2);
+    }
+  });
+
+  it('keeps level >1 drafts unaffected by the hand-slot rule (guard is level-1 only)', () => {
+    const originalDatabase = FateGrantSystem.CARD_DATABASE;
+    const originalShuffle = FateGrantSystem.shuffle;
+    try {
+      // Deterministic pool + no-op shuffle: with shuffle disabled the draft
+      // takes the pool order, so a 5-card sample naturally omits the off_hand
+      // card that sits at the end. Only the level-1 guard may inject it.
+      FateGrantSystem.CARD_DATABASE = [
+        { id: 'c_main', name: 'Broadsword', rarity: 'common', icon: 'x', vocationAffinity: 'fighter', item: { item_id: 'tempered_broadsword' } },
+        { id: 'c_f1', name: 'Light', rarity: 'common', icon: 'x', item: { item_id: 'spell_light' } },
+        { id: 'c_f2', name: 'Cleave', rarity: 'common', icon: 'x', item: { item_id: 'spell_cleave' } },
+        { id: 'c_f3', name: 'Potion', rarity: 'common', icon: 'x', item: { item_id: 'health_potion' } },
+        { id: 'c_f4', name: 'Fortify', rarity: 'common', icon: 'x', item: { item_id: 'spell_fortify' } },
+        { id: 'c_off', name: 'Buckler', rarity: 'common', icon: 'x', vocationAffinity: ['fighter', 'paladin'], item: { item_id: 'buckler' } },
+      ];
+      FateGrantSystem.shuffle = () => {};
+
+      const levelTwo = FateGrantSystem.generateDraftOffer('fighter', 2);
+      assert.equal(levelTwo.cards.length, 5);
+      assert.equal(levelTwo.cards.some((c) => FateGrantSystem.resolveCardSlot(c) === 'off_hand'), false,
+        'level 2 draft must NOT receive the off_hand injection');
+
+      const levelOne = FateGrantSystem.generateDraftOffer('fighter', 1);
+      assert.equal(levelOne.cards.length, 5);
+      assert.equal(levelOne.cards.some((c) => FateGrantSystem.resolveCardSlot(c) === 'main_hand'), true,
+        'level 1 draft must include a main_hand card');
+      assert.equal(levelOne.cards.some((c) => FateGrantSystem.resolveCardSlot(c) === 'off_hand'), true,
+        'level 1 draft must include an off_hand card (injected by the guard)');
+    } finally {
+      FateGrantSystem.CARD_DATABASE = originalDatabase;
+      FateGrantSystem.shuffle = originalShuffle;
+    }
+  });
+
   it('converts duplicate wand/staff offers into Level Up upgrades up to Rank 5', () => {
     const player = createPlayer('magician');
     player.action_bar[0] = { item_id: 'spell_wand_spark', name: 'Spark Wand', type: 'spell', damage: 14, range: 5, manaCost: 1, itemLevel: 1 };

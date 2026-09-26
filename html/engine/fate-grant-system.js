@@ -86,10 +86,73 @@ export class FateGrantSystem {
       chosenCards.push(card);
     }
 
+    // Rule guard: at game start (level 1) every vocation must be OFFERED at
+    // least one main_hand card and one off_hand card so the player can always
+    // attack and progress. This is an offer-only guarantee — nothing is
+    // auto-equipped and selection is never forced. Level > 1 drafts are unchanged.
+    if (level === 1) {
+      FateGrantSystem.guaranteeLevelOneHandSlots(chosenCards, eligibleCards, vocation);
+    }
+
     return {
       cards: chosenCards,
       requiredSelections: { min: 1, max: 2 },
     };
+  }
+
+  /**
+   * Resolves the paperdoll slot for a card's item by falling back to the
+   * items catalog entry. Cards embed no slot themselves.
+   */
+  static resolveCardSlot(card) {
+    const itemId = card?.item?.item_id;
+    if (!itemId) return null;
+    return card.item?.slot || ITEMS_CATALOG[itemId]?.slot || null;
+  }
+
+  /**
+   * Level-1 rule guard: ensures the offered draft contains at least one
+   * main_hand and one off_hand card for the vocation. If a slot is missing,
+   * a matching offer card is injected (preferring the vocation's own affinity
+   * cards, then neutral). The injection only touches the OFFER — it never
+   * equips anything and never forces a selection. If no catalog candidate
+   * exists for a slot, nothing is invented (the gap is surfaced by the caller).
+   */
+  static guaranteeLevelOneHandSlots(offeredCards, eligibleCards, vocation) {
+    const hasSlot = (slot) => offeredCards.some((c) => FateGrantSystem.resolveCardSlot(c) === slot);
+
+    const injectForSlot = (slot) => {
+      if (hasSlot(slot)) return;
+
+      const candidates = eligibleCards.filter((c) => FateGrantSystem.resolveCardSlot(c) === slot);
+      if (candidates.length === 0) return; // no catalog candidate — do not fabricate
+
+      // Prefer the vocation's own affinity cards over neutral ones.
+      const affinityScore = (card) => {
+        const aff = card.vocationAffinity;
+        if (!aff || aff === 'neutral') return 0;
+        if (Array.isArray(aff)) return aff.includes(vocation) ? 2 : 1;
+        return aff === vocation ? 2 : 1;
+      };
+      candidates.sort((a, b) => affinityScore(b) - affinityScore(a));
+
+      const offerCard = JSON.parse(JSON.stringify(candidates[0]));
+      if (offerCard.item && !offerCard.item.itemLevel) offerCard.item.itemLevel = 1;
+
+      // Replace a non-hand-slot card so the draft stays a 5-card offer.
+      const replaceIdx = offeredCards.findIndex((c) => {
+        const s = FateGrantSystem.resolveCardSlot(c);
+        return s !== 'main_hand' && s !== 'off_hand';
+      });
+      if (replaceIdx !== -1) {
+        offeredCards[replaceIdx] = offerCard;
+      } else {
+        offeredCards.push(offerCard);
+      }
+    };
+
+    injectForSlot('main_hand');
+    injectForSlot('off_hand');
   }
 
   static applyDraftedCards(player, cards, gridMap) {
