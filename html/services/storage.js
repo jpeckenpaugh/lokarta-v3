@@ -363,7 +363,10 @@ export async function migrateLegacySave() {
     await put(STORES.SAVE_SLOTS, plan.slot);
   }
   for (const entry of plan.floors) {
-    await put(STORES.SLOT_FLOORS, entry.floor, entry.key);
+    // `slot_floors` uses an in-line composite keyPath ['slotIndex','floor_number'].
+    // Stamp the slot index onto the value and put without an explicit key, or
+    // IndexedDB rejects the write with a DataError and the migration aborts.
+    await put(STORES.SLOT_FLOORS, { ...entry.floor, slotIndex: entry.key[0] });
   }
   if (plan.guard) {
     await put(STORES.GAME_SETTINGS, { ...plan.guard, migratedAt: now() });

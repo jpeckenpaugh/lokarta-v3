@@ -8,9 +8,8 @@ import { HUDManager } from './hud-manager.js';
 import { UI_CATALOG } from '../data/index.js';
 import {
   SAVE_SLOT_COUNT,
-  summarizeSlot,
   formatPlaytime,
-  slotId,
+  classifySlot,
 } from '../services/save-slots.js';
 
 const VOCATION_ICONS = {
@@ -41,12 +40,40 @@ const PIXEL_SCALE_OPTIONS = [
 ];
 
 export class ModalManager {
+  /**
+   * Removes the single modal-scoped keydown handler registered on `window`,
+   * if any. Every modal render and close funnels through here so that no
+   * navigation path (mouse click, back button, programmatic close) can leave a
+   * stale handler behind that would fire on a later key press.
+   */
+  static _clearKeyHandler(overlay) {
+    if (!overlay || typeof overlay._keyHandler !== 'function') return;
+    overlay._keyHandler();
+    overlay._keyHandler = null;
+  }
+
+  /**
+   * Registers the single modal-scoped keydown handler for this overlay,
+   * replacing any handler left by a previous render. The handler is removed by
+   * `_clearKeyHandler` on the next render/close, or by the handler itself.
+   */
+  static _setKeyHandler(overlay, handler) {
+    this._clearKeyHandler(overlay);
+    window.addEventListener('keydown', handler);
+    overlay._keyHandler = () => {
+      window.removeEventListener('keydown', handler);
+      overlay._keyHandler = null;
+    };
+  }
+
   static _reset(overlay) {
+    this._clearKeyHandler(overlay);
     overlay.classList.remove('hidden');
     overlay.innerHTML = '';
   }
 
   static _close(overlay) {
+    this._clearKeyHandler(overlay);
     overlay.classList.add('hidden');
     overlay.innerHTML = '';
     overlay.classList.remove('title-active');
@@ -119,7 +146,6 @@ export class ModalManager {
     });
     applySelection();
 
-    modalOverlayEl._titleKeyHandler?.();
     const keyHandler = e => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'KeyS' || e.key === 'KeyW') {
         e.preventDefault();
@@ -129,11 +155,7 @@ export class ModalManager {
         activate(rows[selected]);
       }
     };
-    window.addEventListener('keydown', keyHandler);
-    modalOverlayEl._titleKeyHandler = () => {
-      window.removeEventListener('keydown', keyHandler);
-      modalOverlayEl._titleKeyHandler = null;
-    };
+    this._setKeyHandler(modalOverlayEl, keyHandler);
   }
 
   /**
@@ -249,8 +271,22 @@ export class ModalManager {
 
     const cards = slots.map(slot => {
       const index = slot.slotIndex;
-      const occupied = slot && slot.status === 'occupied';
-      if (!occupied) {
+      const kind = classifySlot(slot);
+      if (kind !== 'occupied') {
+        // A record that is neither a valid empty slot nor a loadable save is
+        // corrupt/unknown: render DATA UNAVAILABLE with DELETE only (spec §4.2).
+        if (kind === 'unavailable') {
+          return `
+          <div class="slot-card corrupt" data-slot="${index}" data-status="unavailable">
+            <div class="slot-info">
+              <div class="slot-title"><strong>SLOT ${index} — DATA UNAVAILABLE</strong></div>
+              <div class="slot-sub">This save record is unreadable. Delete it to reuse the slot.</div>
+            </div>
+            <div class="slot-actions">
+              <button class="action-btn danger" data-action="delete" data-slot="${index}">DELETE</button>
+            </div>
+          </div>`;
+        }
         const disabled = mode === 'load' || mode === 'manage';
         return `
           <div class="slot-card empty" data-slot="${index}">
@@ -347,11 +383,11 @@ export class ModalManager {
 
     const keyHandler = e => {
       if (e.key === 'Escape') {
-        window.removeEventListener('keydown', keyHandler);
+        this._clearKeyHandler(modalOverlayEl);
         cancel();
       }
     };
-    window.addEventListener('keydown', keyHandler);
+    this._setKeyHandler(modalOverlayEl, keyHandler);
   }
 
   static showCharacterSelectModal(modalOverlayEl, onSelectVocation) {
@@ -513,11 +549,11 @@ export class ModalManager {
 
     const keyHandler = e => {
       if (e.key === 'Escape') {
-        window.removeEventListener('keydown', keyHandler);
+        this._clearKeyHandler(modalOverlayEl);
         callbacks.onResume?.();
       }
     };
-    window.addEventListener('keydown', keyHandler);
+    this._setKeyHandler(modalOverlayEl, keyHandler);
   }
 
   static showFateGrantModal(modalOverlayEl, app, level = 1) {

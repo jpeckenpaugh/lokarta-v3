@@ -22,7 +22,7 @@ import { ModalManager } from './modal-manager.js';
 import { InputController } from './input-controller.js';
 import { TransitionController } from './transition-controller.js';
 import { TitleAmbient } from './title-ambient.js';
-import { normalizeOptions, resolveReducedMotion, summarizeSlot } from '../services/save-slots.js';
+import { normalizeOptions, resolveReducedMotion, slotSummary } from '../services/save-slots.js';
 import {
   createAnimState,
   ensureAnim,
@@ -417,7 +417,7 @@ export class LokartaApp {
     const slot = this.slots.find(s => s.slotIndex === slotIndex) || { slotIndex };
     ModalManager.showConfirmModal(this.modalOverlayEl, {
       title: `OVERWRITE SLOT ${slotIndex}?`,
-      body: `This permanently deletes ${summarizeSlot(slot)}. This cannot be undone.`,
+      body: `This permanently deletes ${slotSummary(slot)}. This cannot be undone.`,
       confirmLabel: 'OVERWRITE',
       danger: true,
       onConfirm: () => {
@@ -432,7 +432,7 @@ export class LokartaApp {
     const slot = this.slots.find(s => s.slotIndex === slotIndex) || { slotIndex };
     ModalManager.showConfirmModal(this.modalOverlayEl, {
       title: `DELETE SLOT ${slotIndex}?`,
-      body: `This permanently deletes ${summarizeSlot(slot)}. This cannot be undone.`,
+      body: `This permanently deletes ${slotSummary(slot)}. This cannot be undone.`,
       confirmLabel: 'DELETE',
       danger: true,
       onConfirm: async () => {
@@ -470,9 +470,9 @@ export class LokartaApp {
   }
 
   closeModal() {
-    this.modalOverlayEl.classList.add('hidden');
-    this.modalOverlayEl.innerHTML = '';
-    this.modalOverlayEl.classList.remove('title-active');
+    // Route through ModalManager so the modal-scoped keydown handler is always
+    // removed with the modal (no stale Escape handler left on `window`).
+    ModalManager._close(this.modalOverlayEl);
   }
 
   async startNewGame(vocation) {

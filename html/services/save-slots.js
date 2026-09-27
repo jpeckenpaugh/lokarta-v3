@@ -132,6 +132,62 @@ export function deriveSlotMeta(player, slotIndex, biome = null) {
 }
 
 /**
+ * Slot record classification for the slot-select UI.
+ * - `empty`: a valid unused slot (or one produced by `emptySlotRecord`).
+ * - `occupied`: a structurally valid, loadable save.
+ * - `unavailable`: a corrupt/unknown record that must not be loaded.
+ */
+export const SLOT_KIND = Object.freeze({
+  EMPTY: 'empty',
+  OCCUPIED: 'occupied',
+  UNAVAILABLE: 'unavailable',
+});
+
+/**
+ * True when an occupied slot record carries every field the UI and loader
+ * need. Missing/blank fields or a non-numeric level/floor mean the save cannot
+ * be safely loaded and must render as DATA UNAVAILABLE.
+ * @param {object|null} slot
+ * @returns {boolean}
+ */
+export function isSlotRecordValid(slot) {
+  if (!slot || typeof slot !== 'object') return false;
+  if (!Number.isInteger(slot.slotIndex) || slot.slotIndex < 1) return false;
+  if (typeof slot.characterId !== 'string' || slot.characterId.length === 0) return false;
+  if (typeof slot.vocation !== 'string' || slot.vocation.length === 0) return false;
+  if (!Number.isFinite(Number(slot.level)) || Number(slot.level) < 1) return false;
+  if (!Number.isFinite(Number(slot.currentFloor)) || Number(slot.currentFloor) < 1) return false;
+  if (!slot.floorEntry || typeof slot.floorEntry !== 'object') return false;
+  return true;
+}
+
+/**
+ * Classifies a slot metadata record into a `SLOT_KIND`. Unknown `status`
+ * values and malformed occupied records classify as `unavailable` rather than
+ * being silently rendered as an empty slot (spec §4.2).
+ * @param {object|null} slot
+ * @returns {'empty'|'occupied'|'unavailable'}
+ */
+export function classifySlot(slot) {
+  if (!slot || typeof slot !== 'object') return SLOT_KIND.UNAVAILABLE;
+  if (slot.status === 'empty') return SLOT_KIND.EMPTY;
+  if (slot.status === 'occupied') {
+    return isSlotRecordValid(slot) ? SLOT_KIND.OCCUPIED : SLOT_KIND.UNAVAILABLE;
+  }
+  return SLOT_KIND.UNAVAILABLE;
+}
+
+/**
+ * Renders a slot's display summary. Corrupt records get an explicit label so a
+ * destructive confirm never claims a fabricated vocation/level.
+ * @param {object} slot
+ * @returns {string}
+ */
+export function slotSummary(slot) {
+  return classifySlot(slot) === SLOT_KIND.UNAVAILABLE ? 'DATA UNAVAILABLE' : summarizeSlot(slot);
+}
+
+/**
  * Renders the destructive-confirm summary for an occupied slot.
  * @param {object} slot
  * @returns {string}

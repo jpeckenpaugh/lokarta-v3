@@ -17,9 +17,14 @@ export class InputController {
         return;
       }
 
-      if (e.code === 'Escape' && this.app.isInGameplay && !this.app.isGameOver) {
-        e.preventDefault();
-        this.app.openPauseMenu();
+      if (e.code === 'Escape') {
+        // Escape opens the pause menu only from an unpaused gameplay surface.
+        // When already paused, the open pause modal owns Escape (Resume); when
+        // not in gameplay it is a no-op (e.g. the title screen).
+        if (this.app.isInGameplay && !this.app.isGameOver && !this.app.isPaused) {
+          e.preventDefault();
+          this.app.openPauseMenu();
+        }
         return;
       }
 

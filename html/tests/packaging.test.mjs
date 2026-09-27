@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { UI_CATALOG, SOUNDS_CATALOG } from '../data/index.js';
@@ -13,8 +13,14 @@ import {
   normalizeOptions,
   resolveReducedMotion,
   planLegacyMigration,
+  emptySlotRecord,
+  classifySlot,
+  isSlotRecordValid,
+  slotSummary,
   SAVE_SLOT_COUNT,
 } from '../services/save-slots.js';
+import { ModalManager } from '../app/modal-manager.js';
+import { InputController } from '../app/input-controller.js';
 
 test('Lokarta Packaging (splash, title, options, save slots, transitions)', async (t) => {
   await t.test('ui.json catalog is complete and well-formed', () => {
@@ -143,5 +149,168 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
     assert.equal(rerun.slot, null);
     assert.equal(rerun.character, null);
     assert.deepEqual(rerun.floors, []);
+  });
+
+  await t.test('classifySlot flags corrupt/unknown records as unavailable (D4)', () => {
+    const occupied = deriveSlotMeta(
+      {
+        id: 'char_slot_2',
+        vocation: 'archer',
+        level: 3,
+        current_floor: 4,
+        hp: 10,
+        max_hp: 40,
+        mana: 5,
+        max_mana: 40,
+        x: 1,
+        y: 1,
+        xp: 0,
+        action_bar: [],
+        backpack: [],
+        paperdoll: {},
+        skillBoosts: {},
+      },
+      2
+    );
+
+    assert.equal(classifySlot(emptySlotRecord(2)), 'empty');
+    assert.equal(classifySlot(occupied), 'occupied');
+    assert.equal(classifySlot(null), 'unavailable');
+
+    // Malformed/unknown records must not masquerade as empty or UNKNOWN slots.
+    assert.equal(classifySlot({ ...occupied, vocation: null }), 'unavailable');
+    assert.equal(classifySlot({ ...occupied, level: undefined }), 'unavailable');
+    assert.equal(classifySlot({ ...occupied, currentFloor: 'nope' }), 'unavailable');
+    assert.equal(classifySlot({ ...occupied, characterId: null }), 'unavailable');
+    assert.equal(classifySlot({ ...occupied, floorEntry: null }), 'unavailable');
+    assert.equal(classifySlot({ ...occupied, status: 'weird' }), 'unavailable');
+    assert.equal(classifySlot({ ...occupied, slotIndex: 0 }), 'unavailable');
+
+    assert.equal(isSlotRecordValid(occupied), true);
+    assert.equal(isSlotRecordValid({ ...occupied, characterId: null }), false);
+    assert.equal(slotSummary(occupied), 'ARCHER — Level 3, Floor 4');
+    assert.equal(slotSummary({ ...occupied, vocation: null }), 'DATA UNAVAILABLE');
+  });
+
+  await t.test('every literal OpenMoji asset referenced by app code exists (D2)', () => {
+    const appDir = resolve(process.cwd(), 'html', 'app');
+    const missing = [];
+    for (const file of readdirSync(appDir).filter((f) => f.endsWith('.js'))) {
+      const src = readFileSync(resolve(appDir, file), 'utf8');
+      for (const match of src.matchAll(/assets\/openmoji\/([0-9A-Fa-f]+)\.svg/g)) {
+        const asset = resolve(process.cwd(), 'html', 'assets', 'openmoji', `${match[1]}.svg`);
+        if (!existsSync(asset)) missing.push(`${file}: ${match[1]}.svg`);
+      }
+    }
+    assert.deepEqual(missing, [], `missing OpenMoji assets: ${missing.join(', ')}`);
+    assert.ok(existsSync(resolve(process.cwd(), 'html', 'assets', 'openmoji', '2699.svg')), '2699.svg (OPTIONS gear) present');
+  });
+
+  await t.test('pause modal keeps at most one window Escape handler (D1)', () => {
+    const listeners = new Set();
+    const fakeWindow = {
+      addEventListener: (type, fn) => {
+        if (type === 'keydown') listeners.add(fn);
+      },
+      removeEventListener: (type, fn) => {
+        if (type === 'keydown') listeners.delete(fn);
+      },
+    };
+    const makeOverlay = () => ({
+      _keyHandler: null,
+      classList: { add() {}, remove() {}, contains() { return false; } },
+      innerHTML: '',
+      querySelector: () => ({ addEventListener() {} }),
+      querySelectorAll: () => [],
+    });
+    const dispatchEscape = () => {
+      const event = { key: 'Escape', preventDefault() {} };
+      for (const fn of [...listeners]) fn(event);
+    };
+
+    const originalWindow = globalThis.window;
+    globalThis.window = fakeWindow;
+    try {
+      const overlay = makeOverlay();
+      let resumes = 0;
+
+      ModalManager.showPauseModal(overlay, { onResume: () => { resumes += 1; } });
+      assert.equal(listeners.size, 1, 'pause modal registers exactly one keydown handler');
+
+      // A re-render must replace, never stack, handlers.
+      ModalManager.showPauseModal(overlay, { onResume: () => {} });
+      assert.equal(listeners.size, 1, 're-render replaces the stale pause handler');
+
+      // Navigating away via the mouse (RETURN TO TITLE -> title render) must
+      // clear the pause handler so a later Escape cannot resume/close it.
+      ModalManager.showTitleScreen(overlay, { slots: [], hasSaves: false }, {});
+      assert.equal(listeners.size, 1, 'title render replaced the pause handler');
+      dispatchEscape();
+      assert.equal(resumes, 0, 'title Escape is a no-op (no stale pause resume)');
+
+      // Escape while paused resumes exactly once and removes its own handler.
+      ModalManager.showPauseModal(overlay, { onResume: () => { resumes += 1; } });
+      dispatchEscape();
+      assert.equal(resumes, 1, 'pause Escape resumes exactly once');
+      assert.equal(listeners.size, 0, 'pause handler removed itself after Escape');
+      dispatchEscape();
+      assert.equal(resumes, 1, 'no lingering handler after resume');
+
+      // Programmatic close must also clear the handler.
+      ModalManager.showPauseModal(overlay, { onResume: () => { resumes += 1; } });
+      ModalManager._close(overlay);
+      assert.equal(listeners.size, 0, 'closing the modal clears its handler');
+      dispatchEscape();
+      assert.equal(resumes, 1, 'closed modal leaves no stale resume');
+    } finally {
+      globalThis.window = originalWindow;
+    }
+  });
+
+  await t.test('InputController only opens pause from unpaused gameplay (D1)', () => {
+    const listeners = new Set();
+    const originalWindow = globalThis.window;
+    const originalDocument = globalThis.document;
+    globalThis.window = {
+      addEventListener: (type, fn) => {
+        if (type === 'keydown') listeners.add(fn);
+      },
+      removeEventListener: (type, fn) => {
+        if (type === 'keydown') listeners.delete(fn);
+      },
+    };
+    globalThis.document = { querySelectorAll: () => [] };
+    try {
+      let opens = 0;
+      const app = {
+        isInGameplay: true,
+        isGameOver: false,
+        isPaused: false,
+        transition: null,
+        keysDown: new Set(),
+        canvas: null,
+        openPauseMenu: () => { opens += 1; },
+      };
+      new InputController(app).bindInputs();
+      const dispatchEscape = () => {
+        const event = { code: 'Escape', key: 'Escape', preventDefault() {} };
+        for (const fn of [...listeners]) fn(event);
+      };
+
+      dispatchEscape();
+      assert.equal(opens, 1, 'Escape opens pause from gameplay');
+
+      app.isPaused = true;
+      dispatchEscape();
+      assert.equal(opens, 1, 'Escape does not re-open the pause menu while paused');
+
+      app.isPaused = false;
+      app.isInGameplay = false;
+      dispatchEscape();
+      assert.equal(opens, 1, 'Escape on the title screen is a no-op');
+    } finally {
+      globalThis.window = originalWindow;
+      globalThis.document = originalDocument;
+    }
   });
 });

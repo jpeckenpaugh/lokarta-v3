@@ -785,6 +785,16 @@
   justify-content: space-between;
 }
 
+.slot-card.corrupt {
+  border-style: dashed;
+  border-color: var(--hp-red);
+  justify-content: space-between;
+}
+
+.slot-card.corrupt .slot-title strong {
+  color: var(--hp-red);
+}
+
 .slot-badge {
   font-family: var(--font-mono);
   font-size: 0.72rem;
