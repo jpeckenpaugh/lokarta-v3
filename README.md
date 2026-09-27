@@ -64,10 +64,12 @@ Lokarta includes a comprehensive, zero-dependency automated unit test suite buil
 Run all test suites from the repository root:
 
 ```bash
-node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs html/tests/golden-sets.test.mjs
+node --test html/tests/*.test.mjs
 ```
 
-### Test Suite Coverage (6 Test Suites, 104 Tests / 14 Suites / 0 Fail)
+The glob covers all 9 suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`, `packaging`, `sprite-assets`, `storage-migration`). CI (`.github/workflows/test.yml`) runs the same command on every push.
+
+### Test Suite Coverage (9 Test Suites, 140 Tests / 14 Suites / 0 Fail)
 
 - **Floor Generator (1–20):** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, biome mapping, and Floor 20 Abyssal Overlord stats (600 HP, 20 ATK, 6 DEF).
 - **GridMap & Tile Bounds:** Tests matrix initialization, tile opacity/walkability checks, and item placement/removal.
@@ -98,7 +100,7 @@ The client application is structured into clean, modular vanilla ES JavaScript s
 | [`html/engine/`](file:///Users/jarad/git/lokarta-v3/html/engine/) | Core Engine | Shared | Submodules: `config.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `entity-ai.js`, `inventory-system.js`, `fate-grant-system.js`, `gesture-engine.js`. |
 | [`html/services/`](file:///Users/jarad/git/lokarta-v3/html/services/) | Services | Shared / Worker | Floor generator (`floor-generator.js`) and IndexedDB persistence (`storage.js`). |
 | [`html/worker/`](file:///Users/jarad/git/lokarta-v3/html/worker/) | Worker RPC | Web Worker Thread | RPC Client (`game-client.js`) and background worker dispatcher (`game-worker.js`). |
-| [`html/tests/`](file:///Users/jarad/git/lokarta-v3/html/tests/) | Test Suite | CLI / Node.js | Automated unit test suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`). |
+| [`html/tests/`](file:///Users/jarad/git/lokarta-v3/html/tests/) | Test Suite | CLI / Node.js | Automated unit test suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`, `packaging`, `sprite-assets`, `storage-migration`). |
 
 ---
 

@@ -149,9 +149,10 @@ Agent-facing directives: QA `AGENTS.md` (Rules 1, 2, 4), CTO `AGENTS.md` (Rules 
 1. **Run the Test Suite:**
    Before completing any task, execute the native Node.js test runner from repository root:
    ```bash
-   node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs html/tests/golden-sets.test.mjs
+   node --test html/tests/*.test.mjs
    ```
-   **Acceptance Criteria:** All test suites must pass with zero failures (104 tests / 14 suites / 0 fail baseline).
+   The glob covers all 9 suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`, `packaging`, `sprite-assets`, `storage-migration`). CI (`test.yml`) runs the same command on every push.
+   **Acceptance Criteria:** All test suites must pass with zero failures (140 tests / 14 suites / 0 fail baseline).
 2. **Synchronize Catalog Tests:**
    When adding or modifying entries in `html/data/*.json`, always update or verify the corresponding schema test assertions in [`html/tests/data-catalogs.test.mjs`](file:///Users/jarad/git/lokarta-v3/html/tests/data-catalogs.test.mjs).
 3. **Regression Safety:**
