@@ -328,3 +328,36 @@ This architecture specification accurately documents the ground-truth codebase i
 6. 5-card draft fate grants on level up.
 7. Hotkey and gesture input processing.
 8. GameClient worker RPC message lifecycle.
+
+---
+
+## 9. Actor Sprite Pipeline (LIV-10)
+
+Actor art is authored **data**, not procedural primitives. The contract and
+per-actor specs live in `docs/art-direction.md`; this section records where the
+pieces live.
+
+- **Art data:** `html/assets/sprites/manifest.json` plus one JSON file per actor
+  under `vocations/` and `monsters/`. Each file carries `native`, `anchor`,
+  a single-char `palette` (`"."` transparent, `"0"` reserved for the outline)
+  and 25 frames (27 for the boss) across `idle`/`walk`/`attack`/`hit`/`death`.
+- **Barrel:** `html/assets/sprites/index.js` exports `SPRITE_CATALOG` and
+  `SPRITE_MANIFEST` via native JSON import attributes (no bundler).
+- **Renderer:** `html/app/sprite-renderer.js` adds `SpriteRenderer.drawActor`
+  plus the pure `parseFrame` / `applyOutline` / `scalePixels` helpers. A frame
+  is rasterised once into a `(id, frame, scale, flip, tint)` canvas cache and
+  blitted with `imageSmoothingEnabled = false` at `SCALE = GRID_SIZE / 32`.
+  Missing sprite or frame falls back to the original procedural primitives.
+- **Animation state:** `html/app/animation-state.js` owns the presentation-only
+  `actor.anim` state machine (walk advances on tile step; attack/hit/death are
+  timer-driven and priority-locked). It is never persisted or sent over RPC.
+- **Layer order:** `html/app/canvas-renderer.js` draws tiles and items under the
+  fog, then the light mask, then actors (distance-dimmed), then projectiles,
+  particles and floating text — so visible enemies are not swallowed by the
+  darkness shroud.
+- **Verification:** `html/tests/sprite-assets.test.mjs` (geometry, palette,
+  contrast gates, outline idempotency, determinism, distinct cultist
+  silhouettes, preview-drift, fallback safety, full render smoke).
+- **Preview export (review only):** `tools/render-sprite-preview.mjs` writes
+  `docs/art-preview/*.png`; a test re-runs it and byte-compares so committed
+  previews cannot drift.

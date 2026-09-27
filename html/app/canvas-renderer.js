@@ -37,7 +37,8 @@ export class CanvasRenderer {
     projectiles,
     floatingTexts,
     selectedMonsterId,
-    particles = []
+    particles = [],
+    deathEffects = []
   ) {
     if (!this.canvas || !this.ctx) return;
     const { width, height } = this.canvas;
@@ -76,11 +77,31 @@ export class CanvasRenderer {
       }
     }
 
-    // 3. Monsters Layer
+    // 3. World light: fog hides unexplored space, not visible enemies. Actors
+    // and projectiles therefore draw after the mask (docs/art-direction.md §6.3).
+    this.renderLightMask(ctx, gridMap, player, ambientLights, width, height, projectiles);
+
+    // 4. Transient death effects (actors playing their collapse animation)
+    for (const fx of deathEffects) {
+      if (!fx) continue;
+      SpriteRenderer.drawActor(
+        ctx,
+        { spriteId: fx.spriteId, vocation: fx.vocation, type: fx.type, facing: fx.facing || 'down', anim: fx.anim },
+        fx.x * CONFIG.GRID_SIZE - this.cameraX,
+        fx.y * CONFIG.GRID_SIZE - this.cameraY,
+        { size: CONFIG.GRID_SIZE }
+      );
+    }
+
+    // 5. Monsters Layer (distance-dimmed so silhouettes survive the fog edge)
+    const playerRadius = Math.max(1, LightingSystem.computePlayerRadius(player));
     for (const monster of monsters) {
       if (monster.visible && monster.hp > 0) {
         const screenX = monster.x * CONFIG.GRID_SIZE - this.cameraX;
         const screenY = monster.y * CONFIG.GRID_SIZE - this.cameraY;
+        const isBoss = monster.isBoss || monster.type === 'abyssal_overlord';
+        const d = Math.hypot(monster.x - player.x, monster.y - player.y) / playerRadius;
+        monster._dim = isBoss ? 1 : Math.max(0.65, Math.min(1, 1 - 0.35 * d));
         SpriteRenderer.drawMonster(ctx, monster, screenX, screenY);
 
         if (selectedMonsterId === monster.id) {
@@ -99,19 +120,16 @@ export class CanvasRenderer {
       }
     }
 
-    // 4. Player Layer
+    // 6. Player Layer
     const playerScreenX = player.x * CONFIG.GRID_SIZE - this.cameraX;
     const playerScreenY = player.y * CONFIG.GRID_SIZE - this.cameraY;
     SpriteRenderer.drawPlayer(ctx, player, playerScreenX, playerScreenY);
 
-    // 5. Projectiles & Impact Particles
+    // 7. Projectiles & Impact Particles (after the mask, so they read at range)
     this.renderProjectiles(ctx, projectiles);
     this.renderParticles(ctx, particles);
 
-    // 6. Dynamic Continuous Radial Darkness & Lighting
-    this.renderLightMask(ctx, gridMap, player, ambientLights, width, height, projectiles);
-
-    // 7. Floating Combat Damage & XP Numbers
+    // 8. Floating Combat Damage & XP Numbers
     this.renderFloatingTexts(ctx, floatingTexts);
   }
 

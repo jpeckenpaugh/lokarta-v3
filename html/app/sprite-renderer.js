@@ -1,17 +1,26 @@
 /**
  * Lokarta: Come Into The Light - Sprite & Tile Canvas Renderer
  *
- * All artwork is procedural Canvas 2D whose constants were tuned at the
- * original 32px tile size. Every renderer scales by `u = size / 32` so the
- * same art keeps identical proportions on the current CONFIG.GRID_SIZE
- * (now 64px), ready for richer art in future passes.
+ * Tiles, items and HUD are procedural. Actors (4 vocations + monsters) resolve
+ * to authored indexed-pixel sprite definitions from `html/assets/sprites/`
+ * (see docs/art-direction.md), pre-rendered once per (actor, frame, scale,
+ * flip, tint) into an offscreen canvas and blitted with nearest-neighbour
+ * integer scaling. If a sprite definition or frame is missing, every renderer
+ * falls back to the original procedural primitives, so the sprite pass can land
+ * incrementally without breaking the game or the native tests.
  */
 
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
 import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
+import { SPRITE_CATALOG } from '../assets/sprites/index.js';
+import { dirFromFacing, resolveFrameIndex } from './animation-state.js';
 
 // Minimal hairline guard so 1px strokes stay visible even if GRID_SIZE shrinks.
 const HAIRLINE = (u) => Math.max(1, u);
+
+export const SPRITE_NATIVE = 32;
+export const OUTLINE_COLOR = '#0b0d12';
+export const HIT_TINT = '#ff4d4d';
 
 const TILE_RENDERERS = {
   [TILE_TYPES.WALL]: (ctx, screenX, screenY, size, theme) => {
@@ -78,7 +87,7 @@ const TILE_RENDERERS = {
 
     ctx.strokeStyle = theme.floor.gridLine;
     ctx.lineWidth = HAIRLINE(u);
-    ctx.strokeRect(screenX, screenY, size, size);
+    ctx.strokeRect(screenX + 0.5, screenY + 0.5, size - 1, size - 1);
 
     ctx.fillStyle = theme.floor.accentSquare;
     ctx.fillRect(screenX + 4 * u, screenY + 4 * u, 6 * u, 6 * u);
@@ -266,6 +275,182 @@ const FACING_EYE_OFFSETS = {
   right: { ox: 2, oy: 0 },
 };
 
+/* ==================== Pure sprite helpers (unit-test seam) ==================== */
+
+export function hexToRgb(hex) {
+  const h = String(hex).replace('#', '');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+function mixHex(a, b, t) {
+  const ca = hexToRgb(a); const cb = hexToRgb(b);
+  const m = i => Math.round(ca[i] + (cb[i] - ca[i]) * t);
+  return `#${[m(0), m(1), m(2)].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/**
+ * Parse a frame (array of `h` strings of `w` palette chars) into a flat RGBA
+ * pixel object. `"."` and unknown chars are transparent.
+ */
+export function parseFrame(rows, palette) {
+  const h = rows.length;
+  const w = h ? rows[0].length : 0;
+  const data = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const row = rows[y];
+    for (let x = 0; x < w; x++) {
+      const hex = palette[row[x]];
+      if (!hex) continue;
+      const [r, g, b] = hexToRgb(hex);
+      const i = (y * w + x) * 4;
+      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
+    }
+  }
+  return { w, h, data };
+}
+
+/**
+ * Apply the 1 px outline post-step: any transparent pixel with a non-transparent
+ * 4-neighbour becomes `outlineHex`. Idempotent when re-applied to its own output.
+ */
+export function applyOutline(pix, outlineHex = OUTLINE_COLOR) {
+  const { w, h, data } = pix;
+  const out = new Uint8ClampedArray(data);
+  const [or, og, ob] = hexToRgb(outlineHex);
+  const isOutline = (x, y) => {
+    if (x < 0 || x >= w || y < 0 || y >= h) return false;
+    const i = (y * w + x) * 4;
+    return data[i + 3] > 0 && data[i] === or && data[i + 1] === og && data[i + 2] === ob;
+  };
+  // Only paint around original art, never around existing outline pixels.
+  // This makes the pass idempotent when re-applied.
+  const art = (x, y) => (x < 0 || x >= w || y < 0 || y >= h ? false : data[(y * w + x) * 4 + 3] > 0 && !isOutline(x, y));
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (data[i + 3] > 0) continue;
+      if (art(x - 1, y) || art(x + 1, y) || art(x, y - 1) || art(x, y + 1)) {
+        out[i] = or; out[i + 1] = og; out[i + 2] = ob; out[i + 3] = 255;
+      }
+    }
+  }
+  return { w, h, data: out };
+}
+
+/** Nearest-neighbour scale a pixel object by an integer factor, optionally mirrored. */
+export function scalePixels(pix, scale, flipX = false) {
+  const { w, h, data } = pix;
+  const sw = w * scale;
+  const sh = h * scale;
+  const out = new Uint8ClampedArray(sw * sh * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const sx = flipX ? w - 1 - x : x;
+      const si = (y * w + sx) * 4;
+      for (let dy = 0; dy < scale; dy++) {
+        for (let dx = 0; dx < scale; dx++) {
+          const di = ((y * scale + dy) * sw + (x * scale + dx)) * 4;
+          out[di] = data[si];
+          out[di + 1] = data[si + 1];
+          out[di + 2] = data[si + 2];
+          out[di + 3] = data[si + 3];
+        }
+      }
+    }
+  }
+  return { w: sw, h: sh, data: out };
+}
+
+function tintedPalette(def, tintHex, amount) {
+  const out = {};
+  for (const [k, v] of Object.entries(def.palette)) out[k] = v ? mixHex(v, tintHex, amount) : null;
+  return out;
+}
+
+export function resolveSpriteId(actor) {
+  if (!actor) return null;
+  const candidates = [actor.spriteId, actor.vocation, actor.type, actor.id];
+  for (const c of candidates) if (c && SPRITE_CATALOG[c]) return c;
+  return null;
+}
+
+export function resolveSpriteFrame(def, anim) {
+  const state = anim && def.animations[anim.state] ? anim.state : 'idle';
+  let dir = (anim && anim.dir) || 'down';
+  if (!def.animations[state][dir]) dir = def.animations[state].down ? 'down' : Object.keys(def.animations[state])[0];
+  const list = def.animations[state][dir] || [];
+  const rawFrame = (anim && anim.frame) || 0;
+  const idx = state === 'death'
+    ? Math.max(0, Math.min(rawFrame, Math.max(0, list.length - 1)))
+    : resolveFrameIndex({ frame: rawFrame }, list.length);
+  const frameId = list[idx] || (def.animations.idle && def.animations.idle.down ? def.animations.idle.down[0] : null);
+  return { state, dir, frameId };
+}
+
+function prefersReducedMotion() {
+  try {
+    return !!(globalThis.matchMedia && globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  } catch {
+    return false;
+  }
+}
+
+/* ==================== Frame cache / rasterisation ==================== */
+
+const _frameCache = new Map();
+
+function createCanvas(w, h) {
+  try {
+    if (typeof document !== 'undefined' && document.createElement) {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      return c;
+    }
+    if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
+  } catch {
+    /* no canvas available (e.g. node tests) */
+  }
+  return null;
+}
+
+function renderFramePixels(def, frameId, scale, flipX, tint) {
+  const rows = def.frames[frameId];
+  if (!rows) return null;
+  const palette = tint ? tintedPalette(def, tint.hex, tint.amount) : def.palette;
+  const pix = parseFrame(rows, palette);
+  const outlined = applyOutline(pix, def.palette['0'] || OUTLINE_COLOR);
+  return scalePixels(outlined, scale, flipX);
+}
+
+function getFrameCanvas(def, frameId, scale, flipX, tint) {
+  const key = `${def.id}|${frameId}|${scale}|${flipX ? 1 : 0}|${tint ? tint.hex + tint.amount : ''}`;
+  if (_frameCache.has(key)) return _frameCache.get(key);
+  const pixels = renderFramePixels(def, frameId, scale, flipX, tint);
+  if (!pixels) return null;
+  const canvas = createCanvas(pixels.w, pixels.h);
+  if (!canvas) return null;
+  const cctx = canvas.getContext('2d');
+  if (!cctx) return null;
+  const img = cctx.createImageData(pixels.w, pixels.h);
+  img.data.set(pixels.data);
+  cctx.putImageData(img, 0, 0);
+  _frameCache.set(key, canvas);
+  return canvas;
+}
+
+function drawPixels(ctx, pixels, dx, dy, scale) {
+  for (let y = 0; y < pixels.h; y += scale) {
+    for (let x = 0; x < pixels.w; x += scale) {
+      const i = (y * pixels.w + x) * 4;
+      if (pixels.data[i + 3] === 0) continue;
+      ctx.fillStyle = `rgba(${pixels.data[i]},${pixels.data[i + 1]},${pixels.data[i + 2]},${pixels.data[i + 3] / 255})`;
+      ctx.fillRect(dx + x, dy + y, scale, scale);
+    }
+  }
+}
+
+/* ==================== Public renderer ==================== */
+
 export class SpriteRenderer {
   static drawTile(ctx, type, screenX, screenY, size = CONFIG.GRID_SIZE) {
     const theme = TILE_THEMES_CATALOG;
@@ -291,52 +476,123 @@ export class SpriteRenderer {
     }
   }
 
+  static scaleForSize(size = CONFIG.GRID_SIZE) {
+    return Math.max(1, Math.floor(size / SPRITE_NATIVE));
+  }
+
+  /**
+   * Draw an actor from its sprite definition. Returns sprite geometry
+   * `{ dx, dy, w, h, scale }` when a sprite was drawn, or `null` when the
+   * caller should use the procedural fallback.
+   */
+  static drawActor(ctx, actor, screenX, screenY, opts = {}) {
+    const id = resolveSpriteId(actor);
+    if (!id) return null;
+    const def = SPRITE_CATALOG[id];
+    const size = opts.size || CONFIG.GRID_SIZE;
+    const scale = SpriteRenderer.scaleForSize(size);
+    if (!Number.isInteger(scale) || scale < 1) return null;
+
+    const reduced = prefersReducedMotion();
+    const anim = actor.anim || null;
+    const { state, dir, frameId } = resolveSpriteFrame(def, anim);
+    if (!frameId) return null;
+
+    const nw = def.native.w * scale;
+    const nh = def.native.h * scale;
+    const dx = Math.round(screenX + (size - nw) / 2);
+    const dy = screenY + size - nh;
+
+    // Ground contact shadow (shared across all actors).
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(screenX + size / 2, screenY + size * 0.82, size / 3, size / 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    const dim = typeof opts.dim === 'number' ? opts.dim : 1;
+    ctx.save();
+    if (dim !== 1) ctx.globalAlpha = Math.max(0, Math.min(1, dim));
+
+    // Hit feedback: a static tint under reduced motion, otherwise the same tint
+    // baked into the frame (no per-frame shake, no alpha edge fades).
+    const tint = (!reduced && state === 'hit') ? { hex: HIT_TINT, amount: 0.35 } : null;
+
+    const canvas = getFrameCanvas(def, frameId, scale, dir === 'side' && !!anim?.flipX, tint);
+    if (canvas && typeof ctx.drawImage === 'function') {
+      if ('imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(canvas, dx, dy);
+    } else {
+      const pixels = renderFramePixels(def, frameId, scale, dir === 'side' && !!anim?.flipX, tint);
+      if (!pixels) { ctx.restore(); return null; }
+      if (typeof ctx.fillRect === 'function') drawPixels(ctx, pixels, dx, dy, scale);
+    }
+    ctx.restore();
+
+    return { dx, dy, w: nw, h: nh, scale, id };
+  }
+
   static drawPlayer(ctx, player, screenX, screenY, size = CONFIG.GRID_SIZE) {
     const u = size / 32;
     const cx = screenX + size / 2;
     const cy = screenY + size / 2;
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + size / 3, size / 3, size / 6, 0, 0, Math.PI * 2);
-    ctx.fill();
+    const geo = SpriteRenderer.drawActor(ctx, player, screenX, screenY, { size });
 
-    const vocKey = player.vocation || 'magician';
-    const vocData = VOCATIONS_CATALOG[vocKey] || VOCATIONS_CATALOG.magician;
-    const theme = vocData.renderTheme || { primary: '#5c2d91', accent: '#ffd700', secondary: '#7a3cb8' };
-
-    // Body Outfit
-    ctx.fillStyle = theme.primary;
-    ctx.beginPath();
-    ctx.moveTo(cx - 8 * u, cy + 12 * u);
-    ctx.lineTo(cx + 8 * u, cy + 12 * u);
-    ctx.lineTo(cx + 6 * u, cy - 4 * u);
-    ctx.lineTo(cx - 6 * u, cy - 4 * u);
-    ctx.closePath();
-    ctx.fill();
-
-    // Accent Trim / Halo
-    if (vocKey === 'paladin') {
-      ctx.strokeStyle = theme.accent;
-      ctx.lineWidth = 2 * u;
+    if (!geo) {
+      // Procedural fallback (pre-sprite renderer).
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.beginPath();
-      ctx.ellipse(cx, cy - 14 * u, 6 * u, 2 * u, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    } else {
-      ctx.strokeStyle = theme.accent;
-      ctx.lineWidth = 1 * u;
-      ctx.stroke();
+      ctx.ellipse(cx, cy + size / 3, size / 3, size / 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const vocKey = player.vocation || 'magician';
+      const vocData = VOCATIONS_CATALOG[vocKey] || VOCATIONS_CATALOG.magician;
+      const theme = vocData.renderTheme || { primary: '#5c2d91', accent: '#ffd700', secondary: '#7a3cb8' };
+
+      ctx.fillStyle = theme.primary;
+      ctx.beginPath();
+      ctx.moveTo(cx - 8 * u, cy + 12 * u);
+      ctx.lineTo(cx + 8 * u, cy + 12 * u);
+      ctx.lineTo(cx + 6 * u, cy - 4 * u);
+      ctx.lineTo(cx - 6 * u, cy - 4 * u);
+      ctx.closePath();
+      ctx.fill();
+
+      if (vocKey === 'paladin') {
+        ctx.strokeStyle = theme.accent;
+        ctx.lineWidth = 2 * u;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - 14 * u, 6 * u, 2 * u, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = theme.accent;
+        ctx.lineWidth = 1 * u;
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = theme.secondary;
+      ctx.beginPath();
+      ctx.arc(cx, cy - 6 * u, 6 * u, 0, Math.PI * 2);
+      ctx.fill();
+
+      const eyeColor = vocData.eyeColor || '#ffffff';
+      SpriteRenderer.drawFacingEyes(ctx, cx, cy - 6 * u, player.facing, eyeColor, u);
     }
 
-    // Head / Hood / Helmet
-    ctx.fillStyle = theme.secondary;
-    ctx.beginPath();
-    ctx.arc(cx, cy - 6 * u, 6 * u, 0, Math.PI * 2);
-    ctx.fill();
-
-    const eyeColor = vocData.eyeColor || '#ffffff';
-    SpriteRenderer.drawFacingEyes(ctx, cx, cy - 6 * u, player.facing, eyeColor, u);
+    // Paladin halo stays an effect, not baked into sprite pixels.
+    if ((player.vocation || 'magician') === 'paladin') {
+      const hy = geo ? geo.dy - 4 * geo.scale : cy - 14 * u;
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = Math.max(1, 2 * u);
+      ctx.beginPath();
+      ctx.ellipse(cx, hy, 6 * u, 2 * u, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   static drawMonster(ctx, monster, screenX, screenY, size = CONFIG.GRID_SIZE) {
@@ -344,15 +600,24 @@ export class SpriteRenderer {
     const cx = screenX + size / 2;
     const cy = screenY + size / 2;
 
-    const renderer = MONSTER_RENDERERS[monster.type] || (monster.isBoss ? MONSTER_RENDERERS.abyssal_overlord : MONSTER_RENDERERS.giant_rat);
-    renderer(ctx, cx, cy, u, monster);
+    const isBoss = monster.isBoss || monster.type === 'abyssal_overlord';
+    const geo = SpriteRenderer.drawActor(ctx, monster, screenX, screenY, {
+      size,
+      dim: monster._dim,
+    });
 
-    // Health Bar
+    if (!geo) {
+      const renderer = MONSTER_RENDERERS[monster.type] || (monster.isBoss ? MONSTER_RENDERERS.abyssal_overlord : MONSTER_RENDERERS.giant_rat);
+      renderer(ctx, cx, cy, u, monster);
+    }
+
+    // Health Bar — anchored above the sprite box when a sprite is present.
     if (monster.hp < monster.max_hp) {
-      const barW = 24 * u;
-      const barH = 3 * u;
-      const barX = cx - barW / 2;
-      const barY = cy - 16 * u;
+      const scale = geo ? geo.scale : 1;
+      const barW = (isBoss ? 32 : 24) * (geo ? scale : u);
+      const barH = Math.max(2, 3 * (geo ? scale : u));
+      const barX = (geo ? geo.dx + geo.w / 2 : cx) - barW / 2;
+      const barY = geo ? geo.dy - 6 * scale : cy - 16 * u;
       const pct = Math.max(0, monster.hp / monster.max_hp);
 
       ctx.fillStyle = '#1e293b';
@@ -372,3 +637,5 @@ export class SpriteRenderer {
     ctx.fill();
   }
 }
+
+export { MONSTER_RENDERERS, TILE_RENDERERS, ITEM_RENDERERS };

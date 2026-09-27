@@ -20,6 +20,14 @@ import { CanvasRenderer } from './canvas-renderer.js';
 import { HUDManager } from './hud-manager.js';
 import { ModalManager } from './modal-manager.js';
 import { InputController } from './input-controller.js';
+import {
+  createAnimState,
+  ensureAnim,
+  setAnimState,
+  advanceAnim,
+  dirFromFacing,
+  ANIM_DURATION_MS,
+} from './animation-state.js';
 
 const DIRECTION_VECTORS = {
   up: { dx: 0, dy: -1 },
@@ -38,7 +46,9 @@ export class LokartaApp {
     this.projectiles = [];
     this.particles = [];
     this.floatingTexts = [];
+    this.deathEffects = [];
     this.selectedMonsterId = null;
+    this.player.anim = createAnimState(this.player.facing || 'down');
 
     this.isRunning = false;
     this.isGameOver = false;
@@ -180,7 +190,47 @@ export class LokartaApp {
       attackCooldown: 0,
       attackCadence: s.attackCadence || (s.type === 'giant_rat' ? CONFIG.RAT_ATTACK_CADENCE_SEC : s.type === 'crypt_skeleton' ? CONFIG.SKELETON_ATTACK_CADENCE_SEC : CONFIG.CULTIST_ATTACK_CADENCE_SEC),
       visible: false,
+      anim: createAnimState(s.facing || 'down'),
     }));
+    if (this.player) this.player.anim = createAnimState(this.player.facing || 'down');
+  }
+
+  /** Monotonic-ish clock for animation locks. */
+  nowMs() {
+    return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  }
+
+  /** Spawn a transient death effect for a defeated actor. */
+  spawnDeathEffect(actor) {
+    if (!actor) return;
+    if (!this.deathEffects) this.deathEffects = [];
+    const frames = (actor.type === 'abyssal_overlord' || actor.isBoss) ? 6 : 4;
+    const facing = actor.facing || 'down';
+    this.deathEffects.push({
+      spriteId: actor.type || actor.vocation || actor.spriteId,
+      type: actor.type,
+      vocation: actor.vocation,
+      facing,
+      x: actor.x,
+      y: actor.y,
+      ageMs: 0,
+      totalMs: frames * 120 + 200,
+      anim: {
+        state: 'death',
+        dir: dirFromFacing(facing),
+        frame: 0,
+        elapsedMs: 0,
+        flipX: false,
+        lockedUntilMs: Number.POSITIVE_INFINITY,
+      },
+    });
+  }
+
+  /** Trigger a hit reaction on the monster occupying a tile (if any). */
+  triggerMonsterHit(gridX, gridY) {
+    if (!this.monsters) return;
+    const m = this.monsters.find(mm => mm.hp > 0 && mm.x === gridX && mm.y === gridY);
+    if (m) setAnimState(m, 'hit', this.nowMs());
   }
 
   showFateGrantModal(level = 1) {
@@ -361,16 +411,21 @@ export class LokartaApp {
     LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
 
     // 4. Update monster AI
+    const positionsBefore = this.monsters.map(m => ({ m, x: m.x, y: m.y }));
     const aiResults = EntityAI.updateMonsters(this.monsters, this.player, this.gridMap, deltaSec);
     for (const res of aiResults) {
       if (res.message) this.logCombat(res.message, 'combat');
       if (res.projectiles) this.projectiles.push(...res.projectiles);
+      if (res.sourceMonster && (res.dodged || (res.damageToPlayer && res.damageToPlayer > 0) || (res.absorbed && res.absorbed > 0))) {
+        setAnimState(res.sourceMonster, 'attack', this.nowMs());
+      }
       if (res.dodged) {
         soundFX.play('monsterAttack');
         this.addFloatingText('DODGE!', this.player.x, this.player.y, '#22c55e');
       } else if (res.damageToPlayer && res.damageToPlayer > 0) {
         soundFX.play('monsterAttack');
         soundFX.play('playerHurt');
+        setAnimState(this.player, 'hit', this.nowMs());
         this.addFloatingText(`-${res.damageToPlayer}`, this.player.x, this.player.y, '#ef4444');
         if (res.absorbed && res.absorbed > 0) {
           this.logCombat(`Your holy shield absorbed ${res.absorbed} of the blow.`, 'spell');
@@ -380,6 +435,12 @@ export class LokartaApp {
         soundFX.play('monsterAttack');
         this.addFloatingText(`shield -${res.absorbed}`, this.player.x, this.player.y, '#38bdf8');
       }
+    }
+    // Walk cycles advance once per tile step (event-driven, not on a timer).
+    for (const { m, x, y } of positionsBefore) {
+      if (m.hp <= 0) continue;
+      if (m.x !== x || m.y !== y) setAnimState(m, 'walk');
+      else if (m.anim && m.anim.state === 'walk') setAnimState(m, 'idle');
     }
 
     // 5. Defeat check
@@ -564,6 +625,7 @@ export class LokartaApp {
             if (entry.wallStopped) continue; // Wall-stopped monsters only took wall collision damage on this step
             const m = entry.monster;
             m.hp -= stepDmg;
+            setAnimState(m, 'hit', this.nowMs());
             const pxX = m.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
             const pxY = m.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
             this.triggerImpactBurst(pxX, pxY, p.visual, p.color);
@@ -660,6 +722,7 @@ export class LokartaApp {
         const payload = p.damagePayload || {};
         const dmg = payload.damage || 10;
         hitMonster.hp -= dmg;
+        setAnimState(hitMonster, 'hit', this.nowMs());
 
         soundFX.playAt('wandSpark', tileX, tileY, this.player.x, this.player.y);
         this.triggerImpactBurst(p.currentPxX, p.currentPxY, p.visual, p.color);
@@ -705,6 +768,19 @@ export class LokartaApp {
         }
       }
     }
+
+    // Presentation-only animation clocks (idle/walk are event-driven).
+    if (this.player) advanceAnim(this.player, dtMs);
+    if (this.monsters) {
+      for (const m of this.monsters) advanceAnim(m, dtMs);
+    }
+    if (this.deathEffects) {
+      for (let i = this.deathEffects.length - 1; i >= 0; i--) {
+        const fx = this.deathEffects[i];
+        advanceAnim(fx, dtMs);
+        if (fx.anim.elapsedMs >= (fx.totalMs || 680)) this.deathEffects.splice(i, 1);
+      }
+    }
   }
 
   render() {
@@ -716,7 +792,8 @@ export class LokartaApp {
       this.projectiles,
       this.floatingTexts,
       this.selectedMonsterId,
-      this.particles
+      this.particles,
+      this.deathEffects
     );
   }
 
@@ -752,6 +829,7 @@ export class LokartaApp {
           this.player.x = targetX;
           this.player.y = targetY;
           soundFX.play('footstep');
+          setAnimState(this.player, 'walk');
 
           // Frictionless walkover auto-pickup
           const items = this.gridMap.getItems(this.player.x, this.player.y);
@@ -760,6 +838,8 @@ export class LokartaApp {
           }
         }
       }
+    } else if (this.player) {
+      setAnimState(this.player, 'idle');
     }
   }
 
@@ -958,6 +1038,7 @@ export class LokartaApp {
     };
 
     if (actionKey && handlers[actionKey]) {
+      setAnimState(this.player, 'attack', this.nowMs());
       handlers[actionKey]();
     }
 
@@ -1007,6 +1088,7 @@ export class LokartaApp {
       soundFX.play('hit');
       if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
         this.addFloatingText(`-${res.damageDealt}`, targetX, targetY, '#ffdd44');
+        if (!res.defeatedMonsterId) this.triggerMonsterHit(targetX, targetY);
       }
     }
 
@@ -1025,6 +1107,7 @@ export class LokartaApp {
         }
 
         const isBoss = deadMonster.isBoss || deadMonster.id.includes('boss') || deadMonster.max_hp >= 200;
+        this.spawnDeathEffect(deadMonster);
         const xpEarned = ProgressionSystem.getMonsterXp(deadMonster.type, this.player.current_floor || 1, isBoss);
         const lvlRes = ProgressionSystem.awardXP(this.player, xpEarned);
 

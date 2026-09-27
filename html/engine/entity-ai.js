@@ -177,6 +177,7 @@ export class EntityAI {
           absorbed: hit.absorbed,
           dodged: hit.dodged,
           message,
+          sourceMonster: monster,
         };
       }
       return null;
@@ -242,6 +243,7 @@ export class EntityAI {
         dodged: hit.dodged,
         message,
         projectiles: [projectile],
+        sourceMonster: cultist,
       };
     }
 
