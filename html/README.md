@@ -44,10 +44,10 @@ Lokarta features a comprehensive test suite using Node.js's native test runner (
 
 Run all test suites with:
 ```bash
-node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs
+node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs html/tests/golden-sets.test.mjs
 ```
 
-### Verified Test Suites (57/57 Tests Passing):
+### Verified Test Suites (104 Tests / 14 Suites / 0 Fail):
 1. **Floor Generator (1-20):** Deterministic Mulberry32 seed generation, 40×40 boundary constraints, spawn at `(2,2)`, exit stairs at `(35,35)`, full BFS room/corridor connectivity, depth-based monster scaling, catalog-driven encounter density parameters (`dungeons.json`, `encounters.json`), and Floor 20 Abyssal Overlord boss stats (600 HP, 20 ATK, 6 DEF).
 2. **GridMap & Tile Bounds:** Walkability, walls, stairs, doors, coordinate boundaries, ground item stack management, and $O(1)$ `CODE_TO_TILE_TYPE` lookup.
 3. **LightingSystem & FOV:** Dynamic light radii (Base 10, Torch +2, degrading Light Spell +3/+2/+1), spatial circle lighting without wall occlusion, and light-triggered monster aggro.

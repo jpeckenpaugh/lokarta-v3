@@ -134,9 +134,9 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 1. **Run the Test Suite:**
    Before completing any task, execute the native Node.js test runner from repository root:
    ```bash
-   node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs
+   node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/submodules.test.mjs html/tests/app-modules.test.mjs html/tests/data-catalogs.test.mjs html/tests/golden-sets.test.mjs
    ```
-   **Acceptance Criteria:** All test suites must pass with zero failures (57/57 passing baseline).
+   **Acceptance Criteria:** All test suites must pass with zero failures (104 tests / 14 suites / 0 fail baseline).
 2. **Synchronize Catalog Tests:**
    When adding or modifying entries in `html/data/*.json`, always update or verify the corresponding schema test assertions in [`html/tests/data-catalogs.test.mjs`](file:///Users/jarad/git/lokarta-v3/html/tests/data-catalogs.test.mjs).
 3. **Regression Safety:**
