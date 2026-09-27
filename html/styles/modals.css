@@ -878,6 +878,28 @@
   cursor: not-allowed;
 }
 
+/* Default New Game target (LIV-23): the first empty slot is the primary
+   action, so a fresh profile reaches character creation in one step. The
+   gold fill makes it the unmistakable single call to action; keyboard focus
+   lands here on render. */
+.slot-new-btn.primary {
+  background: var(--gold-accent);
+  color: #0a0b10;
+  font-weight: 700;
+}
+
+.slot-new-btn.primary:hover,
+.slot-new-btn.primary:focus-visible {
+  background: var(--gold-accent);
+  color: #0a0b10;
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+
+.slot-card.empty.selected {
+  border-color: var(--gold-accent);
+  border-style: solid;
+}
+
 .pause-modal .pause-actions {
   flex-direction: column;
 }

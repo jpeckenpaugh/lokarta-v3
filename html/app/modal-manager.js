@@ -10,6 +10,8 @@ import {
   SAVE_SLOT_COUNT,
   formatPlaytime,
   classifySlot,
+  firstNewGameSlotIndex,
+  newGameActionLabel,
 } from '../services/save-slots.js';
 
 const VOCATION_ICONS = {
@@ -269,6 +271,11 @@ export class ModalManager {
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
 
+    // New Game must reach character creation in one step (LIV-23). The first
+    // loadable empty slot is the default target and gets a single obvious
+    // primary action, so a fresh profile never dead-ends on this screen.
+    const defaultNewGameIndex = mode === 'create' ? firstNewGameSlotIndex(slots) : null;
+
     const cards = slots.map(slot => {
       const index = slot.slotIndex;
       const kind = classifySlot(slot);
@@ -292,11 +299,13 @@ export class ModalManager {
           </div>`;
         }
         const disabled = mode === 'load' || mode === 'manage';
+        const isDefault = index === defaultNewGameIndex;
+        const newLabel = isDefault ? newGameActionLabel(index) : 'EMPTY — NEW GAME';
         return `
-          <div class="slot-card empty" data-slot="${index}">
+          <div class="slot-card empty${isDefault ? ' selected' : ''}" data-slot="${index}"${isDefault ? ' data-default-new="true"' : ''}>
             <div class="slot-badge">SLOT ${index}</div>
             <div class="slot-empty-body">
-              <button class="action-btn slot-new-btn" data-action="new" data-slot="${index}"${disabled ? ' disabled' : ''}>${mode === 'create' ? 'EMPTY — NEW GAME' : 'EMPTY'}</button>
+              <button class="action-btn slot-new-btn${isDefault ? ' primary' : ''}" data-action="new" data-slot="${index}"${isDefault ? ' data-default-new="true" autofocus' : ''}${disabled ? ' disabled' : ''}>${mode === 'create' ? newLabel : 'EMPTY'}</button>
             </div>
           </div>`;
       }
@@ -336,21 +345,52 @@ export class ModalManager {
       </div>
     `;
 
+    const activate = btn => {
+      if (!btn || btn.disabled) return;
+      const index = Number(btn.dataset.slot);
+      soundFX.play('click');
+      if (btn.dataset.action === 'new') callbacks.onNew?.(index);
+      else if (btn.dataset.action === 'load') callbacks.onLoad?.(index);
+      else if (btn.dataset.action === 'overwrite') callbacks.onOverwrite?.(index);
+      else if (btn.dataset.action === 'delete') callbacks.onDelete?.(index);
+    };
+
     modalOverlayEl.querySelectorAll('[data-action]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (btn.disabled) return;
-        const index = Number(btn.dataset.slot);
-        soundFX.play('click');
-        if (btn.dataset.action === 'new') callbacks.onNew?.(index);
-        else if (btn.dataset.action === 'load') callbacks.onLoad?.(index);
-        else if (btn.dataset.action === 'overwrite') callbacks.onOverwrite?.(index);
-        else if (btn.dataset.action === 'delete') callbacks.onDelete?.(index);
-      });
+      btn.addEventListener('click', () => activate(btn));
     });
     modalOverlayEl.querySelector('#slots-back')?.addEventListener('click', () => {
       soundFX.play('uiBack');
       callbacks.onBack?.();
     });
+
+    // Landing focus on the default New Game action makes the whole flow one
+    // step: New Game → Enter → character creation. Arrow keys move between the
+    // New Game actions when there is more than one selectable empty slot.
+    const defaultBtn = modalOverlayEl.querySelector('[data-default-new="true"]');
+    const promoTargets = Array.from(modalOverlayEl.querySelectorAll('.slot-card.empty:not(.corrupt) [data-action="new"]'))
+      .filter(btn => !btn.disabled);
+    let focusIndex = Math.max(0, promoTargets.indexOf(defaultBtn));
+    const focusTarget = () => {
+      const btn = promoTargets[focusIndex];
+      if (btn && typeof btn.focus === 'function') btn.focus();
+    };
+    focusTarget();
+
+    const keyHandler = e => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if (promoTargets.length < 2) return;
+        e.preventDefault();
+        focusIndex = (focusIndex + (e.key === 'ArrowDown' ? 1 : -1) + promoTargets.length) % promoTargets.length;
+        focusTarget();
+      } else if (e.key === 'Enter') {
+        const active = modalOverlayEl.ownerDocument?.activeElement;
+        if (active && active.dataset && active.dataset.defaultNew === 'true') {
+          e.preventDefault();
+          activate(active);
+        }
+      }
+    };
+    this._setKeyHandler(modalOverlayEl, keyHandler);
   }
 
   /**

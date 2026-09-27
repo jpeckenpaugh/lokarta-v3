@@ -178,6 +178,37 @@ export function classifySlot(slot) {
 }
 
 /**
+ * The first slot a **New Game** can start in, in New Game mode.
+ *
+ * A New Game must never dead-end on the slot screen: the first *loadable*
+ * empty slot wins, then — if every slot is occupied — the first occupied slot
+ * so the player can still reach the one-step OVERWRITE path. Corrupt/unknown
+ * records are never defaulted into because deleting one is the only valid
+ * action for them.
+ *
+ * @param {object[]} slots - slot metadata in display order
+ * @returns {number|null} 1-based slot index, or null when nothing is selectable
+ */
+export function firstNewGameSlotIndex(slots) {
+  const list = Array.isArray(slots) ? slots : [];
+  const empty = list.find(slot => classifySlot(slot) === SLOT_KIND.EMPTY);
+  if (empty) return empty.slotIndex;
+  const occupied = list.find(slot => classifySlot(slot) === SLOT_KIND.OCCUPIED);
+  return occupied ? occupied.slotIndex : null;
+}
+
+/**
+ * A short, player-facing label for the New Game prompt: `SLOT 3 — NEW GAME`.
+ * @param {number|null} slotIndex
+ * @returns {string}
+ */
+export function newGameActionLabel(slotIndex) {
+  return Number.isInteger(slotIndex) && slotIndex >= 1
+    ? `SLOT ${slotIndex} — NEW GAME`
+    : 'NEW GAME';
+}
+
+/**
  * Renders a slot's display summary. Corrupt records get an explicit label so a
  * destructive confirm never claims a fabricated vocation/level.
  * @param {object} slot

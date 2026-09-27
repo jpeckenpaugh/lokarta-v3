@@ -17,6 +17,8 @@ import {
   classifySlot,
   isSlotRecordValid,
   slotSummary,
+  firstNewGameSlotIndex,
+  newGameActionLabel,
   SAVE_SLOT_COUNT,
 } from '../services/save-slots.js';
 import { ModalManager } from '../app/modal-manager.js';
@@ -192,14 +194,151 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
     assert.equal(slotSummary({ ...occupied, vocation: null }), 'DATA UNAVAILABLE');
   });
 
+  await t.test('firstNewGameSlotIndex defaults New Game to the first loadable empty slot (LIV-23)', () => {
+    const occupiedAt = (slotIndex, overrides = {}) =>
+      deriveSlotMeta(
+        {
+          id: `char_slot_${slotIndex}`,
+          vocation: 'magician',
+          level: 1,
+          current_floor: 1,
+          hp: 60,
+          max_hp: 60,
+          mana: 150,
+          max_mana: 150,
+          x: 2,
+          y: 2,
+          xp: 0,
+          ...overrides,
+        },
+        slotIndex
+      );
+
+    // Fresh profile: Slot 1 wins.
+    assert.equal(firstNewGameSlotIndex([1, 2, 3, 4, 5].map(emptySlotRecord)), 1);
+
+    // Slot 1 occupied: the first *empty* slot is the default, not the occupied one.
+    assert.equal(
+      firstNewGameSlotIndex([occupiedAt(1), emptySlotRecord(2), emptySlotRecord(3)]),
+      2
+    );
+
+    // A corrupt record is never defaulted into; skip it for the next empty slot.
+    const corrupt = { ...occupiedAt(3), id: 'slot_2', slotIndex: 2, vocation: null };
+    assert.equal(
+      firstNewGameSlotIndex([occupiedAt(1), corrupt, emptySlotRecord(3)]),
+      3
+    );
+
+    // Every slot occupied: fall back to the first occupied slot so the player
+    // can still reach the one-step OVERWRITE path.
+    assert.equal(firstNewGameSlotIndex([occupiedAt(1), occupiedAt(2)]), 1);
+
+    // Nothing selectable (all corrupt/unknown) is a real dead end; the UI must
+    // not fabricate a default.
+    assert.equal(firstNewGameSlotIndex([corrupt]), null);
+    assert.equal(firstNewGameSlotIndex([]), null);
+    assert.equal(firstNewGameSlotIndex(null), null);
+
+    assert.equal(newGameActionLabel(1), 'SLOT 1 — NEW GAME');
+    assert.equal(newGameActionLabel(4), 'SLOT 4 — NEW GAME');
+    assert.equal(newGameActionLabel(null), 'NEW GAME');
+  });
+
+  await t.test('create-mode slot screen marks the default New Game action and focuses it (LIV-23)', () => {
+    const listeners = new Set();
+    const originalWindow = globalThis.window;
+    globalThis.window = {
+      addEventListener: (type, fn) => {
+        if (type === 'keydown') listeners.add(fn);
+      },
+      removeEventListener: (type, fn) => {
+        if (type === 'keydown') listeners.delete(fn);
+      },
+    };
+    try {
+      let html = '';
+      const focused = [];
+      // Minimal element stub: buttons carry a dataset + focus() recorder.
+      const makeElement = (dataset) => ({
+        dataset: dataset || {},
+        disabled: false,
+        focus() { focused.push(dataset); },
+        addEventListener() {},
+      });
+      const slotButtons = [
+        makeElement({ action: 'new', slot: '1', defaultNew: 'true' }),
+        makeElement({ action: 'new', slot: '2' }),
+        makeElement({ action: 'new', slot: '3' }),
+      ];
+      const buttonByAction = new Map(slotButtons.map(b => [b.dataset.slot, b]));
+      const makeOverlay = () => ({
+        _keyHandler: null,
+        classList: { add() {}, remove() {}, contains() { return false; } },
+        get innerHTML() { return html; },
+        set innerHTML(value) { html = value; },
+        ownerDocument: { activeElement: slotButtons[0] },
+        querySelector: selector => (selector === '[data-default-new="true"]' ? slotButtons[0] : makeElement()),
+        querySelectorAll: selector => {
+          if (selector === '[data-action]') return slotButtons;
+          if (selector.startsWith('.slot-card.empty')) return slotButtons;
+          return [];
+        },
+      });
+
+      ModalManager.showSlotSelectModal(
+        makeOverlay(),
+        { slots: [emptySlotRecord(1), emptySlotRecord(2), emptySlotRecord(3)], mode: 'create' },
+        {}
+      );
+
+      // The default card + button are marked, and only the default gets the
+      // primary/autofocus treatment; the label names the concrete slot.
+      assert.ok(
+        html.includes('slot-card empty selected" data-slot="1" data-default-new="true"'),
+        'first empty card is selected and marked as the New Game default'
+      );
+      assert.equal((html.match(/data-default-new="true"/g) || []).length, 2, 'card + button carry the default marker');
+      assert.ok(html.includes('slot-new-btn primary'), 'default New Game button uses the primary style');
+      assert.ok(html.includes('autofocus'), 'default New Game button is the autofocus target');
+      assert.ok(html.includes('SLOT 1 — NEW GAME'), 'default button names the concrete slot');
+      assert.equal((html.match(/EMPTY — NEW GAME/g) || []).length, 2, 'non-default empty slots keep the generic label');
+      assert.deepEqual(focused, [{ action: 'new', slot: '1', defaultNew: 'true' }], 'focus lands on the default action');
+
+      // Load mode must not invent a default; empty slots stay disabled.
+      ModalManager.showSlotSelectModal(
+        makeOverlay(),
+        { slots: [emptySlotRecord(1), emptySlotRecord(2)], mode: 'load' },
+        {}
+      );
+      assert.equal((html.match(/data-default-new="true"/g) || []).length, 0, 'load mode has no New Game default');
+      assert.equal((html.match(/disabled/g) || []).length, 2, 'load-mode empty slots remain disabled');
+    } finally {
+      globalThis.window = originalWindow;
+    }
+  });
+
   await t.test('corrupt slot row renders DATA UNAVAILABLE composition with DELETE only (D4)', () => {
     let html = '';
+    // The slot renderer now installs a modal-scoped keydown handler (LIV-23),
+    // so the overlay stub supplies a minimal window the same way the other
+    // modal tests do.
+    const listeners = new Set();
+    const originalWindow = globalThis.window;
+    globalThis.window = {
+      addEventListener: (type, fn) => {
+        if (type === 'keydown') listeners.add(fn);
+      },
+      removeEventListener: (type, fn) => {
+        if (type === 'keydown') listeners.delete(fn);
+      },
+    };
     const makeOverlay = () => ({
       _keyHandler: null,
       classList: { add() {}, remove() {}, contains() { return false; } },
       get innerHTML() { return html; },
       set innerHTML(value) { html = value; },
-      querySelector: () => ({ addEventListener() {} }),
+      querySelector: () => ({ addEventListener() {}, focus() {} }),
       querySelectorAll: () => [],
     });
 
@@ -261,6 +400,8 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
       assert.equal((segment.match(/data-action="overwrite"/g) || []).length, 0, 'no OVERWRITE action on a corrupt row');
       assert.ok(!/UNKNOWN|Level \d|Floor \d/.test(segment), 'corrupt row fabricates no vocation/level/floor');
     }
+
+    globalThis.window = originalWindow;
   });
 
   await t.test('every literal OpenMoji asset referenced by app code exists (D2)', () => {

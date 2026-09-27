@@ -318,6 +318,12 @@ Five stacked `slot-card` rows. Card content:
 - Actions: load mode `[LOAD] [DELETE]`; create/manage `[OVERWRITE] [DELETE]`.
 - Empty card: dashed `--border-color`, centered `EMPTY — NEW GAME` button in create mode; in
   load mode empty cards are `disabled` and labeled `EMPTY`.
+- **New Game default (create mode):** the first loadable empty slot is the default target. It
+  renders selected (solid `--gold-accent` border) with a gold-filled primary button labeled
+  `SLOT {n} — NEW GAME`, and keyboard focus lands on it so `NEW GAME` → `Enter` reaches
+  Character Select in one step. Arrow `↑`/`↓` move between the New Game actions. If every
+  slot is occupied, the first occupied card's `OVERWRITE` is the one-step path; corrupt
+  records are never defaulted into, and load/manage modes keep their existing behavior.
 - Corrupt/unknown record: `SLOT {n} — DATA UNAVAILABLE` with `[DELETE]` only.
 
 Card states: `empty`, `occupied`, `selected`, `disabled`, `busy` (spinner; all buttons disabled).
@@ -341,6 +347,7 @@ Card states: `empty`, `occupied`, `selected`, `disabled`, `busy` (spinner; all b
 | Create header | `SELECT A SAVE SLOT` |
 | Manage header | `SAVE DATA` |
 | Empty slot action | `NEW GAME` |
+| Default New Game action | `SLOT {n} — NEW GAME` |
 | Occupied actions | `LOAD` · `OVERWRITE` · `DELETE` |
 | Delete confirm title | `DELETE SLOT {n}?` |
 | Overwrite confirm title | `OVERWRITE SLOT {n}?` |
