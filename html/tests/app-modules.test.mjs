@@ -36,6 +36,10 @@ test('App Submodules & Root Re-exports', async (t) => {
     assert.equal(typeof ModalManager.showTitleScreen, 'function');
     assert.equal(typeof ModalManager.showCharacterSelectModal, 'function');
     assert.equal(typeof ModalManager.showFateGrantModal, 'function');
+    assert.equal(typeof ModalManager.showOptionsModal, 'function');
+    assert.equal(typeof ModalManager.showSlotSelectModal, 'function');
+    assert.equal(typeof ModalManager.showConfirmModal, 'function');
+    assert.equal(typeof ModalManager.showPauseModal, 'function');
   });
 
   await t.test('verifies InputController class', () => {

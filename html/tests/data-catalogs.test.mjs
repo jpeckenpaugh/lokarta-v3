@@ -15,6 +15,7 @@ import {
   DUNGEONS_CATALOG,
   TILE_THEMES_CATALOG,
   KEYBINDINGS_CATALOG,
+  UI_CATALOG,
 } from '../data/index.js';
 
 test('JSON Data Catalogs', async (t) => {
@@ -128,10 +129,12 @@ test('JSON Data Catalogs', async (t) => {
   });
 
   await t.test('loads and validates sounds.json catalog', () => {
-    assert.equal(Object.keys(SOUNDS_CATALOG).length, 19);
+    assert.equal(Object.keys(SOUNDS_CATALOG).length, 21);
     assert.ok(SOUNDS_CATALOG.footstep);
     assert.ok(SOUNDS_CATALOG.wandSpark);
     assert.ok(SOUNDS_CATALOG.victory);
+    assert.ok(SOUNDS_CATALOG.uiMove);
+    assert.ok(SOUNDS_CATALOG.uiBack);
   });
 
   await t.test('loads and validates abilities.json catalog', () => {
@@ -179,6 +182,15 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(Array.isArray(KEYBINDINGS_CATALOG.movement.up));
     assert.equal(KEYBINDINGS_CATALOG.actionBar.length, 10);
     assert.ok(KEYBINDINGS_CATALOG.gestureTimings.tapMaxMs > 0);
+  });
+
+  await t.test('loads and validates ui.json presentation catalog', () => {
+    assert.ok(UI_CATALOG.splash);
+    assert.ok(UI_CATALOG.transitions);
+    assert.ok(UI_CATALOG.titleAmbient);
+    assert.equal(UI_CATALOG.saveSlots.count, 5);
+    assert.equal(UI_CATALOG.options.defaults.sfxVolume, 70);
+    assert.equal(UI_CATALOG.options.ranges.pixelScale['3x'], 96);
   });
 });
 

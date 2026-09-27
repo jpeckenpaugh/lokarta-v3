@@ -59,7 +59,7 @@ html/
 ├── app.js                # Central bootstrap & loading entry point
 ├── app/                  # UI & Rendering submodules (app-controller, canvas-renderer, sprite-renderer, etc.)
 ├── audio/                # Web Audio synthesizer subsystem (audio-system.js)
-├── data/                 # 11 JSON data catalogs (cards, monsters, items, vocations, sounds, abilities, biomes, encounters, dungeons, tile_themes, keybindings)
+├── data/                 # 12 JSON data catalogs (cards, monsters, items, vocations, sounds, abilities, biomes, encounters, dungeons, tile_themes, keybindings, ui)
 ├── engine/               # Core game engine submodules (config, grid-map, lighting, combat, AI, inventory, etc.)
 ├── services/             # Floor generator & IndexedDB persistence layer
 ├── styles/               # Modular CSS stylesheets (base.css, hud.css, modals.css, index.css)
@@ -131,7 +131,7 @@ html/
 - **Paladin:** Base HP 120 (+15/level), Base MP 90 (+10/level). Native: Warhammers, Relics, Holy Strike, Healing Prayer.
 
 ### 3.4 Data-Driven JSON Catalogs (`html/data/`)
-The game data systems are fully decoupled from codebase logic and driven by 11 JSON data files in `html/data/`:
+The game data systems are fully decoupled from codebase logic and driven by 12 JSON data files in `html/data/`:
 - **`cards.json`**: 24 Fate Grant Draft cards with rarity, stat bonuses, vocation affinities, and item payloads.
 - **`monsters.json`**: Bestiary catalog for monster types defining base HP/ATK/DEF, cadences, AI types (`chase`, `standoff`), `svgCode`, and `lootTable` drop rules.
 - **`items.json`**: Attributes, icons, `svgCode`, `vocationAffinity`, `grantedAmmo`, and stack limits for all weapons, armor, relics, consumables, and spells.
@@ -143,7 +143,7 @@ The game data systems are fully decoupled from codebase logic and driven by 11 J
 - **`dungeons.json`**: Macro 40x40 room layouts, doorway anchors, milestone bonuses, and floor name overrides.
 - **`tile_themes.json`**: Wall fills, highlights, floor colors, door fills, and stairs colors.
 - **`keybindings.json`**: Movement key maps and hotkey slot assignments.
-- **`index.js`**: Export barrel exposing all 11 JSON catalogs.
+- **`index.js`**: Export barrel exposing all 12 JSON catalogs.
 - **Render & AI Dispatchers**: Uses $O(1)$ lookup tables (`MONSTER_RENDERERS`, `ITEM_RENDERERS`, `WEAPON_RENDERERS`, `TILE_RENDERERS`, `AI_HANDLERS`, `CODE_TO_TILE_TYPE`, `EMOJI_TO_SVG_MAP`).
 
 ---

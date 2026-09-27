@@ -5,23 +5,67 @@
 import { FateGrantSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { HUDManager } from './hud-manager.js';
+import { UI_CATALOG } from '../data/index.js';
+import {
+  SAVE_SLOT_COUNT,
+  summarizeSlot,
+  formatPlaytime,
+  slotId,
+} from '../services/save-slots.js';
+
+const VOCATION_ICONS = {
+  magician: '1F9D9',
+  archer: '1F3F9',
+  fighter: '2694',
+  paladin: '1F6E1',
+};
+
+const REDUCE_MOTION_OPTIONS = [
+  { value: 'system', label: 'System' },
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+];
+
+const UI_SCALE_OPTIONS = [
+  { value: 'small', label: 'Small' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'large', label: 'Large' },
+  { value: 'xlarge', label: 'X-Large' },
+];
+
+const PIXEL_SCALE_OPTIONS = [
+  { value: 'auto', label: 'Auto' },
+  { value: '1x', label: '1×' },
+  { value: '2x', label: '2×' },
+  { value: '3x', label: '3×' },
+];
 
 export class ModalManager {
-  static showTitleScreen(modalOverlayEl, savedPlayer, callbacks) {
-    modalOverlayEl.classList.remove('hidden');
+  static _reset(overlay) {
+    overlay.classList.remove('hidden');
+    overlay.innerHTML = '';
+  }
 
-    let continueBtnHtml = '';
-    if (savedPlayer) {
-      const voc = (savedPlayer.vocation || 'magician').toUpperCase();
-      continueBtnHtml = `
-        <div class="continue-summary-card">
-          <div class="save-tag"><img class="openmoji-icon badge-icon" src="./assets/openmoji/2B50.svg" alt="Star" /> SAVED HERO AVAILABLE</div>
-          <div class="save-details"><strong>${voc}</strong> (Level ${savedPlayer.level || 1})</div>
-          <div class="save-stats">Floor ${savedPlayer.current_floor || 1}/20 • HP: ${savedPlayer.hp}/${savedPlayer.max_hp} • MP: ${savedPlayer.mana}/${savedPlayer.max_mana}</div>
-        </div>
-        <button class="title-btn continue-btn" id="title-btn-continue"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/2694.svg" alt="Swords" /> CONTINUE ADVENTURE</button>
-      `;
-    }
+  static _close(overlay) {
+    overlay.classList.add('hidden');
+    overlay.innerHTML = '';
+    overlay.classList.remove('title-active');
+  }
+
+  /**
+   * Title screen with ambient subject and four menu actions.
+   * @param {HTMLElement} modalOverlayEl
+   * @param {{ slots?: object[], hasSaves?: boolean, lastPlayedSlotIndex?: number|null }} state
+   * @param {object} callbacks
+   */
+  static showTitleScreen(modalOverlayEl, state = {}, callbacks = {}) {
+    const slots = state.slots || [];
+    const hasSaves = state.hasSaves !== undefined
+      ? state.hasSaves
+      : slots.some(s => s && s.status === 'occupied');
+
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.add('title-active');
 
     modalOverlayEl.innerHTML = `
       <div class="title-screen-modal">
@@ -29,33 +73,290 @@ export class ModalManager {
           <span class="title-torch left-torch"><img class="openmoji-icon torch-icon" src="./assets/openmoji/1F525.svg" alt="Torch" /></span>
           <span class="title-torch right-torch"><img class="openmoji-icon torch-icon" src="./assets/openmoji/1F525.svg" alt="Torch" /></span>
         </div>
-        <div class="title-emblem"><img class="openmoji-icon emblem-icon" src="./assets/openmoji/1F56F.svg" alt="Candle" /></div>
+        <div class="title-emblem"><img class="openmoji-icon emblem-icon" src="./assets/livive-studios-mark.svg" alt="Lokarta" /></div>
         <h1 class="title-main">LOKARTA</h1>
         <div class="title-subtitle">COME INTO THE LIGHT</div>
         <div class="title-tagline">A Gothic Roguelike Dungeon Crawl</div>
-        <div class="title-menu-actions">
-          ${continueBtnHtml}
-          <button class="title-btn new-game-btn" id="title-btn-new-game"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/1F56F.svg" alt="Candle" /> NEW EXPEDITION</button>
+        <div class="title-menu-actions" role="menu">
+          <button class="title-btn new-game-btn" id="title-btn-new-game" data-row="0" role="menuitem"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/1F56F.svg" alt="Candle" /> NEW GAME</button>
+          <button class="title-btn continue-btn" id="title-btn-continue" data-row="1" role="menuitem"${hasSaves ? '' : ' aria-disabled="true" disabled'}><img class="openmoji-icon btn-emoji" src="./assets/openmoji/2694.svg" alt="Swords" /> CONTINUE</button>
+          <button class="title-btn" id="title-btn-options" data-row="2" role="menuitem"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/2699.svg" alt="Gear" /> OPTIONS</button>
+          <button class="title-btn" id="title-btn-guide" data-row="3" role="menuitem"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/1F4D6.svg" alt="Guide" /> GUIDE &amp; CONTROLS</button>
         </div>
-        <div class="title-footer">v2.3 • 10 Action Slots • Fate Grant Draft • 10-Tile FOV</div>
+        <div class="title-footer">v2.4 • ${SAVE_SLOT_COUNT} Save Slots • Fate Grant Draft</div>
       </div>
     `;
 
-    document.getElementById('title-btn-continue')?.addEventListener('click', async () => {
+    const rows = Array.from(modalOverlayEl.querySelectorAll('.title-btn'));
+    let selected = rows.findIndex(r => !r.disabled);
+    const applySelection = () => {
+      rows.forEach((row, i) => row.classList.toggle('selected', i === selected));
+    };
+    const move = delta => {
+      if (!rows.length) return;
+      for (let i = 0; i < rows.length; i += 1) {
+        selected = (selected + delta + rows.length) % rows.length;
+        if (!rows[selected].disabled) break;
+      }
+      applySelection();
+      soundFX.play('uiMove', 0.5);
+    };
+    const activate = row => {
+      if (!row || row.disabled) return;
       soundFX.play('click');
-      modalOverlayEl.classList.add('hidden');
-      modalOverlayEl.innerHTML = '';
-      if (callbacks.onContinue) await callbacks.onContinue(savedPlayer);
+      if (row.id === 'title-btn-new-game') callbacks.onNewGame?.();
+      else if (row.id === 'title-btn-continue') callbacks.onContinue?.();
+      else if (row.id === 'title-btn-options') callbacks.onOptions?.();
+      else if (row.id === 'title-btn-guide') callbacks.onGuide?.();
+    };
+
+    rows.forEach(row => {
+      row.addEventListener('mouseenter', () => {
+        selected = Number(row.dataset.row);
+        applySelection();
+      });
+      row.addEventListener('click', () => activate(row));
+    });
+    applySelection();
+
+    modalOverlayEl._titleKeyHandler?.();
+    const keyHandler = e => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'KeyS' || e.key === 'KeyW') {
+        e.preventDefault();
+        move(e.key === 'ArrowDown' || e.key === 'KeyS' ? 1 : -1);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        activate(rows[selected]);
+      }
+    };
+    window.addEventListener('keydown', keyHandler);
+    modalOverlayEl._titleKeyHandler = () => {
+      window.removeEventListener('keydown', keyHandler);
+      modalOverlayEl._titleKeyHandler = null;
+    };
+  }
+
+  /**
+   * Options modal. Changes apply immediately via callbacks.onChange.
+   */
+  static showOptionsModal(modalOverlayEl, options, callbacks = {}) {
+    const opts = options || {};
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+
+    const toggle = (key, label) => `
+      <div class="option-row" data-option="${key}">
+        <span class="option-label">${label}</span>
+        <button class="option-toggle" data-toggle="${key}" aria-pressed="${opts[key] ? 'true' : 'false'}">${opts[key] ? 'ON' : 'OFF'}</button>
+      </div>`;
+
+    const segmented = (key, label, choices) => `
+      <div class="option-row" data-option="${key}">
+        <span class="option-label">${label}</span>
+        <div class="option-segmented">
+          ${choices.map(c => `<button class="option-seg${opts[key] === c.value ? ' active' : ''}" data-seg="${key}" data-value="${c.value}">${c.label}</button>`).join('')}
+        </div>
+      </div>`;
+
+    modalOverlayEl.innerHTML = `
+      <div class="options-modal">
+        <div class="modal-header">
+          <h2>OPTIONS</h2>
+          <div class="subtitle">Changes apply immediately and are saved automatically.</div>
+        </div>
+        <div class="options-list">
+          ${toggle('soundEffects', 'Sound Effects')}
+          <div class="option-row" data-option="sfxVolume">
+            <span class="option-label">Sound Volume</span>
+            <input class="option-slider" id="option-sfx-volume" type="range" min="0" max="100" step="5" value="${Number(opts.sfxVolume) || 0}" />
+            <span class="option-value" id="option-sfx-volume-value">${Number(opts.sfxVolume) || 0}</span>
+          </div>
+          ${segmented('reduceMotion', 'Reduce Motion', REDUCE_MOTION_OPTIONS)}
+          ${segmented('uiScale', 'UI Scale', UI_SCALE_OPTIONS)}
+          ${segmented('pixelScale', 'Pixel Zoom', PIXEL_SCALE_OPTIONS)}
+          ${toggle('fullscreen', 'Fullscreen')}
+          ${toggle('damageNumbers', 'Damage Numbers')}
+          ${toggle('showFps', 'Frame Rate Counter')}
+        </div>
+        <div class="modal-back-action options-actions">
+          <button class="action-btn" id="options-save-data">SAVE DATA</button>
+          <button class="action-btn danger" id="options-reset">RESET TO DEFAULTS</button>
+          <button class="action-btn" id="options-back">BACK</button>
+        </div>
+      </div>
+    `;
+
+    modalOverlayEl.querySelectorAll('[data-toggle]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.toggle;
+        const next = !(btn.getAttribute('aria-pressed') === 'true');
+        btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+        btn.textContent = next ? 'ON' : 'OFF';
+        soundFX.play('click');
+        callbacks.onChange?.({ [key]: next });
+      });
     });
 
-    document.getElementById('title-btn-new-game')?.addEventListener('click', () => {
+    modalOverlayEl.querySelectorAll('[data-seg]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.seg;
+        modalOverlayEl.querySelectorAll(`[data-seg="${key}"]`).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        soundFX.play('click');
+        callbacks.onChange?.({ [key]: btn.dataset.value });
+      });
+    });
+
+    const slider = modalOverlayEl.querySelector('#option-sfx-volume');
+    const sliderValue = modalOverlayEl.querySelector('#option-sfx-volume-value');
+    slider?.addEventListener('input', () => {
+      sliderValue.textContent = slider.value;
+    });
+    slider?.addEventListener('change', () => {
+      callbacks.onChange?.({ sfxVolume: Number(slider.value) });
+    });
+
+    modalOverlayEl.querySelector('#options-save-data')?.addEventListener('click', () => {
       soundFX.play('click');
-      if (callbacks.onNewGame) callbacks.onNewGame();
+      callbacks.onSaveData?.();
+    });
+    modalOverlayEl.querySelector('#options-reset')?.addEventListener('click', () => {
+      soundFX.play('uiBack');
+      callbacks.onReset?.();
+    });
+    modalOverlayEl.querySelector('#options-back')?.addEventListener('click', () => {
+      soundFX.play('uiBack');
+      callbacks.onBack?.();
     });
   }
 
+  /**
+   * Save-slot selection. mode: 'create' | 'load' | 'manage'.
+   */
+  static showSlotSelectModal(modalOverlayEl, state = {}, callbacks = {}) {
+    const slots = state.slots || [];
+    const mode = state.mode || 'create';
+    const lastPlayed = state.lastPlayedSlotIndex;
+    const header = mode === 'manage' ? 'SAVE DATA' : 'SELECT A SAVE SLOT';
+    const subtitle = mode === 'load'
+      ? 'Choose an expedition to continue.'
+      : mode === 'manage'
+        ? 'Load, overwrite, or delete a save.'
+        : 'Choose a slot for your new expedition.';
+
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+
+    const cards = slots.map(slot => {
+      const index = slot.slotIndex;
+      const occupied = slot && slot.status === 'occupied';
+      if (!occupied) {
+        const disabled = mode === 'load' || mode === 'manage';
+        return `
+          <div class="slot-card empty" data-slot="${index}">
+            <div class="slot-badge">SLOT ${index}</div>
+            <div class="slot-empty-body">
+              <button class="action-btn slot-new-btn" data-action="new" data-slot="${index}"${disabled ? ' disabled' : ''}>${mode === 'create' ? 'EMPTY — NEW GAME' : 'EMPTY'}</button>
+            </div>
+          </div>`;
+      }
+
+      const icon = VOCATION_ICONS[slot.vocation] || '1F56F';
+      const ribbon = lastPlayed === index ? '<span class="slot-ribbon">LAST PLAYED</span>' : '';
+      const primaryAction = mode === 'load'
+        ? `<button class="action-btn" data-action="load" data-slot="${index}">LOAD</button>`
+        : `<button class="action-btn" data-action="overwrite" data-slot="${index}">OVERWRITE</button>`;
+      return `
+        <div class="slot-card occupied" data-slot="${index}">
+          ${ribbon}
+          <div class="slot-badge">SLOT ${index}</div>
+          <img class="openmoji-icon slot-thumb" src="./assets/openmoji/${icon}.svg" alt="${slot.vocation || ''}" />
+          <div class="slot-info">
+            <div class="slot-title"><strong>${String(slot.vocation || 'unknown').toUpperCase()}</strong> — Level ${slot.level || 1}</div>
+            <div class="slot-sub">Floor ${slot.currentFloor || 1}/20${slot.biome ? ` · ${slot.biome}` : ''}</div>
+            <div class="slot-meta">Played ${formatPlaytime(slot.playtimeMs)} · Last played ${formatLastPlayed(slot.lastPlayedAt)}</div>
+          </div>
+          <div class="slot-actions">
+            ${primaryAction}
+            <button class="action-btn danger" data-action="delete" data-slot="${index}">DELETE</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    modalOverlayEl.innerHTML = `
+      <div class="slot-select-modal">
+        <div class="modal-header">
+          <h2>${header}</h2>
+          <div class="subtitle">${subtitle}</div>
+        </div>
+        <div class="slot-list">${cards}</div>
+        <div class="modal-back-action">
+          <button class="action-btn" id="slots-back">BACK</button>
+        </div>
+      </div>
+    `;
+
+    modalOverlayEl.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        const index = Number(btn.dataset.slot);
+        soundFX.play('click');
+        if (btn.dataset.action === 'new') callbacks.onNew?.(index);
+        else if (btn.dataset.action === 'load') callbacks.onLoad?.(index);
+        else if (btn.dataset.action === 'overwrite') callbacks.onOverwrite?.(index);
+        else if (btn.dataset.action === 'delete') callbacks.onDelete?.(index);
+      });
+    });
+    modalOverlayEl.querySelector('#slots-back')?.addEventListener('click', () => {
+      soundFX.play('uiBack');
+      callbacks.onBack?.();
+    });
+  }
+
+  /**
+   * Generic destructive/confirm dialog.
+   * @param {{ title: string, body: string, confirmLabel: string, cancelLabel?: string, danger?: boolean, onConfirm: Function, onCancel: Function }} opts
+   */
+  static showConfirmModal(modalOverlayEl, opts = {}) {
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+    modalOverlayEl.innerHTML = `
+      <div class="result-modal confirm-modal">
+        <h2>${opts.title || 'ARE YOU SURE?'}</h2>
+        <p class="result-subtitle">${opts.body || ''}</p>
+        <div class="confirm-actions">
+          <button class="action-btn" id="confirm-cancel">${opts.cancelLabel || 'CANCEL'}</button>
+          <button class="action-btn ${opts.danger ? 'danger' : ''}" id="confirm-ok">${opts.confirmLabel || 'CONFIRM'}</button>
+        </div>
+      </div>
+    `;
+
+    const cancel = () => {
+      soundFX.play('uiBack');
+      this._close(modalOverlayEl);
+      opts.onCancel?.();
+    };
+    const confirm = () => {
+      soundFX.play('click');
+      this._close(modalOverlayEl);
+      opts.onConfirm?.();
+    };
+    modalOverlayEl.querySelector('#confirm-cancel')?.addEventListener('click', cancel);
+    modalOverlayEl.querySelector('#confirm-ok')?.addEventListener('click', confirm);
+    modalOverlayEl.querySelector('#confirm-ok')?.focus?.();
+
+    const keyHandler = e => {
+      if (e.key === 'Escape') {
+        window.removeEventListener('keydown', keyHandler);
+        cancel();
+      }
+    };
+    window.addEventListener('keydown', keyHandler);
+  }
+
   static showCharacterSelectModal(modalOverlayEl, onSelectVocation) {
-    modalOverlayEl.classList.remove('hidden');
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
     modalOverlayEl.innerHTML = `
       <div class="character-select-modal">
         <div class="modal-header">
@@ -121,16 +422,16 @@ export class ModalManager {
         const vocation = e.currentTarget.getAttribute('data-vocation');
         if (vocation) {
           soundFX.play('click');
-          modalOverlayEl.classList.add('hidden');
-          modalOverlayEl.innerHTML = '';
+          this._close(modalOverlayEl);
           if (onSelectVocation) await onSelectVocation(vocation);
         }
       });
     });
   }
 
-  static showGuideModal(modalOverlayEl) {
-    modalOverlayEl.classList.remove('hidden');
+  static showGuideModal(modalOverlayEl, callbacks = {}) {
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
     modalOverlayEl.innerHTML = `
       <div class="guide-modal">
         <div class="modal-header">
@@ -168,9 +469,55 @@ export class ModalManager {
 
     document.getElementById('btn-close-guide')?.addEventListener('click', () => {
       soundFX.play('click');
-      modalOverlayEl.classList.add('hidden');
-      modalOverlayEl.innerHTML = '';
+      if (typeof callbacks.onClose === 'function') {
+        callbacks.onClose();
+      } else {
+        this._close(modalOverlayEl);
+      }
     });
+  }
+
+  /** In-game pause menu. */
+  static showPauseModal(modalOverlayEl, callbacks = {}) {
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+    modalOverlayEl.innerHTML = `
+      <div class="result-modal pause-modal">
+        <h2>PAUSED</h2>
+        <p class="result-subtitle">The dungeon waits.</p>
+        <div class="pause-actions">
+          <button class="title-btn" id="pause-resume">RESUME</button>
+          <button class="title-btn" id="pause-options">OPTIONS</button>
+          <button class="title-btn" id="pause-guide">GUIDE &amp; CONTROLS</button>
+          <button class="title-btn" id="pause-title">RETURN TO TITLE</button>
+        </div>
+      </div>
+    `;
+
+    modalOverlayEl.querySelector('#pause-resume')?.addEventListener('click', () => {
+      soundFX.play('click');
+      callbacks.onResume?.();
+    });
+    modalOverlayEl.querySelector('#pause-options')?.addEventListener('click', () => {
+      soundFX.play('click');
+      callbacks.onOptions?.();
+    });
+    modalOverlayEl.querySelector('#pause-guide')?.addEventListener('click', () => {
+      soundFX.play('click');
+      callbacks.onGuide?.();
+    });
+    modalOverlayEl.querySelector('#pause-title')?.addEventListener('click', () => {
+      soundFX.play('click');
+      callbacks.onReturnToTitle?.();
+    });
+
+    const keyHandler = e => {
+      if (e.key === 'Escape') {
+        window.removeEventListener('keydown', keyHandler);
+        callbacks.onResume?.();
+      }
+    };
+    window.addEventListener('keydown', keyHandler);
   }
 
   static showFateGrantModal(modalOverlayEl, app, level = 1) {
@@ -179,7 +526,8 @@ export class ModalManager {
     const offer = FateGrantSystem.generateDraftOffer(app.player, level);
     const selectedCards = new Set();
 
-    modalOverlayEl.classList.remove('hidden');
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
     modalOverlayEl.innerHTML = `
       <div class="fate-grant-modal">
         <div class="modal-header">
@@ -252,57 +600,81 @@ export class ModalManager {
         app.logCombat(`Inventory full: ${floorItem} placed on floor.`, 'warning');
       }
 
-      modalOverlayEl.classList.add('hidden');
-      modalOverlayEl.innerHTML = '';
+      this._close(modalOverlayEl);
       if (app) app.isPaused = false;
       app.updateHUD();
       await app.persistSave();
     });
   }
 
-  static showVictoryModal(modalOverlayEl, player) {
-    modalOverlayEl.classList.remove('hidden');
+  static showVictoryModal(modalOverlayEl, player, callbacks = {}) {
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+    const p = player || {};
     modalOverlayEl.innerHTML = `
       <div class="result-modal victory-modal">
-        <h2>🏆 ULTIMATE VICTORY!</h2>
-        <p class="result-subtitle">Lokarta Subterranean Campaign - All 20 Floors Cleared</p>
-        <p>You have illuminated the darkest depths of the subterranean abyss and vanquished the Void Core!</p>
+        <h2>ULTIMATE VICTORY</h2>
+        <p class="result-subtitle">All 20 floors cleared. Lokarta is lit.</p>
         <div class="character-summary">
-          <p><strong>Vocation:</strong> ${(player.vocation || 'magician').toUpperCase()}</p>
-          <p><strong>Final Level:</strong> Level ${player.level || 1}</p>
-          <p><strong>Damage Boost:</strong> +${Math.round(((player.skillBoosts?.damageMultiplier || 1) - 1) * 100)}%</p>
-          <p><strong>Remaining HP:</strong> ${player.hp} / ${player.max_hp}</p>
-          <p><strong>Remaining MP:</strong> ${player.mana} / ${player.max_mana}</p>
+          <p><strong>Vocation:</strong> ${String(p.vocation || 'magician').toUpperCase()}</p>
+          <p><strong>Final Level:</strong> Level ${p.level || 1}</p>
+          <p><strong>Damage Boost:</strong> +${Math.round(((p.skillBoosts?.damageMultiplier || 1) - 1) * 100)}%</p>
+          <p><strong>Remaining HP:</strong> ${p.hp} / ${p.max_hp}</p>
+          <p><strong>Remaining MP:</strong> ${p.mana} / ${p.max_mana}</p>
         </div>
-        <button class="action-btn" id="btn-restart">Play Again</button>
+        <div class="confirm-actions">
+          <button class="action-btn" id="victory-new-game">NEW GAME</button>
+          <button class="action-btn" id="victory-title">RETURN TO TITLE</button>
+        </div>
       </div>
     `;
 
-    document.getElementById('btn-restart')?.addEventListener('click', () => {
+    modalOverlayEl.querySelector('#victory-new-game')?.addEventListener('click', () => {
       soundFX.play('click');
-      modalOverlayEl.classList.add('hidden');
-      modalOverlayEl.innerHTML = '';
-      window.location.reload();
+      callbacks.onNewGame?.();
+    });
+    modalOverlayEl.querySelector('#victory-title')?.addEventListener('click', () => {
+      soundFX.play('click');
+      callbacks.onReturnToTitle?.();
     });
   }
 
-  static showGameOverModal(modalOverlayEl, player) {
-    soundFX.play('defeat');
-    modalOverlayEl.classList.remove('hidden');
+  static showGameOverModal(modalOverlayEl, player, callbacks = {}) {
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+    const floor = player?.current_floor || 1;
     modalOverlayEl.innerHTML = `
       <div class="result-modal defeat-modal">
-        <h2>💀 YOU HAVE PERISHED</h2>
-        <p class="result-subtitle">Floor ${player.current_floor || 1}/20 Claims Another Soul</p>
-        <p>Your light has been extinguished in the subterranean shadows.</p>
-        <button class="action-btn" id="btn-retry">Try Again</button>
+        <h2>YOU HAVE PERISHED</h2>
+        <p class="result-subtitle">Floor ${floor}/20 claims another soul.</p>
+        <div class="confirm-actions">
+          <button class="action-btn" id="btn-retry">RETRY FLOOR ${floor}</button>
+          <button class="action-btn" id="btn-continue">CONTINUE</button>
+        </div>
+        <p class="result-hint">Both options restart Floor ${floor} from your arrival.<br />Retry stays in the dungeon; Continue returns to the title screen.</p>
       </div>
     `;
 
-    document.getElementById('btn-retry')?.addEventListener('click', () => {
+    modalOverlayEl.querySelector('#btn-retry')?.addEventListener('click', () => {
       soundFX.play('click');
-      modalOverlayEl.classList.add('hidden');
-      modalOverlayEl.innerHTML = '';
-      window.location.reload();
+      callbacks.onRetry?.();
+    });
+    modalOverlayEl.querySelector('#btn-continue')?.addEventListener('click', () => {
+      soundFX.play('click');
+      callbacks.onContinue?.();
     });
   }
+}
+
+function formatLastPlayed(iso) {
+  if (!iso) return 'unknown';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 'unknown';
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }

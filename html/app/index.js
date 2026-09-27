@@ -8,3 +8,6 @@ export * from './hud-manager.js';
 export * from './modal-manager.js';
 export * from './input-controller.js';
 export * from './app-controller.js';
+export * from './splash-screen.js';
+export * from './title-ambient.js';
+export * from './transition-controller.js';

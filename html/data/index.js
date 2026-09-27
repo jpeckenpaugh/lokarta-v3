@@ -13,6 +13,7 @@ import encountersData from './encounters.json' with { type: 'json' };
 import dungeonsData from './dungeons.json' with { type: 'json' };
 import tileThemesData from './tile_themes.json' with { type: 'json' };
 import keybindingsData from './keybindings.json' with { type: 'json' };
+import uiData from './ui.json' with { type: 'json' };
 
 export const CARDS_CATALOG = cardsData;
 export const MONSTERS_CATALOG = monstersData;
@@ -25,4 +26,5 @@ export const ENCOUNTERS_CATALOG = encountersData;
 export const DUNGEONS_CATALOG = dungeonsData;
 export const TILE_THEMES_CATALOG = tileThemesData;
 export const KEYBINDINGS_CATALOG = keybindingsData;
+export const UI_CATALOG = uiData;
 

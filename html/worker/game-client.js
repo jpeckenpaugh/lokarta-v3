@@ -162,6 +162,76 @@ export class GameClient {
   }
 
   /**
+   * Lists the five save-slot metadata records.
+   * @returns {Promise<{ slots: object[] }>}
+   */
+  async listSlots() {
+    return this.request('listSlots');
+  }
+
+  /**
+   * Creates a new character in the given slot.
+   * @param {number} slotIndex
+   * @param {string} vocation
+   * @returns {Promise<{ player: object, floor: object, slot: object }>}
+   */
+  async createSlot(slotIndex, vocation) {
+    return this.request('createSlot', { slotIndex, vocation });
+  }
+
+  /**
+   * Loads an occupied slot.
+   * @param {number} slotIndex
+   * @returns {Promise<{ player: object, floor: object, slot: object }>}
+   */
+  async loadSlot(slotIndex) {
+    return this.request('loadSlot', { slotIndex });
+  }
+
+  /**
+   * Deletes a save slot.
+   * @param {number} slotIndex
+   * @returns {Promise<{ success: boolean }>}
+   */
+  async deleteSlot(slotIndex) {
+    return this.request('deleteSlot', { slotIndex });
+  }
+
+  /**
+   * Restarts the current floor from the slot's arrival snapshot.
+   * @param {number} slotIndex
+   * @returns {Promise<{ player: object, floor: object }>}
+   */
+  async restartFloor(slotIndex) {
+    return this.request('restartFloor', { slotIndex });
+  }
+
+  /**
+   * Reads persisted options.
+   * @returns {Promise<{ options: object }>}
+   */
+  async getOptions() {
+    return this.request('getOptions');
+  }
+
+  /**
+   * Merges and persists an options patch.
+   * @param {object} patch
+   * @returns {Promise<{ options: object }>}
+   */
+  async setOptions(patch) {
+    return this.request('setOptions', { patch });
+  }
+
+  /**
+   * Resets options to catalog defaults.
+   * @returns {Promise<{ options: object }>}
+   */
+  async resetOptions() {
+    return this.request('resetOptions');
+  }
+
+  /**
    * Updates sound setting in user profile.
    * @param {boolean} soundEnabled
    * @returns {Promise<{ soundEnabled: boolean }>}

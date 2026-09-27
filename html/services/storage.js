@@ -3,15 +3,21 @@
  * IndexedDB database manager for persistent offline gameplay.
  */
 
+import { planLegacyMigration, emptySlotRecord, SAVE_SLOT_COUNT } from './save-slots.js';
+
 export const DB_NAME = 'lokarta_browser_db';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export const STORES = {
   PROFILE: 'profile',
   CHARACTERS: 'characters',
   DUNGEON_FLOORS: 'dungeon_floors',
   GAME_SETTINGS: 'game_settings',
+  SAVE_SLOTS: 'save_slots',
+  SLOT_FLOORS: 'slot_floors',
 };
+
+export const MIGRATION_GUARD_KEY = 'migration_slot_v2';
 
 let dbInstance = null;
 
@@ -62,6 +68,16 @@ export function openStorage() {
       // 4. Game settings store: arbitrary key-value settings
       if (!db.objectStoreNames.contains(STORES.GAME_SETTINGS)) {
         db.createObjectStore(STORES.GAME_SETTINGS, { keyPath: 'key' });
+      }
+
+      // 5. Save slots store: five fixed slot metadata records (v2)
+      if (!db.objectStoreNames.contains(STORES.SAVE_SLOTS)) {
+        db.createObjectStore(STORES.SAVE_SLOTS, { keyPath: 'id' });
+      }
+
+      // 6. Slot floors store: per-slot cached floor states, keyed [slotIndex, floor_number] (v2)
+      if (!db.objectStoreNames.contains(STORES.SLOT_FLOORS)) {
+        db.createObjectStore(STORES.SLOT_FLOORS, { keyPath: ['slotIndex', 'floor_number'] });
       }
     };
 
@@ -285,4 +301,77 @@ export async function clearStore(storeName) {
       reject(event.target.error);
     };
   });
+}
+
+/**
+ * Reads the current save-slot metadata records, normalized to exactly
+ * `SAVE_SLOT_COUNT` entries ordered by slotIndex (empty slots filled in).
+ * @returns {Promise<object[]>}
+ */
+export async function readSlots() {
+  const records = await getAll(STORES.SAVE_SLOTS);
+  const byIndex = new Map();
+  for (const record of records || []) {
+    if (record && typeof record.slotIndex === 'number' && record.slotIndex >= 1) {
+      byIndex.set(record.slotIndex, record);
+    }
+  }
+  const slots = [];
+  for (let i = 1; i <= SAVE_SLOT_COUNT; i += 1) {
+    slots.push(byIndex.get(i) || emptySlotRecord(i));
+  }
+  return slots;
+}
+
+/**
+ * Non-destructively migrates the v1 single save into Slot 1 and stamps the
+ * one-time `migration_slot_v2` guard. Legacy stores are always left intact.
+ *
+ * Idempotent: rerunning after the guard exists is a no-op; if the guard is
+ * missing but `save_slots/slot_1` already exists, only the guard is written.
+ *
+ * @returns {Promise<{ migrated: boolean, recovered: boolean, fromCharacterId: string|null }>}
+ */
+export async function migrateLegacySave() {
+  await openStorage();
+
+  const guard = await read(STORES.GAME_SETTINGS, MIGRATION_GUARD_KEY);
+  if (guard && guard.done) {
+    return { migrated: false, recovered: false, fromCharacterId: guard.fromCharacterId || null };
+  }
+
+  // Idempotent recovery: a prior run may have written Slot 1 but not the guard.
+  const existingSlot = await read(STORES.SAVE_SLOTS, 'slot_1');
+  if (existingSlot) {
+    await put(STORES.GAME_SETTINGS, {
+      key: MIGRATION_GUARD_KEY,
+      done: true,
+      migratedAt: now(),
+      fromCharacterId: existingSlot.characterId || null,
+    });
+    return { migrated: false, recovered: true, fromCharacterId: existingSlot.characterId || null };
+  }
+
+  const legacyCharacters = await getAll(STORES.CHARACTERS);
+  const legacyFloors = await getAll(STORES.DUNGEON_FLOORS);
+  const plan = planLegacyMigration(legacyCharacters, legacyFloors, guard);
+
+  if (plan.character) {
+    await put(STORES.CHARACTERS, plan.character);
+  }
+  if (plan.slot) {
+    await put(STORES.SAVE_SLOTS, plan.slot);
+  }
+  for (const entry of plan.floors) {
+    await put(STORES.SLOT_FLOORS, entry.floor, entry.key);
+  }
+  if (plan.guard) {
+    await put(STORES.GAME_SETTINGS, { ...plan.guard, migratedAt: now() });
+  }
+
+  return {
+    migrated: Boolean(plan.character),
+    recovered: false,
+    fromCharacterId: plan.guard ? plan.guard.fromCharacterId : null,
+  };
 }

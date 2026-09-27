@@ -12,6 +12,20 @@ export class InputController {
 
   bindInputs() {
     window.addEventListener('keydown', e => {
+      // Input is locked during transitions.
+      if (this.app.transition && this.app.transition.isLocked && this.app.transition.isLocked()) {
+        return;
+      }
+
+      if (e.code === 'Escape' && this.app.isInGameplay && !this.app.isGameOver) {
+        e.preventDefault();
+        this.app.openPauseMenu();
+        return;
+      }
+
+      // Only gameplay surfaces own movement / combat keys.
+      if (!this.app.isInGameplay) return;
+
       this.app.keysDown.add(e.code);
 
       if (e.code === 'KeyQ') {
@@ -36,6 +50,7 @@ export class InputController {
     });
 
     window.addEventListener('keyup', e => {
+      if (!this.app.isInGameplay) return;
       this.app.keysDown.delete(e.code);
 
       const slotIdx = GestureEngine.keyToSlotIndex(e.key);
@@ -48,6 +63,7 @@ export class InputController {
     // Canvas click: targeting or looting
     if (this.app.canvas) {
       this.app.canvas.addEventListener('click', e => {
+        if (!this.app.isInGameplay) return;
         soundFX.init();
         const rect = this.app.canvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left;

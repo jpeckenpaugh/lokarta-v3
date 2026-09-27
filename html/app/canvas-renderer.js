@@ -11,6 +11,22 @@ export class CanvasRenderer {
     this.ctx = canvas ? canvas.getContext('2d') : null;
     this.cameraX = 0;
     this.cameraY = 0;
+    this.tileSize = CONFIG.GRID_SIZE;
+  }
+
+  /**
+   * Sets the tile size used for draw and camera math (pixel-zoom option).
+   * `auto` maps to the canonical 64 px tile.
+   * @param {number} px
+   * @returns {number} the applied tile size
+   */
+  setZoom(px) {
+    const size = Number(px);
+    if (!Number.isFinite(size) || size <= 0) return this.tileSize;
+    this.tileSize = size;
+    // Keep camera, projectile, and sprite math consistent with the chosen zoom.
+    CONFIG.GRID_SIZE = size;
+    return size;
   }
 
   resize() {

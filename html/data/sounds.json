@@ -180,5 +180,21 @@
     "endFreq": 300,
     "duration": 0.03,
     "gain": 0.12
+  },
+  "uiMove": {
+    "type": "sweep",
+    "oscType": "triangle",
+    "startFreq": 520,
+    "endFreq": 620,
+    "duration": 0.04,
+    "gain": 0.08
+  },
+  "uiBack": {
+    "type": "sweep",
+    "oscType": "triangle",
+    "startFreq": 420,
+    "endFreq": 260,
+    "duration": 0.07,
+    "gain": 0.1
   }
 }

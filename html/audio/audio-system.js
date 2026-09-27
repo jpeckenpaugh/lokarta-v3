@@ -11,6 +11,7 @@ export class AudioSystem {
     this.isInitialized = false;
     this.sounds = null;
     this.loadingPromise = null;
+    this.volumePercent = 70;
 
     // Check saved mute preference
     try {
@@ -19,10 +20,56 @@ export class AudioSystem {
         if (saved !== null) {
           this.isMuted = saved === 'true';
         }
+        const savedVolume = localStorage.getItem('lokarta_audio_volume');
+        if (savedVolume !== null) {
+          const parsed = Number(savedVolume);
+          if (Number.isFinite(parsed)) {
+            this.volumePercent = Math.max(0, Math.min(100, parsed));
+          }
+        }
       }
     } catch {
       // Ignore localStorage restrictions
     }
+  }
+
+  /**
+   * Maps the 0-100 volume percent to the master gain (max 0.5).
+   * @returns {number}
+   */
+  _gainForVolume() {
+    return 0.5 * (this.volumePercent / 100);
+  }
+
+  /**
+   * Returns the current sound volume as an integer 0-100.
+   * @returns {number}
+   */
+  getVolume() {
+    return Math.round(this.volumePercent);
+  }
+
+  /**
+   * Sets the sound volume from an integer 0-100 and applies it live.
+   * @param {number} percent
+   * @returns {number} The normalized volume percent.
+   */
+  setVolume(percent) {
+    const parsed = Number(percent);
+    this.volumePercent = Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 70;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('lokarta_audio_volume', String(this.volumePercent));
+      }
+    } catch {
+      // Ignore
+    }
+    if (this.masterGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.masterGain.gain.cancelScheduledValues(now);
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this._gainForVolume(), now);
+    }
+    return this.volumePercent;
   }
 
   static getInstance() {
@@ -94,7 +141,7 @@ export class AudioSystem {
       if (!this.ctx) {
         this.ctx = new AudioContextClass();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = this.isMuted ? 0 : 0.35;
+        this.masterGain.gain.value = this.isMuted ? 0 : this._gainForVolume();
         this.masterGain.connect(this.ctx.destination);
       }
 
@@ -142,7 +189,7 @@ export class AudioSystem {
     if (this.masterGain && this.ctx) {
       const now = this.ctx.currentTime;
       this.masterGain.gain.cancelScheduledValues(now);
-      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.35, now);
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this._gainForVolume(), now);
     }
 
     return this.isMuted;

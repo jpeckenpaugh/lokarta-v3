@@ -15,11 +15,14 @@ import {
   createPlayer,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
-import { ITEMS_CATALOG, ABILITIES_CATALOG, KEYBINDINGS_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
+import { ITEMS_CATALOG, ABILITIES_CATALOG, KEYBINDINGS_CATALOG, VOCATIONS_CATALOG, UI_CATALOG } from '../data/index.js';
 import { CanvasRenderer } from './canvas-renderer.js';
 import { HUDManager } from './hud-manager.js';
 import { ModalManager } from './modal-manager.js';
 import { InputController } from './input-controller.js';
+import { TransitionController } from './transition-controller.js';
+import { TitleAmbient } from './title-ambient.js';
+import { normalizeOptions, resolveReducedMotion, summarizeSlot } from '../services/save-slots.js';
 import {
   createAnimState,
   ensureAnim,
@@ -72,6 +75,25 @@ export class LokartaApp {
     this.hotbarEl = document.getElementById('hotbar-container');
     this.combatLogScrollEl = document.getElementById('log-entries-container');
     this.modalOverlayEl = document.getElementById('modal-overlay');
+    this.splashOverlayEl = document.getElementById('splash-overlay');
+    this.titleAmbientCanvas = document.getElementById('title-ambient-canvas');
+    this.transitionOverlayEl = document.getElementById('screen-transition');
+    this.transition = new TransitionController(this.transitionOverlayEl);
+
+    this.slots = [];
+    this.options = normalizeOptions(null);
+    this.lastPlayedSlotIndex = null;
+    this.reduceMotionResolved = false;
+    this.pendingSlotIndex = null;
+    this.slotSelectMode = 'create';
+    this.optionsReturnTo = 'title';
+    this.isInGameplay = false;
+    this.fpsEl = null;
+    this.fpsFrames = 0;
+    this.fpsAccumMs = 0;
+    this.fpsValue = 0;
+    this._mqlHandler = null;
+    this.splashPromise = null;
 
     this.gestureEngine = new GestureEngine(
       event => this.handleGestureEvent(event),
@@ -87,91 +109,422 @@ export class LokartaApp {
     window.addEventListener('resize', () => this.renderer.resize());
     this.renderer.resize();
     this.inputController.bindInputs();
+    this.bindChromeControls();
 
+    let bootstrapData = null;
+    try {
+      bootstrapData = await this.gameClient.bootstrap();
+    } catch (err) {
+      console.error('Failed to bootstrap Lokarta:', err);
+    }
+
+    if (bootstrapData) {
+      this.profile = bootstrapData.profile || null;
+      this.options = normalizeOptions(bootstrapData.options);
+      this.slots = bootstrapData.slots || [];
+      this.lastPlayedSlotIndex = bootstrapData.lastPlayedSlotIndex ?? null;
+    }
+
+    this.applyOptions(this.options);
+
+    if (this.splashPromise) {
+      try {
+        await this.splashPromise;
+      } catch {
+        // Splash failure must never block the title screen.
+      }
+    }
+
+    this.showTitleScreen();
+  }
+
+  bindChromeControls() {
     document.getElementById('header-guide-btn')?.addEventListener('click', () => {
       soundFX.play('click');
-      this.showGuideModal();
+      if (this.isInGameplay && !this.isGameOver) this.openPauseMenu();
+      else this.showGuideModal();
     });
 
     const audioBtn = document.getElementById('audio-toggle-btn');
     audioBtn?.addEventListener('click', async () => {
       soundFX.init();
-      const nextState = !soundFX.enabled;
-      soundFX.setEnabled(nextState);
-      audioBtn.textContent = nextState ? '🔊 Sound: ON' : '🔈 Sound: OFF';
-      audioBtn.classList.toggle('muted', !nextState);
-      await this.gameClient.setSoundEnabled(nextState);
+      await this.setOption({ soundEffects: !this.options.soundEffects });
     });
+    this.updateAudioButton();
 
+    document.addEventListener('fullscreenchange', () => this.syncFullscreenState());
+  }
+
+  updateAudioButton() {
+    const audioBtn = document.getElementById('audio-toggle-btn');
+    if (!audioBtn) return;
+    const on = Boolean(this.options.soundEffects);
+    audioBtn.textContent = on ? '🔊 Sound: ON' : '🔈 Sound: OFF';
+    audioBtn.classList.toggle('muted', !on);
+  }
+
+  hasSaves() {
+    return this.slots.some(s => s && s.status === 'occupied');
+  }
+
+  async refreshSlots() {
     try {
-      const bootstrapData = await this.gameClient.bootstrap();
-      if (bootstrapData.profile) {
-        soundFX.setEnabled(bootstrapData.profile.soundEnabled);
-        if (audioBtn) {
-          audioBtn.textContent = bootstrapData.profile.soundEnabled ? '🔊 Sound: ON' : '🔈 Sound: OFF';
-          audioBtn.classList.toggle('muted', !bootstrapData.profile.soundEnabled);
-        }
-      }
-
-      this.showTitleScreen(bootstrapData.player);
+      const res = await this.gameClient.listSlots();
+      this.slots = res.slots || [];
     } catch (err) {
-      console.error('Failed to bootstrap Lokarta:', err);
-      this.showTitleScreen(null);
+      console.warn('Failed to refresh save slots:', err);
     }
   }
 
-  showTitleScreen(savedPlayer) {
+  /** Applies the persisted options to the live UI. */
+  applyOptions(options) {
+    this.options = normalizeOptions(options);
+    const o = this.options;
+
+    soundFX.setEnabled(Boolean(o.soundEffects));
+    soundFX.setVolume(Number(o.sfxVolume));
+    this.updateAudioButton();
+
+    this.applyReducedMotion();
+
+    const uiScaleMap = UI_CATALOG?.options?.ranges?.uiScale || {};
+    const uiScale = typeof uiScaleMap[o.uiScale] === 'number' ? uiScaleMap[o.uiScale] : 1;
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--ui-scale', String(uiScale));
+    }
+
+    const pixelMap = UI_CATALOG?.options?.ranges?.pixelScale || {};
+    const zoom = typeof pixelMap[o.pixelScale] === 'number' ? pixelMap[o.pixelScale] : 64;
+    this.renderer.setZoom(zoom);
+
+    this.updateFpsBadge();
+  }
+
+  /** Applies an options patch live and persists it through the worker. */
+  async setOption(patch) {
+    if (patch && patch.fullscreen !== undefined) {
+      try {
+        if (patch.fullscreen && !document.fullscreenElement) {
+          await document.documentElement.requestFullscreen?.();
+        } else if (!patch.fullscreen && document.fullscreenElement) {
+          await document.exitFullscreen?.();
+        }
+      } catch (err) {
+        console.warn('Fullscreen request was rejected:', err);
+      }
+    }
+
+    this.applyOptions({ ...this.options, ...patch });
+
+    try {
+      const res = await this.gameClient.setOptions(patch);
+      if (res && res.options) this.applyOptions(res.options);
+    } catch (err) {
+      console.warn('Failed to persist options:', err);
+    }
+  }
+
+  applyReducedMotion() {
+    const setting = this.options.reduceMotion;
+    const mql = typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null;
+    this.reduceMotionResolved = resolveReducedMotion(setting, mql ? mql.matches : false);
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('reduced-motion', this.reduceMotionResolved);
+    }
+    this.transition.setReducedMotion(this.reduceMotionResolved);
+
+    if (mql) {
+      if (this._mqlHandler) mql.removeEventListener('change', this._mqlHandler);
+      this._mqlHandler = () => {
+        if (this.options.reduceMotion !== 'system') return;
+        this.applyReducedMotion();
+        if (this.isInGameplay) return;
+        if (this.modalOverlayEl.querySelector('.title-screen-modal')) this.startTitleAmbient();
+      };
+      mql.addEventListener('change', this._mqlHandler);
+    }
+  }
+
+  syncFullscreenState() {
+    const actual = typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false;
+    if (actual === this.options.fullscreen) return;
+    this.options = normalizeOptions({ ...this.options, fullscreen: actual });
+    if (this.modalOverlayEl.querySelector('.options-modal')) {
+      this.showOptionsModal(this.optionsReturnTo);
+    }
+  }
+
+  updateFpsBadge() {
+    if (typeof document === 'undefined') return;
+    const show = Boolean(this.options.showFps);
+    if (show && !this.fpsEl) {
+      this.fpsEl = document.createElement('span');
+      this.fpsEl.id = 'fps-counter';
+      this.fpsEl.className = 'fps-counter';
+      const host = document.querySelector('.system-controls') || document.body;
+      host.appendChild(this.fpsEl);
+    } else if (!show && this.fpsEl) {
+      this.fpsEl.remove();
+      this.fpsEl = null;
+    }
+  }
+
+  updateFps(dtMs) {
+    this.fpsFrames += 1;
+    this.fpsAccumMs += dtMs;
+    if (this.fpsAccumMs >= 500) {
+      this.fpsValue = Math.round((this.fpsFrames * 1000) / this.fpsAccumMs);
+      this.fpsFrames = 0;
+      this.fpsAccumMs = 0;
+      if (this.fpsEl) this.fpsEl.textContent = `${this.fpsValue} FPS`;
+    }
+  }
+
+  startTitleAmbient() {
+    if (!this.titleAmbientCanvas) return;
+    TitleAmbient.start(this.titleAmbientCanvas, { reduceMotion: this.reduceMotionResolved });
+  }
+
+  stopTitleAmbient() {
+    TitleAmbient.stop();
+  }
+
+  showTitleScreen() {
     this.stopGameLoop();
-    ModalManager.showTitleScreen(this.modalOverlayEl, savedPlayer, {
-      onContinue: async saved => await this.loadSavedGame(saved),
-      onNewGame: () => this.showCharacterSelectModal(),
+    this.isInGameplay = false;
+    this.isPaused = false;
+    this.transition.forceRelease();
+
+    ModalManager.showTitleScreen(this.modalOverlayEl, {
+      slots: this.slots,
+      hasSaves: this.hasSaves(),
+      lastPlayedSlotIndex: this.lastPlayedSlotIndex,
+    }, {
+      onNewGame: () => this.openSlotSelect('create'),
+      onContinue: () => this.openSlotSelect('load'),
+      onOptions: () => this.showOptionsModal('title'),
+      onGuide: () => this.showGuideModal(),
     });
+
+    this.startTitleAmbient();
   }
 
   showCharacterSelectModal() {
-    ModalManager.showCharacterSelectModal(this.modalOverlayEl, async vocation => {
-      await this.startNewGame(vocation);
+    this.stopTitleAmbient();
+    this.transition.run('titleToSelect', () => {
+      ModalManager.showCharacterSelectModal(this.modalOverlayEl, async vocation => {
+        await this.startNewGame(vocation);
+      });
     });
   }
 
   showGuideModal() {
-    ModalManager.showGuideModal(this.modalOverlayEl);
+    const returnTo = this.isInGameplay ? 'pause' : 'title';
+    ModalManager.showGuideModal(this.modalOverlayEl, {
+      onClose: () => {
+        if (returnTo === 'pause') this.openPauseMenu();
+        else this.showTitleScreen();
+      },
+    });
+  }
+
+  openPauseMenu() {
+    this.isPaused = true;
+    ModalManager.showPauseModal(this.modalOverlayEl, {
+      onResume: () => this.resumeGameplay(),
+      onOptions: () => this.showOptionsModal('pause'),
+      onGuide: () => this.showGuideModal(),
+      onReturnToTitle: () => this.returnToTitle(),
+    });
+  }
+
+  resumeGameplay() {
+    this.closeModal();
+    this.isPaused = false;
+  }
+
+  showOptionsModal(returnTo = 'title') {
+    this.optionsReturnTo = returnTo;
+    this.stopTitleAmbient();
+    ModalManager.showOptionsModal(this.modalOverlayEl, this.options, {
+      onChange: patch => this.setOption(patch),
+      onReset: () => this.confirmResetOptions(),
+      onSaveData: () => this.openSlotSelect('manage'),
+      onBack: () => this.returnFromOptions(),
+    });
+  }
+
+  returnFromOptions() {
+    if (this.optionsReturnTo === 'pause') {
+      this.openPauseMenu();
+      return;
+    }
+    this.showTitleScreen();
+  }
+
+  confirmResetOptions() {
+    ModalManager.showConfirmModal(this.modalOverlayEl, {
+      title: 'RESET OPTIONS?',
+      body: 'All options return to their default values. Save slots are not affected.',
+      confirmLabel: 'RESET',
+      onConfirm: async () => {
+        let options = normalizeOptions(null);
+        try {
+          const res = await this.gameClient.resetOptions();
+          if (res && res.options) options = res.options;
+        } catch (err) {
+          console.warn('Failed to reset options:', err);
+        }
+        this.applyOptions(options);
+        this.showOptionsModal(this.optionsReturnTo);
+      },
+      onCancel: () => this.showOptionsModal(this.optionsReturnTo),
+    });
+  }
+
+  openSlotSelect(mode = 'create') {
+    this.slotSelectMode = mode;
+    this.stopTitleAmbient();
+    ModalManager.showSlotSelectModal(this.modalOverlayEl, {
+      slots: this.slots,
+      mode,
+      lastPlayedSlotIndex: this.lastPlayedSlotIndex,
+    }, {
+      onNew: index => this.beginNewGame(index),
+      onLoad: index => this.loadGame(index),
+      onOverwrite: index => this.confirmOverwrite(index),
+      onDelete: index => this.confirmDelete(index),
+      onBack: () => {
+        if (mode === 'manage') this.showOptionsModal(this.optionsReturnTo);
+        else this.showTitleScreen();
+      },
+    });
+  }
+
+  beginNewGame(slotIndex) {
+    const slot = this.slots.find(s => s.slotIndex === slotIndex);
+    if (slot && slot.status === 'occupied') {
+      this.confirmOverwrite(slotIndex);
+      return;
+    }
+    this.pendingSlotIndex = slotIndex;
+    this.showCharacterSelectModal();
+  }
+
+  confirmOverwrite(slotIndex) {
+    const slot = this.slots.find(s => s.slotIndex === slotIndex) || { slotIndex };
+    ModalManager.showConfirmModal(this.modalOverlayEl, {
+      title: `OVERWRITE SLOT ${slotIndex}?`,
+      body: `This permanently deletes ${summarizeSlot(slot)}. This cannot be undone.`,
+      confirmLabel: 'OVERWRITE',
+      danger: true,
+      onConfirm: () => {
+        this.pendingSlotIndex = slotIndex;
+        this.showCharacterSelectModal();
+      },
+      onCancel: () => this.openSlotSelect(this.slotSelectMode),
+    });
+  }
+
+  confirmDelete(slotIndex) {
+    const slot = this.slots.find(s => s.slotIndex === slotIndex) || { slotIndex };
+    ModalManager.showConfirmModal(this.modalOverlayEl, {
+      title: `DELETE SLOT ${slotIndex}?`,
+      body: `This permanently deletes ${summarizeSlot(slot)}. This cannot be undone.`,
+      confirmLabel: 'DELETE',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await this.gameClient.deleteSlot(slotIndex);
+        } catch (err) {
+          console.error('Failed to delete slot:', err);
+        }
+        await this.refreshSlots();
+        this.openSlotSelect(this.slotSelectMode);
+      },
+      onCancel: () => this.openSlotSelect(this.slotSelectMode),
+    });
+  }
+
+  showLoadError(slotIndex) {
+    ModalManager.showConfirmModal(this.modalOverlayEl, {
+      title: `COULD NOT LOAD SLOT ${slotIndex}`,
+      body: `Could not load Slot ${slotIndex}. Try again.`,
+      confirmLabel: 'OK',
+      cancelLabel: 'BACK',
+      onConfirm: () => this.openSlotSelect(this.slotSelectMode),
+      onCancel: () => this.openSlotSelect(this.slotSelectMode),
+    });
+  }
+
+  adoptPlayer(player, floor) {
+    this.closeModal();
+    this.player = player;
+    this.isGameOver = false;
+    this.isFloorCleared = false;
+    this.isPaused = false;
+    this.applyDungeonData(floor);
+    this.isInGameplay = true;
+  }
+
+  closeModal() {
+    this.modalOverlayEl.classList.add('hidden');
+    this.modalOverlayEl.innerHTML = '';
+    this.modalOverlayEl.classList.remove('title-active');
   }
 
   async startNewGame(vocation) {
+    const slotIndex = this.pendingSlotIndex || 1;
     try {
-      const data = await this.gameClient.newGame(vocation);
-      this.player = data.player;
-      this.applyDungeonData(data.floor);
-      this.clearCombatLog();
-      this.logCombat(`Welcome to Lokarta, brave ${(this.player.vocation || 'magician').toUpperCase()}!`, 'victory');
-      this.logCombat('Fate calls upon you: Draft your starter cards.', 'spell');
+      const data = await this.gameClient.createSlot(slotIndex, vocation);
+      this.lastPlayedSlotIndex = slotIndex;
+      await this.refreshSlots();
 
-      this.startGameLoop();
+      await this.transition.run('selectToGame', async () => {
+        this.adoptPlayer(data.player, data.floor);
+        this.clearCombatLog();
+        this.logCombat(`Welcome to Lokarta, brave ${(this.player.vocation || 'magician').toUpperCase()}!`, 'victory');
+        this.logCombat('Fate calls upon you: Draft your starter cards.', 'spell');
+        this.startGameLoop();
+      });
+
       this.showFateGrantModal(1);
     } catch (err) {
       console.error('Failed to start new game:', err);
+      this.showLoadError(slotIndex);
     }
   }
 
-  async loadSavedGame(savedPlayer) {
+  async loadGame(slotIndex) {
     try {
-      this.player = savedPlayer;
-      const floor = await this.gameClient.getFloor(this.player.current_floor || 1);
-      this.applyDungeonData(floor);
-      this.clearCombatLog();
-      this.logCombat(`Resumed expedition on Floor ${this.player.current_floor || 1}/20 (${this.currentFloorName}).`, 'system');
+      const data = await this.gameClient.loadSlot(slotIndex);
+      this.lastPlayedSlotIndex = slotIndex;
+      await this.refreshSlots();
 
-      this.startGameLoop();
+      await this.transition.run('selectToGame', async () => {
+        this.adoptPlayer(data.player, data.floor);
+        this.clearCombatLog();
+        this.logCombat(`Resumed expedition on Floor ${this.player.current_floor || 1}/20 (${this.currentFloorName}).`, 'system');
+        this.startGameLoop();
+      });
 
-      // If fresh character with empty action bar, offer Level 1 draft
       const isActionBarEmpty = this.player.action_bar?.every(s => s === null);
       if (isActionBarEmpty && this.player.level === 1) {
         this.showFateGrantModal(1);
       }
     } catch (err) {
       console.error('Failed to load saved game:', err);
+      this.showLoadError(slotIndex);
     }
+  }
+
+  returnToTitle() {
+    this.transition.run('toTitle', async () => {
+      this.stopTitleAmbient();
+      this.showTitleScreen();
+    });
   }
 
   applyDungeonData(floorData) {
@@ -251,6 +604,7 @@ export class LokartaApp {
       this.lastAnimTime = time;
       this.updateAnimations(dt);
       this.render();
+      if (this.options.showFps) this.updateFps(dt);
 
       if (this.isRunning) {
         this.animFrameId = requestAnimationFrame(renderFrame);
@@ -273,8 +627,11 @@ export class LokartaApp {
   }
 
   tick() {
-    if (!this.isRunning || this.isGameOver || this.isPaused) return;
+    if (!this.isRunning || this.isGameOver || this.isPaused || this.isFloorCleared) return;
     const deltaSec = CONFIG.TICK_INTERVAL_MS / 1000;
+
+    // 0. Accumulate playtime for the slot card
+    this.player.playtimeMs = (this.player.playtimeMs || 0) + CONFIG.TICK_INTERVAL_MS;
 
     // 1. Movement
     this.processMovementInput();
@@ -447,7 +804,7 @@ export class LokartaApp {
     if (this.player.hp <= 0 && !this.isGameOver) {
       this.isGameOver = true;
       this.logCombat('You have fallen in the crypt! Darkness consumes you...', 'warning');
-      this.showGameOverModal();
+      this.onPlayerDeath();
     }
 
     // 6. Stairs check
@@ -1202,48 +1559,62 @@ export class LokartaApp {
   }
 
   async handleFloorClear() {
-    if (this.player.current_floor < 20) {
-      const nextFloor = this.player.current_floor + 1;
-      const floorBonusXp = 50 * this.player.current_floor;
-      const lvlRes = ProgressionSystem.awardXP(this.player, floorBonusXp);
+    if (this.isFloorCleared) return;
+    this.isFloorCleared = true;
+    this.isPaused = true;
+    const onFinalFloor = this.player.current_floor >= 20;
 
-      soundFX.play('stairs');
-      this.logCombat(
-        `Stepped on stairway! Descended to Floor ${nextFloor}/20 (+${floorBonusXp} Floor Clear XP)!`,
-        'victory'
-      );
-      this.addFloatingText(`FLOOR ${nextFloor}`, this.player.x, this.player.y, '#38bdf8');
+    try {
+      if (!onFinalFloor) {
+        const nextFloor = this.player.current_floor + 1;
+        const floorBonusXp = 50 * this.player.current_floor;
+        const lvlRes = ProgressionSystem.awardXP(this.player, floorBonusXp);
 
-      if (lvlRes.leveledUp) {
-        soundFX.play('levelUp');
+        soundFX.play('stairs');
         this.logCombat(
-          `⭐ LEVEL UP! You reached Level ${lvlRes.newLevel}! (+${lvlRes.hpGained} Max HP, +${lvlRes.manaGained} Max MP)`,
-          'spell'
+          `Stepped on stairway! Descended to Floor ${nextFloor}/20 (+${floorBonusXp} Floor Clear XP)!`,
+          'victory'
         );
-        this.showFateGrantModal(lvlRes.newLevel);
-      }
+        this.addFloatingText(`FLOOR ${nextFloor}`, this.player.x, this.player.y, '#38bdf8');
 
-      try {
-        const transition = await this.gameClient.advanceFloor(this.player, nextFloor);
-        this.player = transition.player;
-        this.applyDungeonData(transition.floor);
-        this.isFloorCleared = false;
-        LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
-        this.updateHUD();
+        await this.transition.run('floorAdvance', async () => {
+          const transition = await this.gameClient.advanceFloor(this.player, nextFloor);
+          this.player = transition.player;
+          this.applyDungeonData(transition.floor);
+          LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+          this.updateHUD();
+          await this.persistSave(true);
+        }, { skippable: false, label: `DESCENDING TO FLOOR ${nextFloor}` });
+
+        if (lvlRes.leveledUp) {
+          soundFX.play('levelUp');
+          this.logCombat(
+            `⭐ LEVEL UP! You reached Level ${lvlRes.newLevel}! (+${lvlRes.hpGained} Max HP, +${lvlRes.manaGained} Max MP)`,
+            'spell'
+          );
+          this.showFateGrantModal(lvlRes.newLevel);
+        }
+      } else {
+        soundFX.play('victory');
+        this.logCombat('🎉 YOU CONQUERED THE ABYSSAL SANCTUM! ALL 20 FLOORS CLEARED!', 'victory');
+        this.addFloatingText('CAMPAIGN COMPLETED!', this.player.x, this.player.y, '#ffd700');
         await this.persistSave(true);
-      } catch (err) {
-        console.error('Floor transition error:', err);
+        this.showVictoryModal();
       }
-    } else {
-      this.isFloorCleared = true;
-      soundFX.play('victory');
-      this.logCombat('🎉 YOU CONQUERED THE ABYSSAL SANCTUM! ALL 20 FLOORS CLEARED!', 'victory');
-      this.addFloatingText('CAMPAIGN COMPLETED!', this.player.x, this.player.y, '#ffd700');
-      this.showVictoryModal();
+    } catch (err) {
+      console.error('Floor transition error:', err);
+    } finally {
+      if (!onFinalFloor) {
+        this.isFloorCleared = false;
+        if (this.modalOverlayEl.classList.contains('hidden')) {
+          this.isPaused = false;
+        }
+      }
     }
   }
 
   addFloatingText(text, gridX, gridY, color) {
+    if (this.options && this.options.damageNumbers === false && /^-\d/.test(String(text))) return;
     this.floatingTexts.push({
       id: `ft_${Date.now()}_${Math.random()}`,
       text,
@@ -1275,11 +1646,49 @@ export class LokartaApp {
     HUDManager.clearCombatLog(this.combatLogScrollEl);
   }
 
+  async onPlayerDeath() {
+    // Never persist HP 0: write the slot's floor-entry snapshot back instead.
+    const slotIndex = this.player?.slotIndex;
+    if (slotIndex) {
+      try {
+        await this.gameClient.restartFloor(slotIndex);
+      } catch (err) {
+        console.warn('Failed to restore floor-entry snapshot on death:', err);
+      }
+    }
+    this.showGameOverModal();
+  }
+
+  async retryFloor() {
+    const slotIndex = this.player?.slotIndex;
+    if (!slotIndex) {
+      this.returnToTitle();
+      return;
+    }
+    try {
+      const data = await this.gameClient.restartFloor(slotIndex);
+      await this.transition.run('gameOverToRetry', async () => {
+        this.adoptPlayer(data.player, data.floor);
+        this.logCombat(`Retrying Floor ${this.player.current_floor || 1}/20 from arrival.`, 'system');
+        this.startGameLoop();
+      }, { skippable: false });
+    } catch (err) {
+      console.error('Retry failed:', err);
+      this.returnToTitle();
+    }
+  }
+
   showVictoryModal() {
-    ModalManager.showVictoryModal(this.modalOverlayEl, this.player);
+    ModalManager.showVictoryModal(this.modalOverlayEl, this.player, {
+      onNewGame: () => this.openSlotSelect('create'),
+      onReturnToTitle: () => this.returnToTitle(),
+    });
   }
 
   showGameOverModal() {
-    ModalManager.showGameOverModal(this.modalOverlayEl, this.player);
+    ModalManager.showGameOverModal(this.modalOverlayEl, this.player, {
+      onRetry: () => this.retryFloor(),
+      onContinue: () => this.returnToTitle(),
+    });
   }
 }

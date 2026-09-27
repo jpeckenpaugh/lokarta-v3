@@ -19,9 +19,28 @@
   --mp-blue-glow: rgba(59, 130, 246, 0.4);
   --xp-gold: #f59e0b;
   --xp-gold-glow: rgba(245, 158, 11, 0.4);
+  --ui-scale: 1;
   --font-display: 'Cinzel', 'Trajan Pro', 'Palatino', Georgia, serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+html {
+  font-size: calc(16px * var(--ui-scale, 1));
+}
+
+/* Global reduced-motion: opacity changes stay but become instantaneous. */
+html.reduced-motion *,
+html.reduced-motion *::before,
+html.reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html.input-locked {
+  cursor: progress;
 }
 
 * {
@@ -215,4 +234,112 @@ body {
 .touch-btn:active {
   background: var(--gold-accent);
   color: #050608;
+}
+
+/* ==========================================================================
+   Studio Splash (launch only)
+   ========================================================================== */
+
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 400ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.splash-overlay.splash-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.splash-overlay.splash-hide {
+  opacity: 0;
+}
+
+.splash-overlay svg,
+.splash-logo {
+  width: min(64vw, 640px);
+  height: auto;
+  filter: drop-shadow(0 0 18px var(--gold-glow));
+}
+
+.splash-overlay.splash-visible svg {
+  animation: splashBreath 2.4s ease-in-out infinite;
+}
+
+@keyframes splashBreath {
+  0%, 100% { filter: drop-shadow(0 0 14px var(--gold-glow)); }
+  50% { filter: drop-shadow(0 0 28px var(--gold-glow)); }
+}
+
+/* ==========================================================================
+   Title Ambient Background
+   ========================================================================== */
+
+.title-ambient-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 990;
+  display: none;
+}
+
+.title-ambient-canvas.active {
+  display: block;
+}
+
+/* Let the ambient show through behind the title card only. */
+.modal-overlay.title-active {
+  background: rgba(5, 6, 10, 0.38);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* ==========================================================================
+   Screen Transitions
+   ========================================================================== */
+
+.screen-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: #05060a;
+  opacity: 0;
+  pointer-events: none;
+  transition-property: opacity;
+  transition-timing-function: ease-in-out;
+}
+
+.screen-transition.active {
+  pointer-events: auto;
+}
+
+.transition-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 4px;
+  color: var(--gold-accent);
+  text-shadow: 0 0 18px var(--gold-glow);
+  white-space: nowrap;
+}
+
+.fps-counter {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--blue-accent);
+  background-color: #0b0d14;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
 }

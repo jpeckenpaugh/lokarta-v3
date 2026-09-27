@@ -79,7 +79,7 @@ node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/subm
 - **LOK-15 Golden Equipment Sets:** Verifies the four Golden sets (Magician untouched; Archer Grey Stalker quiver regen/consume/fill; Fighter Vanguard shield bash push+stun+cooldown, wide cleave, fortify; Paladin Radiant Crusader mana-gated holy bubble with absorb intercept) plus rank-to-5 upgrade paths, draft offers, and the Slice-3 monster damage re-tune.
 - **GestureEngine:** Validates key mapping for hotkeys `1`–`9` and `0` to slots 0–9.
 - **GameClient & Worker Protocol:** Tests client initialization and worker RPC lifecycle communication.
-- **JSON Data Catalogs:** Validates schema structure and completeness across all 11 JSON catalogs under `html/data/`.
+- **JSON Data Catalogs:** Validates schema structure and completeness across all 12 JSON catalogs under `html/data/`.
 
 ---
 
@@ -94,7 +94,7 @@ The client application is structured into clean, modular vanilla ES JavaScript s
 | [`html/app.js`](file:///Users/jarad/git/lokarta-v3/html/app.js) | Bootstrap | Main UI Thread | Central loading entry point for application controllers and renderers. |
 | [`html/app/`](file:///Users/jarad/git/lokarta-v3/html/app/) | UI Controller | Main UI Thread | Submodules: `app-controller.js`, `canvas-renderer.js`, `hud-manager.js`, `input-controller.js`, `modal-manager.js`, `sprite-renderer.js`. |
 | [`html/audio/`](file:///Users/jarad/git/lokarta-v3/html/audio/) | Audio Subsystem | Main UI Thread | Web Audio API procedural synthesizer (`audio-system.js`) driven by `sounds.json`. |
-| [`html/data/`](file:///Users/jarad/git/lokarta-v3/html/data/) | Data Catalogs | Shared | 11 JSON data catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tile_themes.json`, `keybindings.json`. |
+| [`html/data/`](file:///Users/jarad/git/lokarta-v3/html/data/) | Data Catalogs | Shared | 12 JSON data catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tile_themes.json`, `keybindings.json`, `ui.json`. |
 | [`html/engine/`](file:///Users/jarad/git/lokarta-v3/html/engine/) | Core Engine | Shared | Submodules: `config.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `entity-ai.js`, `inventory-system.js`, `fate-grant-system.js`, `gesture-engine.js`. |
 | [`html/services/`](file:///Users/jarad/git/lokarta-v3/html/services/) | Services | Shared / Worker | Floor generator (`floor-generator.js`) and IndexedDB persistence (`storage.js`). |
 | [`html/worker/`](file:///Users/jarad/git/lokarta-v3/html/worker/) | Worker RPC | Web Worker Thread | RPC Client (`game-client.js`) and background worker dispatcher (`game-worker.js`). |
