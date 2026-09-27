@@ -80,3 +80,37 @@ The test suite (`html/tests/engine.test.mjs`) validates:
 1. **Zero Backend Required:** Do not add server-side frameworks (FastAPI, Express, Django) or remote database services.
 2. **No Bundlers / Transpilers:** Do not introduce Webpack, Vite, Babel, or npm build scripts into `html/`. Application code must run natively in standard browsers.
 3. **Isolated Scratch Files:** All temporary files, test logs, and experimental scripts must be stored under `./tmp/` which is ignored by `.gitignore`.
+
+---
+
+## 5. Shared Git Hosting (`/repos/lokarta.git`) & Push Workaround
+
+The project's `origin` is a local bare repository at `file:///repos/lokarta.git`, owned by the agent user (`node`). `refs/heads/main` and most of `objects/` are agent-writable, but 19 `objects/<xx>/` fanout directories are owned by `root:root` (created by a root-run process on 2026-09-27 05:14–05:18) and cannot be written by `node`.
+
+When a push contains loose objects that hash into one of those directories, the receive side fails deterministically with:
+
+```text
+remote: error: unable to migrate objects to permanent storage
+```
+
+### Active workaround (non-destructive, reversible)
+
+Keep incoming pushes as **packfiles** in the agent-writable `objects/pack/` instead of exploding them into loose fanout directories:
+
+```sh
+git -C /repos/lokarta.git config receive.unpackLimit 1
+```
+
+This setting is already applied to the shared bare repository, so pushes land normally. Revert with:
+
+```sh
+git -C /repos/lokarta.git config --unset receive.unpackLimit
+```
+
+Do **not** `rm`/`chown`/`chmod` the root-owned directories from an agent run. The permanent fix requires root:
+
+```sh
+chown -R node:1003 /repos/lokarta.git/objects
+```
+
+(or at minimum the 19 root-owned `objects/<xx>` directories). Once that is done the `receive.unpackLimit` workaround can be removed.
