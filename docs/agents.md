@@ -126,7 +126,22 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 
 ---
 
-## 8. 🧪 Testing & Verification Mandate
+## 8. 🚦 QA Gate Policy (v2) — Single-Flight Verification
+
+> [!IMPORTANT]
+> **One QA gate at a time per release candidate.** Verification is a single-flight, SHA-frozen, bounded process owned by the CTO. These five rules are team-visible and mandatory.
+
+1. **Single-flight.** One open QA gate per release candidate (RC). Additional verification requests are created `blocked` on the active gate; never run two verifications at once.
+2. **Frozen RC SHA; batch; re-verify once.** A gate names the exact RC SHA and the exact check list. No in-scope commits land while the gate is open — batch fixes into the next RC. At most one re-verify per RC, and never a duplicate "final verdict" issue.
+3. **One gate owner — the CTO.** The CTO opens the gate on a named SHA, adjudicates the verdict, and closes it. CEO, Producer, Designer, and Engineer request verification *through* the CTO; they do not open parallel gates.
+4. **Bounded runs on the preinstalled tooling.** Standard gate ≤ 30 min; full-epic gate ≤ 60 min. Use the preinstalled headless browser and the in-repo evidence runners — **no runtime installs** (see Section 7 above and the "Tooling: headless browser is preinstalled" directive in the agent instructions). At the time box, QA posts done/remaining/blocker status and the CTO narrows, splits, or escalates.
+5. **Close-out hygiene.** When an issue is closed or cancelled, clear or replace its dependents' `blockedByIssueIds`. A cancelled blocker is never "resolved."
+
+Agent-facing directives: QA `AGENTS.md` (Rules 1, 2, 4), CTO `AGENTS.md` (Rules 1, 2, 3, 5), Engineer `AGENTS.md` (Rule 2, batch + report SHA).
+
+---
+
+## 9. 🧪 Testing & Verification Mandate
 
 > [!IMPORTANT]
 > **Every change must pass the automated test suite before completion.**
@@ -144,7 +159,7 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 
 ---
 
-## 9. Agent Checklist Before Concluding Any Task
+## 10. Agent Checklist Before Concluding Any Task
 
 - [ ] Are all new constants, items, monsters, or abilities defined in `html/data/*.json`?
 - [ ] Are there zero string sniffing checks (e.g. `itemId.includes(...)`) or hardcoded `if/else` ladders?

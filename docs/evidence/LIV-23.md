@@ -12,9 +12,9 @@ EVIDENCE_DIR=docs/evidence node tools/render-slot-evidence.mjs
 ```
 
 `tools/render-slot-evidence.mjs` is the exact runner used for the screenshots
-above; it prints the runtime probes and writes the PNGs. It needs Playwright
-resolvable from the workspace and, in a minimal container, the Chromium system
-libraries (`libglib-2.0`, `libnss3`, `libgbm1`, …).
+above; it prints the runtime probes and writes the PNGs. It uses the
+preinstalled headless browser (Playwright + Chromium); no runtime installs or
+extra system packages are required.
 
 ## Scenario and result
 

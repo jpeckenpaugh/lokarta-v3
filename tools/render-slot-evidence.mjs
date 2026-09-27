@@ -1,19 +1,14 @@
 #!/usr/bin/env node
-// Requires the workspace Playwright install and a running static server on :4173
-// (python3 -m http.server -d html 4173). Chromium may need extra system libs in a
-// minimal container; see docs/evidence/LIV-23.md.
+// Evidence runner for the save-slot UX (LIV-23). Uses the preinstalled headless
+// browser (see the "Tooling: headless browser is preinstalled" directive) and a
+// running static server on :4173 (python3 -m http.server -d html 4173).
+// No runtime installs: `require('playwright')` resolves from any cwd.
 import { createRequire } from 'node:module';
-// Resolve Playwright from the workspace install. In this monorepo the package
-// lives under node_modules/.pnpm; fall back to the mounted app install.
 const require = createRequire(import.meta.url);
-let chromium;
-for (const id of ['playwright', '/app/node_modules/.pnpm/playwright@1.62.1/node_modules/playwright']) {
-  try { ({ chromium } = require(id)); break; } catch {}
-}
-if (!chromium) throw new Error('playwright not resolvable; install it in the workspace first');
+const { chromium } = require('playwright');
 
 const OUT = process.env.EVIDENCE_DIR || 'docs/evidence';
-const browser = await chromium.launch({ channel: 'chromium' });
+const browser = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const page = await ctx.newPage();
 const errors = [];
