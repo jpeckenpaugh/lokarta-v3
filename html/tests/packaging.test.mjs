@@ -338,6 +338,86 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
     }
   });
 
+  await t.test('destructive confirm focuses CANCEL, load-error keeps OK (O1)', () => {
+    const listeners = new Set();
+    const originalWindow = globalThis.window;
+    globalThis.window = {
+      addEventListener: (type, fn) => {
+        if (type === 'keydown') listeners.add(fn);
+      },
+      removeEventListener: (type, fn) => {
+        if (type === 'keydown') listeners.delete(fn);
+      },
+    };
+
+    const focused = [];
+    const makeOverlay = () => ({
+      _keyHandler: null,
+      classList: { add() {}, remove() {}, contains() { return false; } },
+      innerHTML: '',
+      querySelector: selector => ({
+        addEventListener() {},
+        focus() { focused.push(selector); },
+      }),
+      querySelectorAll: () => [],
+    });
+
+    try {
+      // DELETE SLOT / OVERWRITE SLOT pass danger: true.
+      focused.length = 0;
+      ModalManager.showConfirmModal(makeOverlay(), {
+        title: 'DELETE SLOT 1?',
+        body: 'This permanently deletes MAGICIAN — Level 4, Floor 3. This cannot be undone.',
+        confirmLabel: 'DELETE',
+        danger: true,
+        onConfirm() {},
+        onCancel() {},
+      });
+      assert.deepEqual(focused, ['#confirm-cancel'], 'danger confirm defaults focus to CANCEL');
+
+      // RESET OPTIONS is destructive to saved preferences too (spec §3.2).
+      focused.length = 0;
+      ModalManager.showConfirmModal(makeOverlay(), {
+        title: 'RESET OPTIONS?',
+        body: 'All options return to their default values. Save slots are not affected.',
+        confirmLabel: 'RESET',
+        danger: true,
+        onConfirm() {},
+        onCancel() {},
+      });
+      assert.deepEqual(focused, ['#confirm-cancel'], 'RESET OPTIONS focuses CANCEL');
+
+      // The non-destructive load-error OK/BACK dialog keeps its primary focus.
+      focused.length = 0;
+      ModalManager.showConfirmModal(makeOverlay(), {
+        title: 'COULD NOT LOAD SLOT 1',
+        body: 'Could not load Slot 1. Try again.',
+        confirmLabel: 'OK',
+        cancelLabel: 'BACK',
+        onConfirm() {},
+        onCancel() {},
+      });
+      assert.deepEqual(focused, ['#confirm-ok'], 'non-destructive dialog keeps OK focus');
+
+      // Escape cancels the destructive confirm and never confirms it.
+      let confirmed = 0;
+      let cancelled = 0;
+      ModalManager.showConfirmModal(makeOverlay(), {
+        title: 'DELETE SLOT 1?',
+        danger: true,
+        onConfirm: () => { confirmed += 1; },
+        onCancel: () => { cancelled += 1; },
+      });
+      const escape = { key: 'Escape', preventDefault() {} };
+      for (const fn of [...listeners]) fn(escape);
+      assert.equal(confirmed, 0, 'Escape never confirms a destructive dialog');
+      assert.equal(cancelled, 1, 'Escape cancels the destructive dialog exactly once');
+      assert.equal(listeners.size, 0, 'Escape removes its own handler');
+    } finally {
+      globalThis.window = originalWindow;
+    }
+  });
+
   await t.test('InputController only opens pause from unpaused gameplay (D1)', () => {
     const listeners = new Set();
     const originalWindow = globalThis.window;

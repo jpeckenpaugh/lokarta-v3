@@ -369,6 +369,9 @@ export class LokartaApp {
       title: 'RESET OPTIONS?',
       body: 'All options return to their default values. Save slots are not affected.',
       confirmLabel: 'RESET',
+      // Destructive to the user's saved preferences; the spec (§3.2) requires a
+      // safe default focus on CANCEL.
+      danger: true,
       onConfirm: async () => {
         let options = normalizeOptions(null);
         try {

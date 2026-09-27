@@ -383,7 +383,15 @@ export class ModalManager {
     };
     modalOverlayEl.querySelector('#confirm-cancel')?.addEventListener('click', cancel);
     modalOverlayEl.querySelector('#confirm-ok')?.addEventListener('click', confirm);
-    modalOverlayEl.querySelector('#confirm-ok')?.focus?.();
+
+    // Error prevention (packaging-design.md §4.4, §3.2): a destructive confirm
+    // lands focus on CANCEL so a reflexive `Enter` cancels instead of deleting
+    // or overwriting data. Non-destructive dialogs (e.g. the load-error OK/BACK
+    // dialog) keep focus on their primary OK button.
+    const safeFocusTarget = opts.danger
+      ? modalOverlayEl.querySelector('#confirm-cancel')
+      : modalOverlayEl.querySelector('#confirm-ok');
+    safeFocusTarget?.focus?.();
 
     const keyHandler = e => {
       if (e.key === 'Escape') {
