@@ -464,4 +464,17 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
       globalThis.document = originalDocument;
     }
   });
+
+  await t.test('global :focus-visible ring is token-only (LIV-22)', () => {
+    const css = readFileSync(resolve(process.cwd(), 'html/styles/base.css'), 'utf8');
+    for (const token of ['--focus-ring-color', '--focus-ring-width', '--focus-ring-offset']) {
+      assert.match(css, new RegExp(`${token}\\s*:`), `${token} defined in the token layer`);
+    }
+    const rule = css.match(/:focus-visible[^{]*\{[^}]*\}/);
+    assert.ok(rule, 'a :focus-visible rule exists');
+    assert.match(rule[0], /var\(--focus-ring-color\)/);
+    assert.match(rule[0], /var\(--focus-ring-width\)/);
+    assert.match(rule[0], /var\(--focus-ring-offset\)/);
+    assert.doesNotMatch(rule[0], /#[0-9a-fA-F]{3,8}\b/, 'component rule uses no raw hex');
+  });
 });
