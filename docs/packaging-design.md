@@ -28,6 +28,7 @@ storage schema, and test assertions. Where a choice is low-stakes it is called o
 | 3 | Options | 8 persisted options in `game_settings/options`; apply immediately; `RESET TO DEFAULTS`; no music option (no music system exists). |
 | 4 | Save slots | 5 fixed slots in new `save_slots` + `slot_floors` stores at `DB_VERSION = 2`; legacy single save migrates to **Slot 1**, non-destructively. |
 | 5 | Transitions | Timed/whitelisted transition controller; **Retry** and **Continue** both restore the current floor's arrival state — Retry stays in-game, Continue returns to title. |
+| 6 | Keyboard focus | One global, token-only `:focus-visible` ring (`--gold-accent`, 2px + 2px gap) on every interactive control; pointer-initiated focus renders no ring. See §10. |
 
 New files: `html/app/splash-screen.js`, `html/app/title-ambient.js`,
 `html/app/transition-controller.js`, `html/data/ui.json`, `html/assets/livive-studios-lockup.svg`,
@@ -595,7 +596,7 @@ lists with `uiMove`, `uiBack`.
 | `html/audio/audio-system.js` | `setVolume(v)`; master gain `= 0.5 × v/100`. |
 | `html/data/ui.json` *(new)* + `html/data/index.js` | Presentation catalog + barrel export `UI_CATALOG`. |
 | `html/data/sounds.json` | Add `uiMove`, `uiBack`. |
-| `html/styles/base.css` | `--ui-scale` token, `html.reduced-motion` block, splash/transition base styles. |
+| `html/styles/base.css` | `--ui-scale` token, `html.reduced-motion` block, splash/transition base styles, `--focus-*` tokens + global `:focus-visible` ring (§10). |
 | `html/styles/modals.css` | Title/options/slot-select/confirm components, card states. |
 | `html/styles/hud.css` | `calc()`-based scaling for `--ui-scale`. |
 | `html/assets/livive-studios-{lockup,mark}.svg` | New logo assets. |
@@ -661,3 +662,132 @@ with the SVG fetch blocked (fallback path).
 | Adding sounds breaks count assertions | Explicitly bump 19 → 21 in both test files (§6.2). |
 | Logo font mismatch standalone vs inlined | Splash inlines the SVG so Cinzel applies; declares a Georgia serif fallback. |
 | Death resumes at low HP | Death writes the `floorEntry` snapshot, never HP 0 (§5.4). |
+
+---
+
+## 10. Keyboard focus treatment (`:focus-visible`)
+
+**Origin:** non-blocking [LIV-21](/LIV/issues/LIV-21) observation on [LIV-20](/LIV/issues/LIV-20).
+`html/styles/*.css` defined no app-level focus style, so keyboard users only saw the Chromium UA
+ring — and a pointer-opened destructive confirm, whose programmatic `.focus()` lands on
+`#confirm-cancel`, rendered no ring at all. This section is the design decision; implementation is
+delegated to the Engineer.
+
+### 10.1 Decision
+
+| # | Question | Decision |
+| :-- | :-- | :-- |
+| 1 | Keyboard indicator | **One global, on-brand ring** on every interactive control via `:focus-visible`. |
+| 2 | Ring skin | `var(--focus-ring-width)` solid `var(--focus-ring-color)` (aliases `--gold-accent`) with a `var(--focus-ring-offset)` gap. |
+| 3 | Pointer-opened dialogs | **No ring.** Keep LIV-20's invisible `#confirm-cancel` default focus; the ring appears only once the user interacts by keyboard. |
+| 4 | Token rule | Values live in the `:root` token layer; the component rule references only `var(--focus-*)`. |
+
+### 10.2 Tokens — add to `html/styles/base.css` `:root`
+
+```css
+  /* Keyboard focus indicator (packaging-design.md §10) */
+  --focus-ring-color: var(--gold-accent);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+```
+
+- `--focus-ring-color` aliases an existing brand token; **no new color is introduced**.
+- Width and offset are deliberately fixed **px**, not `rem`: `html { font-size: calc(16px * var(--ui-scale)) }`
+  would shrink a rem-based ring to ~1.7 px at `uiScale: small`, below the 2 px WCAG 2.4.13 floor. A
+  fixed 2 px ring stays compliant at every UI scale. Defining the numbers once in the token layer
+  keeps the component rule free of raw values.
+
+### 10.3 Rule — add to `html/styles/base.css` (after the `html.input-locked` block)
+
+```css
+/* Keyboard focus indicator. :focus-visible is the modality heuristic: it matches
+   keyboard and assistive-tech focus, and stays off for the programmatic .focus()
+   a pointer click performs (showConfirmModal's #confirm-cancel safe default).
+   outline (not box-shadow) so the ring composes with the existing hover glows. */
+:where(button, [role='button'], a[href], input, select, textarea, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+```
+
+### 10.4 Why this works (evidence)
+
+- **Color-independent** (WCAG 1.4.1): the only difference the ring makes is shape — a 2 px ring
+  separated from the control by a 2 px gap. It reads in a monochrome or color-blind rendering.
+- **Contrast** (WCAG 1.4.11 / 2.4.13): `--gold-accent` `#e5b95c` is **9.7:1** against the modal
+  panel `#141722` and higher against the darker card surfaces. The 2 px offset puts the ring's inner
+  edge over the dark panel rather than over the control's own border, so it stays legible on the gold
+  `.action-btn`, the red `.action-btn.danger`, and the blue `.title-btn.continue-btn` skins.
+- **Composes with state styles**: `outline` is independent of the `box-shadow` glows used by
+  `.title-btn:hover`, `.action-btn:hover`, and `.fate-card.selected`, so focus never erases a hover
+  glow and a hover never hides the ring.
+- **Low specificity**: `:where()` keeps the selector at specificity 0, so a future component style
+  can override it without `!important`.
+- **Motion-safe**: a static outline, no transition — unaffected by `html.reduced-motion`.
+
+### 10.5 Covered controls
+
+`button` covers every built-in control: `.title-btn`, `.action-btn` (including `.danger`),
+`.select-btn`, `.confirm-draft-btn`, `.option-toggle`, `.option-seg`, `.header-btn`, `.audio-btn`,
+`.touch-btn`, `#confirm-cancel`, and `#confirm-ok`. `input` covers `.option-slider`.
+`[role='button']` / `[tabindex]` future-proof custom controls.
+
+### 10.6 Pointer-opened dialogs — decision and rationale
+
+**No forced ring.** Rationale:
+
+1. `:focus-visible` is exactly the right mechanism. Chromium and Firefox do not match it for a
+   `.focus()` call that follows a pointer gesture, so mouse users get no ring — which is correct:
+   the pointer user can already see the button they clicked, and a ring would falsely signal
+   "keyboard mode".
+2. LIV-20's safe default (focus `#confirm-cancel` so a reflexive `Enter` cancels) is an
+   error-prevention measure for keyboard users. For a pointer user it is invisible and harmless; it
+   must not become a visible "selected" state that would make `Enter`-to-cancel look like an active
+   choice.
+3. Any later keyboard interaction switches modality: the next `Tab`/`Shift+Tab` moves focus and the
+   ring appears on the newly focused control.
+
+Considered and rejected: styling plain `:focus` (would ring every mouse click and programmatic
+focus), and giving the confirm dialog a visible default-action highlight (would compete with the
+danger styling and imply `Enter` confirms). If a future dialog needs to advertise its primary action
+to pointer users, use a dedicated filled-button treatment, not the focus ring — the ring must stay
+exclusive to keyboard focus to remain a reliable modality signal.
+
+### 10.7 Verification
+
+**Native test (`html/tests/packaging.test.mjs`)** — the Engineer adds:
+
+```js
+await t.test('global :focus-visible ring is token-only (LIV-22)', () => {
+  const css = readFileSync(resolve(process.cwd(), 'html/styles/base.css'), 'utf8');
+  for (const token of ['--focus-ring-color', '--focus-ring-width', '--focus-ring-offset']) {
+    assert.match(css, new RegExp(`${token}\\s*:`), `${token} defined in the token layer`);
+  }
+  const rule = css.match(/:focus-visible[^{]*\{[^}]*\}/);
+  assert.ok(rule, 'a :focus-visible rule exists');
+  assert.match(rule[0], /var\(--focus-ring-color\)/);
+  assert.match(rule[0], /var\(--focus-ring-width\)/);
+  assert.match(rule[0], /var\(--focus-ring-offset\)/);
+  assert.doesNotMatch(rule[0], /#[0-9a-fA-F]{3,8}\b/, 'component rule uses no raw hex');
+});
+```
+
+**Browser QA:**
+
+- `Tab` through the title menu: each focused row shows a 2 px gold ring with a 2 px gap, distinct
+  from the gold hover / `selected` fill.
+- Open `DELETE SLOT n?` with the mouse: `#confirm-cancel` shows **no** ring; `Enter` cancels.
+- Open `DELETE SLOT n?` from the keyboard (focus `DELETE`, press `Enter`): `#confirm-cancel` shows
+  the ring; `Enter` cancels.
+- Open a confirm with the mouse, then press `Tab`: the ring appears on the newly focused control.
+- Verify the ring on every skin: `.action-btn`, `.action-btn.danger`, `.title-btn.continue-btn`,
+  `.option-toggle`, `.option-seg`, `.confirm-draft-btn`, `.option-slider`.
+- At 200% browser zoom and `uiScale: small`/`xlarge`: the ring stays 2 px and aligned.
+
+### 10.8 Adjacent finding (out of scope — recommend follow-up)
+
+`.fate-card` in the Fate Grant draft is a click-only `<div>` (no `tabindex`, no `role`, no key
+handler), so keyboard users cannot draft cards at all — only the disabled `#confirm-draft-btn` is a
+button. A focus ring cannot help a control that cannot receive focus. Recommended follow-up: render
+each card as a `<button>`, expose selection with `aria-pressed`, and support Arrow-key movement
+within the grid. Not part of this issue; flag for the Producer/CTO to schedule.
