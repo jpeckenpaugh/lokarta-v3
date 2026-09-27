@@ -192,6 +192,77 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
     assert.equal(slotSummary({ ...occupied, vocation: null }), 'DATA UNAVAILABLE');
   });
 
+  await t.test('corrupt slot row renders DATA UNAVAILABLE composition with DELETE only (D4)', () => {
+    let html = '';
+    const makeOverlay = () => ({
+      _keyHandler: null,
+      classList: { add() {}, remove() {}, contains() { return false; } },
+      get innerHTML() { return html; },
+      set innerHTML(value) { html = value; },
+      querySelector: () => ({ addEventListener() {} }),
+      querySelectorAll: () => [],
+    });
+
+    const occupied = deriveSlotMeta(
+      {
+        id: 'char_slot_1',
+        vocation: 'archer',
+        level: 3,
+        current_floor: 4,
+        hp: 10,
+        max_hp: 40,
+        mana: 5,
+        max_mana: 40,
+        x: 1,
+        y: 1,
+        xp: 0,
+        action_bar: [],
+        backpack: [],
+        paperdoll: {},
+        skillBoosts: {},
+      },
+      1
+    );
+    // Malformed occupied record (missing vocation) and an unknown status value
+    // must both render as DATA UNAVAILABLE, never as a fake slot.
+    const malformed = { ...occupied, id: 'slot_2', slotIndex: 2, characterId: 'char_slot_2', vocation: null };
+    const unknownStatus = { ...emptySlotRecord(3), status: 'mystery' };
+    const empty = emptySlotRecord(4);
+
+    ModalManager.showSlotSelectModal(
+      makeOverlay(),
+      { slots: [occupied, malformed, unknownStatus, empty], mode: 'manage' },
+      {}
+    );
+
+    assert.equal((html.match(/slot-card corrupt/g) || []).length, 2, 'malformed + unknown status rows are corrupt');
+    assert.equal((html.match(/slot-card occupied/g) || []).length, 1, 'valid occupied row still renders');
+    assert.equal((html.match(/slot-card empty/g) || []).length, 1, 'unused slot still renders empty');
+
+    const segments = html.split('<div class="slot-card').slice(1);
+    const corrupt = segments.filter(s => s.startsWith(' corrupt"'));
+    assert.equal(corrupt.length, 2);
+
+    for (const [segment, slotIndex] of [[corrupt[0], 2], [corrupt[1], 3]]) {
+      assert.ok(
+        segment.includes(`<div class="slot-badge">SLOT ${slotIndex}</div>`),
+        `SLOT ${slotIndex} badge is its own mono element like every other row`
+      );
+      assert.ok(
+        segment.includes('<div class="slot-title"><strong>DATA UNAVAILABLE</strong></div>'),
+        'title reads DATA UNAVAILABLE, never a fabricated vocation/level'
+      );
+      assert.ok(
+        segment.includes('This save record is unreadable. Delete it to reuse the slot.'),
+        'subcopy present'
+      );
+      assert.equal((segment.match(/data-action="delete"/g) || []).length, 1, 'exactly one DELETE action');
+      assert.equal((segment.match(/data-action="load"/g) || []).length, 0, 'no LOAD action on a corrupt row');
+      assert.equal((segment.match(/data-action="overwrite"/g) || []).length, 0, 'no OVERWRITE action on a corrupt row');
+      assert.ok(!/UNKNOWN|Level \d|Floor \d/.test(segment), 'corrupt row fabricates no vocation/level/floor');
+    }
+  });
+
   await t.test('every literal OpenMoji asset referenced by app code exists (D2)', () => {
     const appDir = resolve(process.cwd(), 'html', 'app');
     const missing = [];

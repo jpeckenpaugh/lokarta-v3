@@ -788,7 +788,6 @@
 .slot-card.corrupt {
   border-style: dashed;
   border-color: var(--hp-red);
-  justify-content: space-between;
 }
 
 .slot-card.corrupt .slot-title strong {

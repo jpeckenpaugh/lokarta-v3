@@ -276,10 +276,14 @@ export class ModalManager {
         // A record that is neither a valid empty slot nor a loadable save is
         // corrupt/unknown: render DATA UNAVAILABLE with DELETE only (spec §4.2).
         if (kind === 'unavailable') {
+          // Composition matches an occupied row (spec §4.2): mono slot badge,
+          // then the DATA UNAVAILABLE title + subcopy, DELETE only. The words
+          // carry the corrupt state, not the red border (WCAG 1.4.1).
           return `
           <div class="slot-card corrupt" data-slot="${index}" data-status="unavailable">
+            <div class="slot-badge">SLOT ${index}</div>
             <div class="slot-info">
-              <div class="slot-title"><strong>SLOT ${index} — DATA UNAVAILABLE</strong></div>
+              <div class="slot-title"><strong>DATA UNAVAILABLE</strong></div>
               <div class="slot-sub">This save record is unreadable. Delete it to reuse the slot.</div>
             </div>
             <div class="slot-actions">
