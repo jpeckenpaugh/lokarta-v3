@@ -11,5 +11,16 @@
     "shadow_cultist": { "kind": "monster", "file": "./monsters/shadow_cultist.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "elite_cultist": { "kind": "monster", "file": "./monsters/elite_cultist.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "abyssal_overlord": { "kind": "monster", "file": "./monsters/abyssal_overlord.json", "native": { "w": 48, "h": 48 }, "anchor": { "x": 24, "y": 46 } }
+  },
+  "props": {
+    "key_copper": { "kind": "item", "tier": "copper", "file": "./items/key_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },
+    "key_silver": { "kind": "item", "tier": "silver", "file": "./items/key_silver.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },
+    "key_gold": { "kind": "item", "tier": "gold", "file": "./items/key_gold.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },
+    "chest_copper": { "kind": "prop", "tier": "copper", "file": "./items/chest_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["closed", "open"] },
+    "chest_silver": { "kind": "prop", "tier": "silver", "file": "./items/chest_silver.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["closed", "open"] },
+    "chest_gold": { "kind": "prop", "tier": "gold", "file": "./items/chest_gold.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["closed", "open"] },
+    "gated_door_copper": { "kind": "tile", "tier": "copper", "file": "./tiles/gated_door_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["closed", "open"] },
+    "gated_door_silver": { "kind": "tile", "tier": "silver", "file": "./tiles/gated_door_silver.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["closed", "open"] },
+    "gated_door_gold": { "kind": "tile", "tier": "gold", "file": "./tiles/gated_door_gold.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["closed", "open"] }
   }
 }

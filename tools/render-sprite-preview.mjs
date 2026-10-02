@@ -167,6 +167,21 @@ export function exportPreviews(outDir = DEFAULT_OUT) {
   const combinedDest = path.join(outDir, 'sheet.png');
   fs.writeFileSync(combinedDest, encodePNG(combined.W, combined.H, combined.buf));
   written.push(combinedDest);
+
+  // Prop/tile art (keys, chests, gated doors) — same pipeline, flat frame map.
+  if (manifest.props) {
+    const propTiles = [];
+    for (const [id, meta] of Object.entries(manifest.props)) {
+      const def = JSON.parse(fs.readFileSync(path.join(SPRITES_DIR, meta.file), 'utf8'));
+      for (const fid of Object.keys(def.frames)) propTiles.push(frameTile(def, fid, SCALE));
+    }
+    if (propTiles.length) {
+      const sheet = compose(propTiles, 6);
+      const dest = path.join(outDir, 'props.png');
+      fs.writeFileSync(dest, encodePNG(sheet.W, sheet.H, sheet.buf));
+      written.push(dest);
+    }
+  }
   return written;
 }
 

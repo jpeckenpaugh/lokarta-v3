@@ -5,8 +5,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-import { SPRITE_CATALOG, SPRITE_MANIFEST } from '../assets/sprites/index.js';
-import { VOCATIONS_CATALOG, MONSTERS_CATALOG } from '../data/index.js';
+import { SPRITE_CATALOG, SPRITE_MANIFEST, PROP_CATALOG, PROP_MANIFEST, PROP_IDS_BY_TIER } from '../assets/sprites/index.js';
+import { VOCATIONS_CATALOG, MONSTERS_CATALOG, TILE_THEMES_CATALOG } from '../data/index.js';
 import { CONFIG } from '../engine/index.js';
 import {
   SpriteRenderer,
@@ -19,6 +19,7 @@ import {
   resolveSpriteFrame,
 } from '../app/sprite-renderer.js';
 import { exportPreviews } from '../../tools/render-sprite-preview.mjs';
+import { validatePropAssets } from '../../tools/validate-prop-assets.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -268,5 +269,70 @@ test('Sprite assets (LIV-10)', async t => {
     assert.ok(renderer.ctx.calls.some(c => c.name === 'fillRect'), 'render loop drew pixels');
     // Monster health bar (hp < max_hp) must be drawn.
     assert.ok(renderer.ctx.calls.filter(c => c.name === 'fillRect').length > 10, 'expected many fillRect calls');
+  });
+});
+
+test('Prop & tower tile assets (LIV-7)', async t => {
+  await t.test('14. prop manifest covers keys, chests and gated doors per tier', () => {
+    const expected = [
+      'key_copper', 'key_silver', 'key_gold',
+      'chest_copper', 'chest_silver', 'chest_gold',
+      'gated_door_copper', 'gated_door_silver', 'gated_door_gold',
+    ];
+    for (const id of expected) {
+      assert.ok(PROP_MANIFEST[id], `manifest missing prop ${id}`);
+      assert.ok(PROP_CATALOG[id], `catalog missing prop ${id}`);
+      const file = path.join(SPRITES_DIR, PROP_MANIFEST[id].file);
+      assert.ok(fs.existsSync(file), `prop file missing for ${id}: ${file}`);
+    }
+    // Tier resolver stays in sync with the catalog.
+    for (const [tier, ids] of Object.entries(PROP_IDS_BY_TIER)) {
+      for (const id of Object.values(ids)) {
+        assert.ok(PROP_CATALOG[id], `PROP_IDS_BY_TIER.${tier} -> ${id} not in catalog`);
+      }
+    }
+  });
+
+  await t.test('15. prop geometry, palette and per-tier rim contrast hold', () => {
+    const { errors } = validatePropAssets({ spritesDir: SPRITES_DIR });
+    assert.deepEqual(errors, [], `prop validator reported: ${errors.join('; ')}`);
+  });
+
+  await t.test('16. key/chest/door tiers differ structurally (non-color cue)', () => {
+    const rows = d => Object.values(d.frames)[0];
+    const count = (d, pred) => rows(d).reduce((n, r) => n + [...r].filter(pred).length, 0);
+    // Doors: gold adds studs and a crown emblem; at least as many metal pixels as copper.
+    const copperDoor = count(PROP_CATALOG.gated_door_copper, ch => ch === 'b');
+    const goldDoor = count(PROP_CATALOG.gated_door_gold, ch => ch === 'b' || ch === 'c');
+    assert.ok(goldDoor > copperDoor, 'gold door must add structural metal over copper');
+    // Keys: gold ring carries a gem accent the lower tiers do not.
+    assert.ok(PROP_CATALOG.key_gold.palette.i && PROP_CATALOG.key_gold.frames.icon.some(r => r.includes('i')), 'gold key gem accent');
+  });
+
+  await t.test('17. every tower level defines a full, distinct tile theme', () => {
+    const levels = TILE_THEMES_CATALOG.levels;
+    assert.ok(levels, 'tile_themes.levels missing');
+    assert.equal(Object.keys(levels).length, 5, 'expected 5 tower levels');
+    const seen = new Set();
+    for (const [n, lv] of Object.entries(levels)) {
+      for (const key of ['wall', 'floor', 'stairs', 'door']) {
+        assert.ok(lv[key], `level ${n} missing ${key} theme`);
+      }
+      assert.ok(lv.features && lv.features.banner && lv.features.sconce && lv.features.window, `level ${n} missing features`);
+      assert.match(lv.floor.fill, /^#[0-9a-f]{6}$/i, `level ${n} floor not a hex`);
+      // Actor rim gate: floor luminance must stay dark for >=3:1 actor rims.
+      assert.ok(luminance(lv.floor.fill) <= 0.02, `level ${n} floor too bright (${luminance(lv.floor.fill)})`);
+      seen.add(lv.wall.fill);
+    }
+    assert.equal(seen.size, 5, 'each level must have a distinct wall fill');
+  });
+
+  await t.test('18. committed props preview matches a fresh export (no drift)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'lokarta-props-'));
+    exportPreviews(tmp);
+    const propsPath = path.join(PREVIEW_DIR, 'props.png');
+    assert.ok(fs.existsSync(propsPath), 'docs/art-preview/props.png missing');
+    assert.ok(fs.readFileSync(propsPath).equals(fs.readFileSync(path.join(tmp, 'props.png'))), 'props preview drift');
+    fs.rmSync(tmp, { recursive: true, force: true });
   });
 });
