@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { SPRITE_CATALOG, SPRITE_MANIFEST, PROP_CATALOG, PROP_MANIFEST, PROP_IDS_BY_TIER } from '../assets/sprites/index.js';
 import { VOCATIONS_CATALOG, MONSTERS_CATALOG, TILE_THEMES_CATALOG } from '../data/index.js';
-import { CONFIG } from '../engine/index.js';
+import { CONFIG, TILE_TYPES } from '../engine/index.js';
 import {
   SpriteRenderer,
   parseFrame,
@@ -17,6 +17,9 @@ import {
   OUTLINE_COLOR,
   resolveSpriteId,
   resolveSpriteFrame,
+  themeForFloor,
+  wallFeatureFor,
+  resolvePropId,
 } from '../app/sprite-renderer.js';
 import { exportPreviews } from '../../tools/render-sprite-preview.mjs';
 import { validatePropAssets } from '../../tools/validate-prop-assets.mjs';
@@ -334,5 +337,119 @@ test('Prop & tower tile assets (LIV-7)', async t => {
     assert.ok(fs.existsSync(propsPath), 'docs/art-preview/props.png missing');
     assert.ok(fs.readFileSync(propsPath).equals(fs.readFileSync(path.join(tmp, 'props.png'))), 'props preview drift');
     fs.rmSync(tmp, { recursive: true, force: true });
+  });
+});
+
+test('Tower art integration (LIV-12)', async t => {
+  await t.test('19. themeForFloor merges level theme over root and falls back', () => {
+    const root = TILE_THEMES_CATALOG;
+    const l3 = themeForFloor(3);
+    assert.equal(l3.name, root.levels['3'].name, 'floor 3 must resolve its level theme');
+    assert.equal(l3.wall.fill, root.levels['3'].wall.fill);
+    assert.ok(l3.floor && l3.floor.fill, 'merged theme keeps root floor');
+    // Every tower level resolves to a distinct wall fill.
+    const fills = new Set([1, 2, 3, 4, 5].map(n => themeForFloor(n).wall.fill));
+    assert.equal(fills.size, 5, 'per-level wall fills must be distinct');
+    // Out-of-range floors fall back to the legacy root catalog.
+    for (const bad of [0, -1, 6, 99, NaN, undefined, null]) {
+      assert.equal(themeForFloor(bad), root, `floor ${bad} should fall back to root`);
+    }
+  });
+
+  await t.test('20. wall motifs are deterministic and gated on tile context', () => {
+    const level2 = themeForFloor(2);
+    const first = wallFeatureFor(3, 4, level2, true, true, false);
+    assert.equal(wallFeatureFor(3, 4, level2, true, true, false), first, 'pure hash: repeatable');
+    assert.equal(wallFeatureFor(3, 4, TILE_THEMES_CATALOG, true, true, false), null, 'no features without decor');
+
+    const find = (theme, flags, want) => {
+      for (let y = 0; y < 60; y++) {
+        for (let x = 0; x < 60; x++) {
+          const [below, adjacent, near] = flags;
+          if (wallFeatureFor(x, y, theme, below, adjacent, near) === want) return { x, y };
+        }
+      }
+      return null;
+    };
+
+    const sconce = find(level2, [true, true, false], 'sconce');
+    const banner = find(level2, [true, true, false], 'banner');
+    const windowTile = find(themeForFloor(3), [false, false, false], 'window');
+    assert.ok(sconce, 'level 2 should place sconces on wall-with-floor-below');
+    assert.ok(banner, 'level 2 should place banners away from doors');
+    assert.ok(windowTile, 'level 3 should place windows on wall-without-floor-neighbour');
+
+    // A door within 2 tiles suppresses the banner motif.
+    assert.notEqual(wallFeatureFor(banner.x, banner.y, level2, true, true, true), 'banner');
+    // Banners need a wall tile: they still require decor, not a floor tile below.
+    assert.equal(wallFeatureFor(sconce.x, sconce.y, level2, true, true, false), 'sconce');
+  });
+
+  await t.test('21. gated doors blit the tier prop and fall back without a tier', () => {
+    const level1 = themeForFloor(1);
+    const ctx = makeFakeCtx();
+    SpriteRenderer.drawTile(ctx, TILE_TYPES.GATED_DOOR, 0, 0, 64, { theme: level1, tier: 'gold', open: false });
+    assert.ok(ctx.calls.filter(c => c.name === 'fillRect').length > 50, 'closed gold door should blit prop pixels');
+
+    const ctxOpen = makeFakeCtx();
+    SpriteRenderer.drawTile(ctxOpen, TILE_TYPES.GATED_DOOR, 0, 0, 64, { theme: level1, tier: 'gold', open: true });
+    assert.ok(ctxOpen.calls.filter(c => c.name === 'fillRect').length > 50, 'open gold door should blit prop pixels');
+
+    const ctxFallback = makeFakeCtx();
+    SpriteRenderer.drawTile(ctxFallback, TILE_TYPES.GATED_DOOR, 0, 0, 64, { theme: level1 });
+    assert.ok(ctxFallback.calls.filter(c => c.name === 'fillRect').length < 50, 'no tier should use procedural fallback');
+  });
+
+  await t.test('22. keys/chests resolve tier props; non-prop items fall back', () => {
+    assert.equal(resolvePropId({ type: 'key', keyTier: 'silver' }), 'key_silver');
+    assert.equal(resolvePropId({ type: 'chest', chestTier: 'gold' }), 'chest_gold');
+    assert.equal(resolvePropId({ type: 'chest', tier: 'copper' }), 'chest_copper');
+    assert.equal(resolvePropId({ type: 'key' }), null, 'missing tier must not resolve');
+    assert.equal(resolvePropId({ type: 'consumable', item_id: 'health_potion' }), null);
+
+    const keyCtx = makeFakeCtx();
+    SpriteRenderer.drawItem(keyCtx, { type: 'key', item_id: 'key_copper', keyTier: 'copper', quantity: 1 }, 0, 0, 64);
+    assert.ok(keyCtx.calls.filter(c => c.name === 'fillRect').length > 50, 'copper key should blit prop pixels');
+
+    const chestCtx = makeFakeCtx();
+    SpriteRenderer.drawItem(chestCtx, { type: 'chest', item_id: 'chest_silver', chestTier: 'silver', opened: true, quantity: 1 }, 0, 0, 64);
+    assert.ok(chestCtx.calls.filter(c => c.name === 'fillRect').length > 50, 'open silver chest should blit prop pixels');
+
+    const potionCtx = makeFakeCtx();
+    assert.doesNotThrow(() => {
+      SpriteRenderer.drawItem(potionCtx, { type: 'consumable', item_id: 'health_potion', quantity: 2 }, 0, 0, 64);
+    });
+    assert.equal(potionCtx.calls.some(c => c.name === 'drawImage'), false, 'no sprite blit for procedural items');
+  });
+
+  await t.test('23. full render pass applies the level theme and door tiers', async () => {
+    const { CanvasRenderer } = await import('../app/canvas-renderer.js');
+    const { GridMap, createPlayer } = await import('../engine/index.js');
+    const { createAnimState } = await import('../app/animation-state.js');
+
+    const gridMap = new GridMap();
+    const matrix = Array.from({ length: 6 }, () => Array.from({ length: 6 }, () => TILE_TYPES.FLOOR));
+    gridMap.loadFromMatrix(matrix);
+    const gate = gridMap.getTile(3, 3);
+    gate.type = TILE_TYPES.GATED_DOOR;
+    gate.gateTier = 'silver';
+
+    const player = createPlayer('magician');
+    player.x = 1;
+    player.y = 1;
+    player.current_floor = 3;
+    player.facing = 'down';
+    player.anim = createAnimState('down');
+    gridMap.tiles[1][1].isLit = true;
+    gridMap.tiles[3][3].isLit = true;
+
+    const renderer = new CanvasRenderer(null);
+    renderer.canvas = { width: 256, height: 256 };
+    renderer.ctx = makeFakeCtx();
+
+    assert.doesNotThrow(() => {
+      renderer.render(gridMap, player, [], [], [], [], null, [], []);
+    });
+    assert.ok(renderer.ctx.calls.filter(c => c.name === 'fillRect').length > 50, 'silver gate prop should blit');
   });
 });

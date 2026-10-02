@@ -12,7 +12,7 @@
 
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
 import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
-import { SPRITE_CATALOG } from '../assets/sprites/index.js';
+import { SPRITE_CATALOG, PROP_CATALOG, PROP_IDS_BY_TIER } from '../assets/sprites/index.js';
 import { dirFromFacing, resolveFrameIndex } from './animation-state.js';
 
 // Minimal hairline guard so 1px strokes stay visible even if GRID_SIZE shrinks.
@@ -21,9 +21,131 @@ const HAIRLINE = (u) => Math.max(1, u);
 export const SPRITE_NATIVE = 32;
 export const OUTLINE_COLOR = '#0b0d12';
 export const HIT_TINT = '#ff4d4d';
+export const TOWER_LEVEL_COUNT = 5;
+
+/** Chest tier fallback tints (used only when the authored prop is missing). */
+const TIER_TINTS = {
+  copper: { light: '#e8a86a', dark: '#7a4a1e' },
+  silver: { light: '#dfe3ea', dark: '#7c8290' },
+  gold: { light: '#fde68a', dark: '#b45309' },
+};
+
+/**
+ * Resolves the tile theme for a run floor. Merges `tile_themes.levels[n]` over
+ * the legacy root catalog so per-level variation ships as data only; out-of-range
+ * floors fall back to the root object. See docs/art-direction-tower.md §2.
+ * @param {number} floorNumber
+ * @returns {object} theme object with wall/floor/stairs/door (+ features/decor when leveled)
+ */
+export function themeForFloor(floorNumber) {
+  const n = Math.floor(Number(floorNumber));
+  const levels = TILE_THEMES_CATALOG.levels;
+  if (!levels || !Number.isFinite(n) || n < 1 || n > TOWER_LEVEL_COUNT) return TILE_THEMES_CATALOG;
+  const level = levels[String(n)];
+  return level ? { ...TILE_THEMES_CATALOG, ...level } : TILE_THEMES_CATALOG;
+}
+
+/**
+ * Deterministic tile-coordinate hash (docs/art-direction-tower.md §3.3).
+ * Integer-exact across runs; never Math.random().
+ */
+function tileHash(x, y) {
+  return (((x * 73856093) ^ (y * 19349663)) >>> 0);
+}
+
+/**
+ * Picks the castle/tower motif for a lit wall tile, or null. Pure and
+ * deterministic: same (x, y, theme, neighbor flags) always yields the same
+ * feature. Only one feature per tile.
+ *
+ * @param {number} x @param {number} y
+ * @param {object} theme - resolved floor theme
+ * @param {boolean} hasFloorBelow - floor tile directly below
+ * @param {boolean} adjacentFloor - any 4-neighbour is non-wall
+ * @param {boolean} nearDoor - a DOOR/GATED_DOOR tile within 2 tiles
+ * @returns {'sconce'|'banner'|'window'|null}
+ */
+export function wallFeatureFor(x, y, theme, hasFloorBelow, adjacentFloor, nearDoor) {
+  const decor = theme && theme.decor;
+  const features = theme && theme.features;
+  if (!decor || !features) return null;
+  const roll = (tileHash(x, y) % 1000) / 1000;
+  if (hasFloorBelow && decor.sconce > 0 && roll < decor.sconce) return 'sconce';
+  if (!nearDoor && decor.banner > 0 && roll < decor.banner) return 'banner';
+  if (!adjacentFloor && decor.window > 0 && roll < decor.window) return 'window';
+  return null;
+}
+
+function fillNative(ctx, screenX, screenY, u, x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(
+    Math.round(screenX + x * u),
+    Math.round(screenY + y * u),
+    Math.max(1, Math.round(w * u)),
+    Math.max(1, Math.round(h * u))
+  );
+}
+
+/**
+ * Draws a 32x32-native castle motif on a wall tile using integer fillRect only.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {'sconce'|'banner'|'window'} name
+ */
+export function drawWallFeature(ctx, name, screenX, screenY, size, theme) {
+  const u = size / 32;
+  const f = theme.features || {};
+  if (name === 'sconce') {
+    fillNative(ctx, screenX, screenY, u, 24, 10, 4, 10, f.sconce);
+    fillNative(ctx, screenX, screenY, u, 24, 6, 4, 4, f.flame);
+    fillNative(ctx, screenX, screenY, u, 25, 7, 2, 2, '#ffffff');
+  } else if (name === 'banner') {
+    fillNative(ctx, screenX, screenY, u, 15, 4, 1, 20, f.bannerTrim);
+    fillNative(ctx, screenX, screenY, u, 10, 4, 12, 18, f.banner);
+    fillNative(ctx, screenX, screenY, u, 10, 4, 12, 2, f.bannerTrim);
+    fillNative(ctx, screenX, screenY, u, 10, 20, 12, 2, f.bannerTrim);
+  } else if (name === 'window') {
+    fillNative(ctx, screenX, screenY, u, 10, 4, 12, 18, theme.wall.topHighlight);
+    fillNative(ctx, screenX, screenY, u, 12, 6, 8, 14, f.window);
+    fillNative(ctx, screenX, screenY, u, 15, 6, 2, 14, theme.wall.gridLine);
+  }
+}
+
+/**
+ * Data-driven prop id for a ground item: keys resolve by `keyTier`, chests by
+ * `chestTier` (falling back to `tier`). No string heuristics.
+ * @returns {string|null}
+ */
+export function resolvePropId(item) {
+  if (!item) return null;
+  const tier = item.keyTier || item.chestTier || item.tier;
+  const map = tier && PROP_IDS_BY_TIER[tier];
+  if (!map) return null;
+  if (item.type === 'key') return map.key;
+  if (item.type === 'chest') return map.chest;
+  return null;
+}
+
+/**
+ * Blits an authored prop frame into a tile rect, falling back to a raw pixel
+ * fill when no canvas is available (node). Returns true when a prop was drawn.
+ */
+function drawPropFrame(ctx, def, frameId, dx, dy, size) {
+  if (!def || !def.frames || !def.frames[frameId] || !def.palette) return false;
+  const scale = Math.max(1, Math.floor(size / (def.native?.w || SPRITE_NATIVE)));
+  const canvas = getFrameCanvas(def, frameId, scale, false, null);
+  if (canvas && typeof ctx.drawImage === 'function') {
+    if ('imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(canvas, dx, dy);
+    return true;
+  }
+  const pixels = renderFramePixels(def, frameId, scale, false, null);
+  if (!pixels || typeof ctx.fillRect !== 'function') return false;
+  drawPixels(ctx, pixels, dx, dy, scale);
+  return true;
+}
 
 const TILE_RENDERERS = {
-  [TILE_TYPES.WALL]: (ctx, screenX, screenY, size, theme) => {
+  [TILE_TYPES.WALL]: (ctx, screenX, screenY, size, theme, opts = {}) => {
     const u = size / 32;
 
     ctx.fillStyle = theme.wall.fill;
@@ -48,6 +170,17 @@ const TILE_RENDERERS = {
     ctx.strokeStyle = theme.wall.border;
     ctx.lineWidth = HAIRLINE(u);
     ctx.strokeRect(screenX + 0.5, screenY + 0.5, size - 1, size - 1);
+
+    // Castle/tower motifs ride on lit wall tiles; placement is a pure hash.
+    const feature = wallFeatureFor(
+      opts.x || 0,
+      opts.y || 0,
+      theme,
+      !!opts.hasFloorBelow,
+      !!opts.adjacentFloor,
+      !!opts.nearDoor
+    );
+    if (feature) drawWallFeature(ctx, feature, screenX, screenY, size, theme);
   },
   [TILE_TYPES.STAIRS]: (ctx, screenX, screenY, size, theme) => {
     const u = size / 32;
@@ -79,8 +212,14 @@ const TILE_RENDERERS = {
     ctx.lineWidth = 2 * u;
     ctx.strokeRect(screenX + 2 * u, screenY + 2 * u, size - 4 * u, size - 4 * u);
   },
-  [TILE_TYPES.GATED_DOOR]: (ctx, screenX, screenY, size, theme) => {
+  [TILE_TYPES.GATED_DOOR]: (ctx, screenX, screenY, size, theme, opts = {}) => {
     const u = size / 32;
+
+    // Tier art: blit the authored closed/open gated-door prop (data-driven by
+    // `tier`). Falls back to the procedural lock affordance when absent.
+    const tierMap = opts.tier && PROP_IDS_BY_TIER[opts.tier];
+    const propDef = tierMap ? PROP_CATALOG[tierMap.door] : null;
+    if (drawPropFrame(ctx, propDef, opts.open ? 'open' : 'closed', screenX, screenY, size)) return;
 
     ctx.fillStyle = theme.door.fill;
     ctx.fillRect(screenX, screenY, size, size);
@@ -88,7 +227,7 @@ const TILE_RENDERERS = {
     ctx.lineWidth = 2 * u;
     ctx.strokeRect(screenX + 2 * u, screenY + 2 * u, size - 4 * u, size - 4 * u);
 
-    // Locked-gate affordance: a bolt bar across the door. Tier accents land in E5.
+    // Locked-gate affordance: a bolt bar across the door.
     ctx.strokeStyle = '#c0c0c8';
     ctx.lineWidth = 3 * u;
     ctx.beginPath();
@@ -472,32 +611,78 @@ function drawPixels(ctx, pixels, dx, dy, scale) {
 /* ==================== Public renderer ==================== */
 
 export class SpriteRenderer {
-  static drawTile(ctx, type, screenX, screenY, size = CONFIG.GRID_SIZE) {
-    const theme = TILE_THEMES_CATALOG;
+  static drawTile(ctx, type, screenX, screenY, size = CONFIG.GRID_SIZE, opts = {}) {
+    const theme = opts.theme || TILE_THEMES_CATALOG;
     const renderer = TILE_RENDERERS[type] || TILE_RENDERERS.default;
-    renderer(ctx, screenX, screenY, size, theme);
+    renderer(ctx, screenX, screenY, size, theme, opts);
   }
 
-  static drawItem(ctx, item, screenX, screenY, size = CONFIG.GRID_SIZE) {
+  static drawItem(ctx, item, screenX, screenY, size = CONFIG.GRID_SIZE, opts = {}) {
     const u = size / 32;
     const cx = screenX + size / 2;
     const cy = screenY + size / 2;
 
+    // Authored tier prop first (keys/chests); procedural primitive otherwise.
+    const propId = resolvePropId(item);
+    const propDef = propId ? PROP_CATALOG[propId] : null;
+    if (propDef) {
+      const scale = Math.max(1, Math.floor(size / (propDef.native?.w || SPRITE_NATIVE)));
+      const nw = (propDef.native?.w || SPRITE_NATIVE) * scale;
+      const nh = (propDef.native?.h || SPRITE_NATIVE) * scale;
+      const dx = Math.round(screenX + (size - nw) / 2);
+      const dy = Math.round(screenY + (size - nh) / 2);
+      const frameId = item.type === 'chest' ? (opts.open || item.opened ? 'open' : 'closed') : 'icon';
+      if (drawPropFrame(ctx, propDef, frameId, dx, dy, size)) {
+        SpriteRenderer.drawItemQuantity(ctx, item, screenX, screenY, size);
+        return;
+      }
+    }
+
     const renderer = ITEM_RENDERERS[item.item_id] || ITEM_RENDERERS[item.type] || ITEM_RENDERERS.default;
     renderer(ctx, cx, cy, u, item);
+    SpriteRenderer.drawItemQuantity(ctx, item, screenX, screenY, size);
+  }
 
-    if (item.quantity > 1) {
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(screenX + size - 14 * u, screenY + size - 12 * u, 14 * u, 12 * u);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${Math.max(9, 9 * u)}px monospace`;
-      ctx.textAlign = 'right';
-      ctx.fillText(`${item.quantity}`, screenX + size - 2 * u, screenY + size - 3 * u);
-    }
+  static drawItemQuantity(ctx, item, screenX, screenY, size) {
+    const u = size / 32;
+    if (!(item.quantity > 1)) return;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(screenX + size - 14 * u, screenY + size - 12 * u, 14 * u, 12 * u);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${Math.max(9, 9 * u)}px monospace`;
+    ctx.textAlign = 'right';
+    ctx.fillText(`${item.quantity}`, screenX + size - 2 * u, screenY + size - 3 * u);
   }
 
   static scaleForSize(size = CONFIG.GRID_SIZE) {
     return Math.max(1, Math.floor(size / SPRITE_NATIVE));
+  }
+
+  /**
+   * Draws a world chest at a tile, using the authored tier prop (`closed` or
+   * `open` frame) resolved by `chestTier`, with a procedural fallback. Returns
+   * true when a chest was drawn.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {{tier?:string, opened?:boolean}} chest
+   * @returns {boolean}
+   */
+  static drawChest(ctx, chest, screenX, screenY, size = CONFIG.GRID_SIZE) {
+    if (!chest) return false;
+    const propId = resolvePropId({ type: 'chest', chestTier: chest.tier, tier: chest.tier });
+    const def = propId ? PROP_CATALOG[propId] : null;
+    const frame = chest.opened ? 'open' : 'closed';
+    if (drawPropFrame(ctx, def, frame, screenX, screenY, size)) return true;
+
+    // Procedural fallback: a tier-tinted chest body with a lid seam.
+    const u = size / 32;
+    const tint = TIER_TINTS[chest.tier] || TIER_TINTS.copper;
+    ctx.fillStyle = tint.dark;
+    ctx.fillRect(screenX + 7 * u, screenY + 10 * u, 18 * u, 14 * u);
+    ctx.fillStyle = tint.light;
+    ctx.fillRect(screenX + 9 * u, screenY + 12 * u, 14 * u, 10 * u);
+    ctx.fillStyle = tint.dark;
+    ctx.fillRect(screenX + 7 * u, screenY + 15 * u, 18 * u, 2 * u);
+    return true;
   }
 
   /**

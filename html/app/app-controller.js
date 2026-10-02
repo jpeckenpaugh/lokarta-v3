@@ -11,6 +11,7 @@ import {
   CombatSystem,
   EntityAI,
   InventorySystem,
+  ChestSystem,
   GestureEngine,
   createPlayer,
 } from '../engine/index.js';
@@ -45,6 +46,7 @@ export class LokartaApp {
     this.player = createPlayer('magician');
     this.gridMap = new GridMap();
     this.monsters = [];
+    this.chests = [];
     this.ambientLights = [];
     this.projectiles = [];
     this.particles = [];
@@ -534,9 +536,25 @@ export class LokartaApp {
     this.currentFloorName = floorData.biome_name || 'The Gatehouse';
     this.gridMap.loadFromMatrix(floorData.tiles);
 
+    // Tag gated-door tiles with their tier so the renderer can resolve the
+    // copper/silver/gold prop (data-driven; no per-level renderer branches).
+    for (const [tier, gate] of Object.entries(floorData.gates || {})) {
+      for (const t of gate.tiles || []) {
+        const tile = this.gridMap.getTile(t.x, t.y);
+        if (tile) {
+          tile.gateTier = tier;
+          tile.gateOpen = false;
+        }
+      }
+    }
+
     for (const item of floorData.items || []) {
       this.gridMap.addItem(item.x, item.y, item);
     }
+
+    // Chests are world entities, not tile items. Restore persisted opened-state
+    // so a save/load keeps opened chests empty (E4 persistence).
+    this.chests = (floorData.chests || []).map(chest => ({ ...chest }));
 
     this.ambientLights = [];
     this.monsters = (floorData.monsters || []).map(s => ({
@@ -1153,7 +1171,8 @@ export class LokartaApp {
       this.floatingTexts,
       this.selectedMonsterId,
       this.particles,
-      this.deathEffects
+      this.deathEffects,
+      this.chests
     );
   }
 
@@ -1195,6 +1214,11 @@ export class LokartaApp {
           const items = this.gridMap.getItems(this.player.x, this.player.y);
           if (items.length > 0) {
             this.handlePickUp();
+          }
+
+          // Walk-on chest open (E4): chests are world entities, not tile items.
+          if (ChestSystem.findChestAt(this.chests, this.player.x, this.player.y)) {
+            this.handleOpenChest(this.player.x, this.player.y);
           }
         }
       }
@@ -1506,6 +1530,52 @@ export class LokartaApp {
       this.addFloatingText(`+${res.item?.name}`, this.player.x, this.player.y, '#22c55e');
       this.updateHUD();
       await this.persistSave();
+    }
+  }
+
+  /**
+   * Opens the chest under the player (walk-on) or at an explicit tile. Rolls
+   * tiered loot for the player's vocation, drops it on the chest tile for the
+   * existing walkover pickup to collect, and persists the opened state.
+   * @returns {Promise<boolean>} true when a chest was opened
+   */
+  async handleOpenChest(gridX = this.player?.x, gridY = this.player?.y) {
+    const chest = ChestSystem.findChestAt(this.chests, gridX, gridY);
+    if (!ChestSystem.isChestOpenable(chest)) return false;
+
+    soundFX.init();
+    const res = ChestSystem.openChest(chest, { vocation: this.player?.vocation });
+    if (!res.success) {
+      this.logCombat(res.message, 'warning');
+      return false;
+    }
+
+    soundFX.play('itemPickup');
+    for (const stack of res.loot) {
+      this.gridMap.addItem(chest.x, chest.y, { ...stack, x: chest.x, y: chest.y });
+    }
+    this.logCombat(res.message, 'loot');
+    this.addFloatingText(`OPENED ${chest.tier.toUpperCase()} CHEST`, chest.x, chest.y, '#ffd700');
+
+    if (this.player.x === chest.x && this.player.y === chest.y && res.loot.length > 0) {
+      await this.handlePickUp();
+    } else {
+      this.updateHUD();
+    }
+    await this.persistChests();
+    return true;
+  }
+
+  /** Persists only the durable chest opened-state for the current floor. */
+  async persistChests() {
+    if (!this.player) return;
+    try {
+      await this.gameClient.saveFloorState(
+        this.player,
+        ChestSystem.serializeChestState(this.chests)
+      );
+    } catch (err) {
+      console.warn('Chest state save error:', err);
     }
   }
 

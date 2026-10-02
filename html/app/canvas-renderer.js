@@ -2,8 +2,22 @@
  * Lokarta: Come Into The Light - Viewport Canvas Renderer
  */
 
-import { CONFIG, LightingSystem } from '../engine/index.js';
-import { SpriteRenderer } from './sprite-renderer.js';
+import { CONFIG, LightingSystem, TILE_TYPES } from '../engine/index.js';
+import { SpriteRenderer, themeForFloor } from './sprite-renderer.js';
+
+/** True when a DOOR or GATED_DOOR tile sits within `radius` of (x, y). */
+function isNearDoor(gridMap, x, y, radius) {
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const tx = x + dx;
+      const ty = y + dy;
+      if (!gridMap.isInBounds(tx, ty)) continue;
+      const type = gridMap.tiles[ty][tx].type;
+      if (type === TILE_TYPES.DOOR || type === TILE_TYPES.GATED_DOOR) return true;
+    }
+  }
+  return false;
+}
 
 export class CanvasRenderer {
   constructor(canvas) {
@@ -54,7 +68,8 @@ export class CanvasRenderer {
     floatingTexts,
     selectedMonsterId,
     particles = [],
-    deathEffects = []
+    deathEffects = [],
+    chests = []
   ) {
     if (!this.canvas || !this.ctx) return;
     const { width, height } = this.canvas;
@@ -70,6 +85,21 @@ export class CanvasRenderer {
     const startTileY = Math.max(0, Math.floor(this.cameraY / CONFIG.GRID_SIZE));
     const endTileY = Math.min(gridMap.height - 1, Math.ceil((this.cameraY + height) / CONFIG.GRID_SIZE));
 
+    // Resolve the tower floor theme once; per-level variation is data-driven.
+    const theme = themeForFloor(player.current_floor || 1);
+    const featureScan = !!(theme.decor && theme.decor.banner > 0);
+    // Reused per-tile options object: no per-frame allocation in the tile loop.
+    const tileOpts = {
+      theme,
+      x: 0,
+      y: 0,
+      tier: null,
+      open: false,
+      hasFloorBelow: false,
+      adjacentFloor: false,
+      nearDoor: false,
+    };
+
     // 1. Tiles Layer
     for (let y = startTileY; y <= endTileY; y++) {
       for (let x = startTileX; x <= endTileX; x++) {
@@ -77,7 +107,21 @@ export class CanvasRenderer {
         if (!tile.isLit) continue;
         const screenX = x * CONFIG.GRID_SIZE - this.cameraX;
         const screenY = y * CONFIG.GRID_SIZE - this.cameraY;
-        SpriteRenderer.drawTile(ctx, tile.type, screenX, screenY);
+
+        tileOpts.x = x;
+        tileOpts.y = y;
+        tileOpts.tier = tile.gateTier || null;
+        tileOpts.open = !!tile.gateOpen;
+        if (tile.type === TILE_TYPES.WALL) {
+          tileOpts.hasFloorBelow = gridMap.isInBounds(x, y + 1) && gridMap.tiles[y + 1][x].type !== TILE_TYPES.WALL;
+          tileOpts.adjacentFloor =
+            tileOpts.hasFloorBelow ||
+            (gridMap.isInBounds(x, y - 1) && gridMap.tiles[y - 1][x].type !== TILE_TYPES.WALL) ||
+            (gridMap.isInBounds(x - 1, y) && gridMap.tiles[y][x - 1].type !== TILE_TYPES.WALL) ||
+            (gridMap.isInBounds(x + 1, y) && gridMap.tiles[y][x + 1].type !== TILE_TYPES.WALL);
+          tileOpts.nearDoor = featureScan ? isNearDoor(gridMap, x, y, 2) : false;
+        }
+        SpriteRenderer.drawTile(ctx, tile.type, screenX, screenY, CONFIG.GRID_SIZE, tileOpts);
       }
     }
 
@@ -93,8 +137,22 @@ export class CanvasRenderer {
       }
     }
 
-    // 3. World light: fog hides unexplored space, not visible enemies. Actors
-    // and projectiles therefore draw after the mask (docs/art-direction.md §6.3).
+    // 2b. Chests Layer: one per room, visible on first lighting, culled when
+    //     unlit (chests are world entities, not tile items).
+    for (const chest of chests) {
+      if (!chest) continue;
+      if (chest.x < startTileX || chest.x > endTileX || chest.y < startTileY || chest.y > endTileY) continue;
+      const tile = gridMap.tiles[chest.y]?.[chest.x];
+      if (!tile || !tile.isLit) continue;
+      SpriteRenderer.drawChest(
+        ctx,
+        chest,
+        chest.x * CONFIG.GRID_SIZE - this.cameraX,
+        chest.y * CONFIG.GRID_SIZE - this.cameraY
+      );
+    }
+
+    // 3. World light: fog hides unexplored space, not visible enemies. Actors    // and projectiles therefore draw after the mask (docs/art-direction.md §6.3).
     this.renderLightMask(ctx, gridMap, player, ambientLights, width, height, projectiles);
 
     // 4. Transient death effects (actors playing their collapse animation)

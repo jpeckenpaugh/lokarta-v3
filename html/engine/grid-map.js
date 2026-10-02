@@ -35,6 +35,8 @@ export class GridMap {
           items: [],
           isLit: false,
           lightIntensity: 0,
+          gateTier: null,
+          gateOpen: false,
         });
       }
       this.tiles.push(row);
@@ -64,6 +66,8 @@ export class GridMap {
           items: [],
           isLit: false,
           lightIntensity: 0,
+          gateTier: null,
+          gateOpen: false,
         });
       }
       this.tiles.push(row);
