@@ -8,6 +8,7 @@ import { ProgressionSystem } from '../engine/progression-system.js';
 import { CombatSystem } from '../engine/combat-system.js';
 import { EntityAI } from '../engine/entity-ai.js';
 import { InventorySystem } from '../engine/inventory-system.js';
+import { ChestSystem } from '../engine/chest-system.js';
 import { FateGrantSystem } from '../engine/fate-grant-system.js';
 import { GestureEngine } from '../engine/gesture-engine.js';
 
@@ -54,6 +55,16 @@ test('Modular Engine Submodules', async (t) => {
 
   await t.test('verifies InventorySystem submodule', () => {
     assert.equal(InventorySystem.getMaxStack('arrows'), 99);
+  });
+
+  await t.test('verifies ChestSystem submodule', () => {
+    const chest = { id: 'c1', room: 1, x: 3, y: 3, tier: 'copper', opened: false };
+    assert.equal(ChestSystem.findChestAt([chest], 3, 3), chest);
+    assert.equal(ChestSystem.isChestOpenable(chest), true);
+    const res = ChestSystem.openChest(chest, { vocation: 'fighter' });
+    assert.equal(res.success, true);
+    assert.equal(chest.opened, true);
+    assert.equal(ChestSystem.isChestOpenable(chest), false);
   });
 
   await t.test('verifies FateGrantSystem submodule', () => {

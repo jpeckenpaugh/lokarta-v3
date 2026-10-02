@@ -15,6 +15,7 @@ import {
   DUNGEONS_CATALOG,
   TOWER_LEVELS_CATALOG,
   DOORS_CATALOG,
+  CHESTS_CATALOG,
   TILE_THEMES_CATALOG,
   KEYBINDINGS_CATALOG,
   UI_CATALOG,
@@ -257,8 +258,33 @@ test('JSON Data Catalogs', async (t) => {
     }
   });
 
-  await t.test('loads and validates doors.json catalog (tier → key + shape cue)', () => {
-    for (const tier of ['copper', 'silver', 'gold']) {
+  await t.test('loads and validates chests.json loot catalog (tiered tables)', () => {
+    assert.ok(CHESTS_CATALOG.chests, 'chests.json must expose a chests map');
+    assert.deepEqual(Object.keys(CHESTS_CATALOG.chests).sort(), ['copper', 'gold', 'silver']);
+    // Better color = more rolls (D2 §7.3).
+    assert.ok(CHESTS_CATALOG.chests.gold.rolls >= CHESTS_CATALOG.chests.silver.rolls);
+    assert.ok(CHESTS_CATALOG.chests.silver.rolls >= CHESTS_CATALOG.chests.copper.rolls);
+    for (const [tier, table] of Object.entries(CHESTS_CATALOG.chests)) {
+      assert.ok(Number.isInteger(table.rolls) && table.rolls > 0, `${tier} must specify rolls`);
+      for (const entry of table.entries) {
+        assert.ok(entry.weight > 0, `${tier} entry needs a positive weight`);
+        assert.equal(entry.quantity.length, 2, `${tier} entry needs [min,max]`);
+        if (!entry.vocationGear) {
+          assert.ok(entry.itemId, `${tier} entry needs itemId`);
+        }
+      }
+    }
+    // Every explicit loot item references a real items.json entry.
+    for (const table of Object.values(CHESTS_CATALOG.chests)) {
+      for (const entry of table.entries) {
+        if (entry.itemId) {
+          assert.ok(ITEMS_CATALOG[entry.itemId], `unknown chest loot item ${entry.itemId}`);
+        }
+      }
+    }
+  });
+
+  await t.test('loads and validates doors.json catalog (tier → key + shape cue)', () => {    for (const tier of ['copper', 'silver', 'gold']) {
       const door = DOORS_CATALOG[tier];
       assert.ok(door, `missing door definition for ${tier}`);
       assert.equal(door.keyItemId, `key_${tier}`);

@@ -507,6 +507,33 @@ async function handleResetProgress() {
   return { success: true };
 }
 
+/**
+ * Persists chest opened-state for the player's current floor back into the
+ * slot floor cache, so re-entering a level keeps opened chests empty. Accepts
+ * the minimal chest-state records (see ChestSystem.serializeChestState) and
+ * merges them onto the cached floor without touching tiles/entities.
+ * @param {{ player?: object, chests?: object[] }} payload
+ * @returns {Promise<{ success: boolean }>}
+ */
+async function handleSaveFloorState(payload = {}) {
+  const { player, chests } = payload;
+  if (!player) {
+    throw new Error('Missing player object in saveFloorState payload.');
+  }
+  await openStorage();
+
+  const floorNumber = clampFloor(player.current_floor || 1);
+  const slotIndex = player.slotIndex || null;
+  const floor = slotIndex
+    ? await read(STORES.SLOT_FLOORS, slotFloorKey(slotIndex, floorNumber))
+    : await read(STORES.DUNGEON_FLOORS, floorNumber);
+  if (!floor) return { success: false };
+
+  floor.chests = Array.isArray(chests) ? chests : floor.chests || [];
+  await put(slotIndex ? STORES.SLOT_FLOORS : STORES.DUNGEON_FLOORS, floor);
+  return { success: true };
+}
+
 const COMMAND_HANDLERS = {
   bootstrap: handleBootstrap,
   listSlots: handleListSlots,
@@ -517,6 +544,7 @@ const COMMAND_HANDLERS = {
   newGame: handleNewGame,
   saveCharacter: handleSaveCharacter,
   getFloor: handleGetFloor,
+  saveFloorState: handleSaveFloorState,
   advanceFloor: handleAdvanceFloor,
   getOptions: handleGetOptions,
   setOptions: handleSetOptions,

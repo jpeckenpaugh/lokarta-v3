@@ -16,6 +16,7 @@ import {
   BIOMES_CATALOG,
   DUNGEONS_CATALOG,
   TOWER_LEVELS_CATALOG,
+  CHESTS_CATALOG,
 } from '../data/index.js';
 
 export const TILE_TYPES = {
@@ -134,6 +135,124 @@ export function getBiomeForFloor(floorNumber) {
 /** @returns {object} the E1 level definition from tower_levels.json. */
 export function getLevelSpec(levelNumber) {
   return TOWER_LEVELS_CATALOG.levels[clampLevel(levelNumber) - 1];
+}
+
+/**
+ * Resolves the chest tier for a room from the D2 §7.2 rule: room tier 0 →
+ * copper, tier 1/2 → silver, tier 3 → gold, with the gold-key room overridden
+ * to gold. Pure catalog derivation — no hardcoded room tables.
+ * @param {object} levelSpec - tower_levels level entry
+ * @param {number} room - 1..9
+ * @returns {'copper'|'silver'|'gold'}
+ */
+export function chestTierForRoom(levelSpec, room) {
+  const rule = TOWER_LEVELS_CATALOG.chestTierRule || {};
+  const byRoomTier = rule.byRoomTier || {};
+  const goldKeyRoom = levelSpec?.keyRooms?.gold;
+  if (goldKeyRoom && Number(goldKeyRoom) === Number(room)) {
+    return rule.goldKeyRoomOverride || 'gold';
+  }
+  const roomTier = levelSpec?.roomTiers?.[String(room)];
+  return byRoomTier[String(roomTier)] || 'copper';
+}
+
+/**
+ * Rolls a chest's contents from the CHESTS_CATALOG tier table. Entries are
+ * weighted and drawn without replacement; `vocationGear` entries resolve to an
+ * item from the opener's vocation pool filtered by `lootTier`, with neutral
+ * items always eligible ("smart loot", D2 §7.3).
+ *
+ * @param {'copper'|'silver'|'gold'} tier
+ * @param {object} [opts]
+ * @param {string} [opts.vocation] - opener vocation for smart loot
+ * @param {Function} [opts.rng] - createPRNG-compatible generator
+ * @returns {object[]} rolled item stacks `{ item_id, name, type, quantity, ... }`
+ */
+export function rollChestLoot(tier, opts = {}) {
+  const table = CHESTS_CATALOG?.chests?.[tier] || CHESTS_CATALOG?.chests?.copper;
+  if (!table || !Array.isArray(table.entries) || table.entries.length === 0) return [];
+
+  const rng = opts.rng || createPRNG(`${tier}_loot`);
+  const vocation = opts.vocation || null;
+  const rolls = Math.max(0, Math.min(table.entries.length, table.rolls || 1));
+
+  // Copy the entries so "without replacement" never mutates the catalog.
+  const pool = table.entries.slice();
+  const loot = [];
+  for (let i = 0; i < rolls; i++) {
+    const total = pool.reduce((sum, e) => sum + (e.weight || 0), 0);
+    let ticket = rng.random() * total;
+    let idx = pool.length - 1;
+    for (let p = 0; p < pool.length; p++) {
+      ticket -= pool[p].weight || 0;
+      if (ticket <= 0) {
+        idx = p;
+        break;
+      }
+    }
+    const entry = pool.splice(idx, 1)[0];
+    const stack = resolveChestEntry(entry, vocation, rng);
+    if (stack) loot.push(stack);
+  }
+  return loot;
+}
+
+/** Resolves one loot-table entry into a concrete item stack. */
+function resolveChestEntry(entry, vocation, rng) {
+  const qty = rollQuantity(entry.quantity, rng);
+  if (entry.vocationGear) {
+    const def = pickVocationGear(entry.lootTier, vocation, rng);
+    if (!def) return null;
+    return { ...itemStackFromDef(def, 1), quantity: qty };
+  }
+  const def = ITEMS_CATALOG[entry.itemId] || {};
+  const stack = itemStackFromDef(def, qty, entry.itemId);
+  if (entry.displayName) stack.name = entry.displayName;
+  return stack;
+}
+
+/** Rolls an inclusive [min,max] quantity, defaulting to 1. */
+function rollQuantity(range, rng) {
+  if (!Array.isArray(range) || range.length < 2) return 1;
+  const min = Number(range[0]) || 0;
+  const max = Number(range[1]) || min;
+  return rng.randomInt(min, max);
+}
+
+/** Builds a serializable item stack from an items.json definition. */
+function itemStackFromDef(def, quantity, fallbackId = null) {
+  return {
+    item_id: def.item_id || fallbackId,
+    name: def.name || fallbackId || 'Unknown Item',
+    type: def.type || 'item',
+    quantity,
+    ...(def.stat_bonus !== undefined ? { stat_bonus: def.stat_bonus } : {}),
+    ...(def.icon ? { icon: def.icon } : {}),
+    ...(def.svgCode ? { svgCode: def.svgCode } : {}),
+    ...(def.slot ? { slot: def.slot } : {}),
+    ...(def.vocationAffinity ? { vocationAffinity: def.vocationAffinity } : {}),
+    ...(def.actionKey ? { actionKey: def.actionKey } : {}),
+  };
+}
+
+/**
+ * Picks the best usable vocation gear for the opener: eligible items are those
+ * with a `lootTier` inside the entry's range whose `vocationAffinity` matches
+ * the opener or is `neutral`. Falls back to any tier-eligible item when the
+ * vocation has no matching pool (never fizzles).
+ */
+function pickVocationGear(lootTierRange, vocation, rng) {
+  const [minTier, maxTier] = Array.isArray(lootTierRange) ? lootTierRange : [1, 3];
+  const eligible = Object.values(ITEMS_CATALOG).filter(def => {
+    if (typeof def.lootTier !== 'number') return false;
+    if (def.lootTier < minTier || def.lootTier > maxTier) return false;
+    if (!vocation) return true;
+    const affinity = def.vocationAffinity;
+    if (!affinity || affinity === 'neutral') return true;
+    return Array.isArray(affinity) ? affinity.includes(vocation) : affinity === vocation;
+  });
+  if (eligible.length === 0) return null;
+  return rng.choice(eligible);
 }
 
 /**
@@ -464,6 +583,26 @@ export function generateFloor(floorNumber = 1, seed = null) {
     return null;
   };
 
+  // 8a. Chests: exactly one per room at its D2 §7.2 tier, placed deterministically
+  //     at the room chest anchor (roles.chest) scanning free tiles. Chests claim
+  //     their tile before monsters so the two never overlap (D2 §9.2 order).
+  const chests = [];
+  let chestId = 1;
+  for (let room = 1; room <= 9; room++) {
+    const bounds = rooms[room - 1];
+    const anchor = absAnchor(room, roles.chest);
+    const tile = takeCandidate(bounds, blocked, anchor, occupied);
+    if (!tile) continue;
+    chests.push({
+      id: `f${levelId}_chest_${chestId++}`,
+      room,
+      x: tile.x,
+      y: tile.y,
+      tier: chestTierForRoom(levelSpec, room),
+      opened: false,
+    });
+  }
+
   const monsters = [];
   let monsterId = 1;
   const slotOffsets = [
@@ -662,6 +801,8 @@ export function generateFloor(floorNumber = 1, seed = null) {
     gates,
     key_rooms: { ...levelSpec.keyRooms },
     room_tiers: { ...levelSpec.roomTiers },
+    chests,
+    chest_tiers: Object.fromEntries(chests.map(c => [String(c.room), c.tier])),
     monsters,
     spawns: monsters,
     items,

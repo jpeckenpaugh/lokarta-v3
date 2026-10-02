@@ -83,6 +83,13 @@ export class InputController {
           this.app.selectedMonsterId = clickedMonster.id;
           this.app.logCombat(`Targeted ${clickedMonster.name} (${clickedMonster.hp}/${clickedMonster.max_hp} HP).`, 'system');
         } else {
+          const clickedChest = (this.app.chests || []).find(
+            c => c.x === gridPos.x && c.y === gridPos.y
+          );
+          if (clickedChest && clickedChest.opened !== true && this.app.gridMap.tiles[gridPos.y]?.[gridPos.x]?.isLit) {
+            this.app.handleOpenChest(gridPos.x, gridPos.y);
+            return;
+          }
           const clickedItems = this.app.gridMap.getItems(gridPos.x, gridPos.y);
           if (clickedItems.length > 0) {
             const topItem = clickedItems[clickedItems.length - 1];

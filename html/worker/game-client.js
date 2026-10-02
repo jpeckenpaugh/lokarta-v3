@@ -152,6 +152,16 @@ export class GameClient {
   }
 
   /**
+   * Persists chest opened-state for the player's current floor.
+   * @param {object} player
+   * @param {object[]} chests - minimal chest-state records
+   * @returns {Promise<{ success: boolean }>}
+   */
+  async saveFloorState(player, chests) {
+    return this.request('saveFloorState', { player, chests });
+  }
+
+  /**
    * Advances player to next floor, updating floor level, coordinates, and saving state.
    * @param {object} player
    * @param {number} [nextFloorNumber]
