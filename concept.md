@@ -4,15 +4,15 @@
 
 **Lokarta: Come Into The Light** is a zero-backend, client-side, offline-capable 2D roguelike RPG. It provides a retro-inspired, turn-based grid simulation and real-time canvas rendering experience directly inside standard modern web browsers.
 
-The purpose of Lokarta is to deliver a rich tactical dungeon crawler featuring depth-based procedural floor generation, line-of-sight fog-of-war lighting, class-based combat mastery, procedural Web Audio synthesis, and robust offline save persistence — all executing natively in the browser without requiring external application servers or remote database infrastructure.
+The purpose of Lokarta is to deliver a rich tactical tower-climbing roguelike featuring ascent-based procedural floor generation, line-of-sight fog-of-war lighting, class-based combat mastery, procedural Web Audio synthesis, and robust offline save persistence — all executing natively in the browser without requiring external application servers or remote database infrastructure.
 
 ---
 
 ## Target Audience
 
-- Fans of classic roguelike RPGs, grid-based dungeon crawlers, and turn-based tactical combat.
+- Fans of classic roguelike RPGs, grid-based tower-climbing crawlers, and turn-based tactical combat.
 - Web gaming enthusiasts who value zero-installation, zero-dependency, instant-play browser experiences.
-- Players seeking offline-capable gameplay with local character progression and persistent dungeon exploration.
+- Players seeking offline-capable gameplay with local character progression and persistent tower exploration.
 
 ---
 
@@ -22,7 +22,7 @@ Lokarta is built as a pure web-native client application utilizing modern standa
 
 - **Zero-Backend Architecture:** Self-contained static assets hosted via standard HTTP static file servers (`run.sh`, Python `http.server`, `npx serve`, GitHub Pages, Cloudflare Pages, S3).
 - **Vanilla ES Modules (`type="module"`):** Decoupled, dependency-free JavaScript modules (`engine.js`, `floor-generator.js`, `storage.js`, `game-worker.js`, `game-client.js`, `app.js`, `audio.js`).
-- **Dedicated Web Worker (`game-worker.js`):** Offloads procedural dungeon floor generation, state calculation, and floor caching off the main UI thread.
+- **Dedicated Web Worker (`game-worker.js`):** Offloads procedural tower floor generation, state calculation, and floor caching off the main UI thread.
 - **Typed Worker RPC Bridge (`game-client.js`):** Asynchronous Promise-wrapped message protocol for state mutation and worker commands (`INIT_GAME`, `GENERATE_FLOOR`, `LOAD_FLOOR`, `SAVE_GAME`, `GET_GAME`).
 - **IndexedDB Persistence (`storage.js`):** Asynchronous local database storage utilizing dedicated Object Stores (`characters`, `dungeon_floors`, `profile`, `game_settings`).
 - **HTML5 Canvas 2D Renderer (`app.js`):** 60 FPS sprite and tile rendering pipeline with smooth coordinate interpolation, camera centering, line-of-sight shadow masks, particle effects, and dynamic light radii.
@@ -57,13 +57,14 @@ The game supports 4 distinct playable vocations, each possessing unique stat gro
   - *Stat Growth:* +15 HP / +10 MP per level.
   - *Native Gear/Abilities:* Holy Strike, Healing Prayer, Relics, Warhammers, Shields.
 
-### 2. Procedural 20-Floor Dungeon & Biomes
-Dungeons are procedurally generated on a $40 \times 40$ tile grid using a deterministic Mulberry32 PRNG seed generator (`floor-generator.js`), ensuring reproducible connectivity between player spawn at `(2,2)` and exit stairs at `(35,35)`. The 20 floors are grouped into 4 distinct biomes:
+### 2. Procedural Tower Ascent & Tiers
+The tower is procedurally generated on a $40 \times 40$ tile grid using a deterministic Mulberry32 PRNG seed generator (`floor-generator.js`), ensuring reproducible connectivity between player spawn at `(2,2)` and the ascent stairs at `(35,35)`. The tower comprises **five tiers**, climbed in ascending order; level 5 is the final level:
 
-1. **Subterranean Crypt (Floors 1–5):** Introductory biome populated by Rats, Bats, and Skeleton Crawlers.
-2. **Catacombs of Whispers (Floors 6–10):** Darker catacombs featuring Skeleton Archers, Shadow Fiends, and Goblins.
-3. **Shadow Vaults (Floors 11–15):** Dangerous vaults containing Orc Warriors, Dark Mages, and Gargoyles.
-4. **Abyssal Sanctum (Floors 16–20):** High-level sanctum with Abyssal Knights and Demons, culminating in the **Floor 20 Abyssal Overlord** boss fight (600 HP, 20 ATK, 6 DEF).
+1. **The Gatehouse (Level 1):** Ground-floor entry, reached through the room-2 doorway. Populated by Giant Rats and Bone Sentries.
+2. **The Hall of Banners (Level 2):** First gated keys; Shadow Cultists and Bone Sentries tighten the corridors.
+3. **The Bell Keep (Level 3):** Mid-tower chambers guarded by Elite Cultists and heavier sentry groups.
+4. **The Solar Gallery (Level 4):** High, light-blessed chambers with the richest loot.
+5. **The Crown Spire (Level 5):** The summit, final level, culminating in the **Spire Warden** guardian fight (600 HP, 20 ATK, 6 DEF).
 
 ### 3. Inventory & Equipment Structure
 - **10-Slot Action Bar (Slots 0–9):** Maps directly to keyboard keys `1`–`9` and `0` for immediate skill activation or consumable item usage.

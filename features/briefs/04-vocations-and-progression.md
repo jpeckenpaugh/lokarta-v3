@@ -64,7 +64,7 @@ The 4 playable vocations (`DEFAULT_ARCHETYPES` in `engine.js`) possess initial v
 
 - **Character Creation:** Player chooses 1 of 4 vocation avatars (Magician, Archer, Fighter, Paladin) with preview stats.
 - **Level-Up Fanfare:** Defeating monsters to fill the green XP bar triggers an arpeggiated sound fanfare and modal backdrop blur.
-- **Fate Grant Draft Modal:** An interactive 5-card draft modal pops up over canvas, prompting card selection before resuming dungeon exploration.
+- **Fate Grant Draft Modal:** An interactive 5-card draft modal pops up over canvas, prompting card selection before resuming tower exploration.
 
 ---
 

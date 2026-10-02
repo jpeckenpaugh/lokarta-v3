@@ -105,7 +105,7 @@ export class ModalManager {
         <div class="title-emblem"><img class="openmoji-icon emblem-icon" src="./assets/livive-studios-mark.svg" alt="Lokarta" /></div>
         <h1 class="title-main">LOKARTA</h1>
         <div class="title-subtitle">COME INTO THE LIGHT</div>
-        <div class="title-tagline">A Gothic Roguelike Dungeon Crawl</div>
+        <div class="title-tagline">A Gothic Roguelike Tower Ascent</div>
         <div class="title-menu-actions" role="menu">
           <button class="title-btn new-game-btn" id="title-btn-new-game" data-row="0" role="menuitem"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/1F56F.svg" alt="Candle" /> NEW GAME</button>
           <button class="title-btn continue-btn" id="title-btn-continue" data-row="1" role="menuitem"${hasSaves ? '' : ' aria-disabled="true" disabled'}><img class="openmoji-icon btn-emoji" src="./assets/openmoji/2694.svg" alt="Swords" /> CONTINUE</button>
@@ -322,7 +322,7 @@ export class ModalManager {
           <img class="openmoji-icon slot-thumb" src="./assets/openmoji/${icon}.svg" alt="${slot.vocation || ''}" />
           <div class="slot-info">
             <div class="slot-title"><strong>${String(slot.vocation || 'unknown').toUpperCase()}</strong> — Level ${slot.level || 1}</div>
-            <div class="slot-sub">Floor ${slot.currentFloor || 1}/20${slot.biome ? ` · ${slot.biome}` : ''}</div>
+            <div class="slot-sub">Floor ${slot.currentFloor || 1}${slot.biome ? ` · ${slot.biome}` : ''}</div>
             <div class="slot-meta">Played ${formatPlaytime(slot.playtimeMs)} · Last played ${formatLastPlayed(slot.lastPlayedAt)}</div>
           </div>
           <div class="slot-actions">
@@ -449,7 +449,7 @@ export class ModalManager {
       <div class="character-select-modal">
         <div class="modal-header">
           <h2>CHOOSE YOUR VOCATION</h2>
-          <div class="subtitle">Descend into the 20 Subterranean Vaults of Lokarta</div>
+          <div class="subtitle">Ascend the Five Tiers of the Tower of Lokarta</div>
         </div>
         <p class="prompt">Select your champion. Each vocation wields unique combat mechanics & exclusive access to vocation-locked gear:</p>
         <div class="vocation-cards">
@@ -524,7 +524,7 @@ export class ModalManager {
       <div class="guide-modal">
         <div class="modal-header">
           <h2>SURVIVAL GUIDE & CONTROLS</h2>
-          <div class="subtitle">Subterranean Mechanics of Lokarta</div>
+          <div class="subtitle">Tower Mechanics of Lokarta</div>
         </div>
         <div class="guide-content">
           <div class="guide-section">
@@ -550,7 +550,7 @@ export class ModalManager {
           </div>
         </div>
         <div class="modal-back-action">
-          <button class="action-btn" id="btn-close-guide">Back to Dungeon</button>
+          <button class="action-btn" id="btn-close-guide">Back to the Tower</button>
         </div>
       </div>
     `;
@@ -572,7 +572,7 @@ export class ModalManager {
     modalOverlayEl.innerHTML = `
       <div class="result-modal pause-modal">
         <h2>PAUSED</h2>
-        <p class="result-subtitle">The dungeon waits.</p>
+        <p class="result-subtitle">The tower waits.</p>
         <div class="pause-actions">
           <button class="title-btn" id="pause-resume">RESUME</button>
           <button class="title-btn" id="pause-options">OPTIONS</button>
@@ -702,7 +702,7 @@ export class ModalManager {
     modalOverlayEl.innerHTML = `
       <div class="result-modal victory-modal">
         <h2>ULTIMATE VICTORY</h2>
-        <p class="result-subtitle">All 20 floors cleared. Lokarta is lit.</p>
+        <p class="result-subtitle">The tower is conquered. Lokarta is lit.</p>
         <div class="character-summary">
           <p><strong>Vocation:</strong> ${String(p.vocation || 'magician').toUpperCase()}</p>
           <p><strong>Final Level:</strong> Level ${p.level || 1}</p>
@@ -734,12 +734,12 @@ export class ModalManager {
     modalOverlayEl.innerHTML = `
       <div class="result-modal defeat-modal">
         <h2>YOU HAVE PERISHED</h2>
-        <p class="result-subtitle">Floor ${floor}/20 claims another soul.</p>
+        <p class="result-subtitle">Floor ${floor} claims another soul.</p>
         <div class="confirm-actions">
           <button class="action-btn" id="btn-retry">RETRY FLOOR ${floor}</button>
           <button class="action-btn" id="btn-continue">CONTINUE</button>
         </div>
-        <p class="result-hint">Both options restart Floor ${floor} from your arrival.<br />Retry stays in the dungeon; Continue returns to the title screen.</p>
+        <p class="result-hint">Both options restart Floor ${floor} from your arrival.<br />Retry stays in the tower; Continue returns to the title screen.</p>
       </div>
     `;
 

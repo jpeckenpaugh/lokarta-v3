@@ -2,7 +2,7 @@
 
 ## 1. Overview & Purpose
 
-The **Web Worker Async RPC Bridge** offloads computationally heavy tasks—such as procedural dungeon floor generation, IndexedDB storage reads/writes, character bootstrap initialization, and floor caching—off the main UI renderer thread into a Dedicated Web Worker (`game-worker.js`). It provides a Promise-wrapped message protocol via `GameClient` for asynchronous command execution.
+The **Web Worker Async RPC Bridge** offloads computationally heavy tasks—such as procedural tower floor generation, IndexedDB storage reads/writes, character bootstrap initialization, and floor caching—off the main UI renderer thread into a Dedicated Web Worker (`game-worker.js`). It provides a Promise-wrapped message protocol via `GameClient` for asynchronous command execution.
 
 ---
 

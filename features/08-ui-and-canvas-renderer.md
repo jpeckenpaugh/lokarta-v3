@@ -25,11 +25,11 @@ The **UI Controller and Canvas Renderer** delivers the visual presentation layer
 - **Camera Centering:** Dynamically centers the canvas camera viewport on current player coordinates $(x_p, y_p)$.
 - **Procedural Canvas Tile & Sprite Renderer ($O(1)$ Dispatch Tables):**
   - Uses $O(1)$ object literal map lookup dispatchers in `sprite-renderer.js` (`MONSTER_RENDERERS`, `ITEM_RENDERERS`, `WEAPON_RENDERERS`, `TILE_RENDERERS`, `FACING_EYE_OFFSETS`) to eliminate `switch`/`if-else` chains.
-  - Carved walls with brick detail lines and highlight borders (biome colors driven by `tile_themes.json`).
+  - Carved walls with brick detail lines and highlight borders (tier colors driven by `tile_themes.json`).
   - Floor tiles with subtle grid borders and corner accents.
   - Stairs down with layered blue step rings and glowing center orb.
   - Doors with wood grain borders.
-  - Procedural monster icons (Rats, Bats, Skeletons, Orcs, Mages, Abyssal Overlord).
+  - Procedural monster icons (Giant Rats, Bone Sentries, Shadow Cultists, Elite Cultists, The Spire Warden).
   - Procedural item sprites (Health Potion, Mana Potion, Torch, Arrow, Weapons, Armor, Relics).
 
 ### 3.2 Visual FX & Lighting Overlays

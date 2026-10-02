@@ -27,7 +27,7 @@
   },
   "crypt_skeleton": {
     "type": "crypt_skeleton",
-    "name": "Crypt Skeleton",
+    "name": "Bone Sentry",
     "baseHp": 50,
     "baseAttack": 12,
     "baseDefense": 3,
@@ -136,7 +136,7 @@
   },
   "abyssal_overlord": {
     "type": "abyssal_overlord",
-    "name": "Abyssal Overlord",
+    "name": "The Spire Warden",
     "isBoss": true,
     "baseHp": 600,
     "baseAttack": 20,

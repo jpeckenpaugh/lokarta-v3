@@ -43,7 +43,7 @@ The **Vocations and Character Progression** feature manages player character cre
 ### 3.2 Experience Points & Level Cap
 - **Leveling Formula:** Level advancement requires $\text{Current Level} \times 100$ experience points (e.g., Level 1 $\rightarrow$ Level 2 requires 100 XP; Level 5 $\rightarrow$ Level 6 requires 500 XP).
 - **Level 20 Cap:** Progression caps at Level 20; additional XP beyond level 20 cap is ignored or retained without level increment.
-- **Monster XP Grants:** Defeating dungeon monsters awards XP scaled to monster level and floor depth.
+- **Monster XP Grants:** Defeating tower monsters awards XP scaled to monster level and floor depth.
 
 ### 3.3 The Fate Grant Draft System
 - **Trigger:** Reaching a new level pauses game simulation and opens the Fate Grant draft modal.

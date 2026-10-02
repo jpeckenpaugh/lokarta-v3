@@ -129,7 +129,7 @@ Full-screen title surface. `#title-ambient-canvas` fills the viewport behind a c
 │                    ╰────────────────╯                        │
 │                        L O K A R T A                         │
 │                   C O M E  I N T O  T H E  L I G H T          │
-│                A Gothic Roguelike Dungeon Crawl              │
+│                A Gothic Roguelike Tower Ascent               │
 │                                                              │
 │              ┌────────────────────────────────┐              │
 │              │  NEW GAME                      │              │
@@ -183,7 +183,7 @@ An evocative, low-cost canvas loop that *mimics* gameplay without simulating it.
 
 Three composited layers drawn into `#title-ambient-canvas` (`aria-hidden="true"`):
 
-1. **Vault parallax** — two horizontal bands of dungeon silhouettes (wall/floor/torch/door
+1. **Tower parallax** — two horizontal bands of tower silhouettes (wall/floor/torch/door
    rectangles colored from `TILE_THEMES_CATALOG`) drifting at **4 px/s** (far) and **10 px/s**
    (near), with a ±12 px vertical sine bob at 0.12 Hz.
 2. **Torch pools** — two `createRadialGradient` light pools anchored at 18% and 82% width, radius
@@ -302,7 +302,7 @@ Five stacked `slot-card` rows. Card content:
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │ [SLOT 1]  ▣   MAGICIAN — Level 4                 [ LOAD ]     │
-│          48px Floor 3/20 · Subterranean Crypt    [ DELETE ]   │
+│          48px Floor 3 · The Gatehouse            [ DELETE ]   │
 │               Played 1h 24m · Last played Sep 27, 2026 02:14  │
 └───────────────────────────────────────────────────────────────┘
 ```
@@ -311,7 +311,7 @@ Five stacked `slot-card` rows. Card content:
 - Thumbnail: **56×56** canvas rendering the vocation's idle sprite via
   `SpriteRenderer.drawActor` (crisp, data-driven). Fallback: vocation OpenMoji icon.
 - Vocation + level: `MAGICIAN — Level 4`.
-- Floor + biome: `Floor 3/20 · Subterranean Crypt`.
+- Floor + tier: `Floor 3 · The Gatehouse`.
 - Playtime + timestamp: `Played 1h 24m · Last played Sep 27, 2026 02:14`. If playtime < 1 min,
   show `New`.
 - `LAST PLAYED` ribbon (Von Restorff) on the most recently played occupied card.
@@ -451,7 +451,7 @@ profile with zero data loss; corrupted/absent slot handled gracefully.
 | title → character select | Card fades down/out; 90 ms black flash | 260 ms | `cubic-bezier(0.4,0,0.2,1)` | 90 ms opacity only |
 | title / continue → gameplay | Letterbox: black bars close 120 ms, swap, bars open 180 ms; ambient stops | 300 ms | `ease-in-out` | instant |
 | character select → gameplay | Gold light wipe L→R over a black flash | 380 ms | `cubic-bezier(0.65,0,0.35,1)` | instant |
-| floor advance | "Descend" vertical wipe: black from bottom 180 ms, swap floor, reveal from top 220 ms; floor label burn-in 700 ms | 400 ms + label | `ease-in-out` | instant + static label 500 ms |
+| floor advance | "Ascend" vertical wipe: black from bottom 180 ms, swap floor, reveal from top 220 ms; floor label burn-in 700 ms | 400 ms + label | `ease-in-out` | instant + static label 500 ms |
 | level up (fate grant) | Card grid scale-in, `scale(0.96) → 1` | 140 ms | `cubic-bezier(0.2,0,0.2,1)` | instant |
 | game over → Retry | Black flash 120 ms, restore snapshot, fade in 220 ms | 340 ms | `ease-out` | instant |
 | game over → Continue | Fade to title | 260 ms | `ease-in-out` | instant |
@@ -475,7 +475,7 @@ saved character** (never persist HP 0), then show `GAME OVER`. Death costs the c
 attempt.
 
 - **RETRY** — restore `floorEntry`, reload the cached floor for `current_floor` unchanged
-  (`getFloor(..., forceRegenerate: false)`), stay in the dungeon, resume the loop.
+  (`getFloor(..., forceRegenerate: false)`), stay in the tower, resume the loop.
 - **CONTINUE** — return to the title screen. The slot now resumes at the same floor-entry state
   (because the snapshot was written back), so `CONTINUE` on the title resumes this floor.
 
@@ -486,7 +486,7 @@ YOU HAVE PERISHED
 Floor {n}/20 claims another soul.
 [ RETRY FLOOR {n} ]   [ CONTINUE ]
 Both options restart Floor {n} from your arrival.
-Retry stays in the dungeon; Continue returns to the title screen.
+Retry stays in the tower; Continue returns to the title screen.
 ```
 
 Rationale: the old modal's single `Try Again` reloaded and silently resumed the latest autosave,

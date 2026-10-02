@@ -49,7 +49,7 @@ The **Tactical Combat and Vocation Abilities** feature governs turn-based combat
 - **Aggro Range Detection:** Monsters enter aggressive tracking mode when player moves within line-of-sight detection radius (6–10 tiles).
 - **Pathfinding & Movement:** Aggroed monsters path toward player coordinates using grid distance calculation.
 - **Melee & Ranged Attack Triggers:** Monsters attack when adjacent (melee) or within line of sight (ranged spellcasters/archers).
-- **Floor 20 Boss Fight:** *Abyssal Overlord* boss featuring 600 HP, 20 ATK, 6 DEF, and unique combat dialogue.
+- **Final Level Boss Fight:** *The Spire Warden* guardian featuring 600 HP, 20 ATK, 6 DEF, and unique combat dialogue.
 
 ---
 

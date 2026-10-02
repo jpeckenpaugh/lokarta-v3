@@ -32,7 +32,7 @@ The **Inventory, Paperdoll Equipment, and Offline Storage** feature manages play
 - **4 Dedicated Object Stores (`STORES`):**
   1. `profile`: Keyed by `id` (`'player_profile'`). Stores audio volume, sound toggle (`soundEnabled`), and update timestamps.
   2. `characters`: Keyed by `id`. Stores character entity JSON (vocation, level, stats, inventory, equipment, current floor).
-  3. `dungeon_floors`: Keyed by `floor_number`. Caches 20 floor state objects (explored tiles, item locations, monster status).
+  3. `dungeon_floors`: Keyed by `floor_number`. Caches floor state objects (explored tiles, item locations, monster status).
   4. `game_settings`: Keyed by `key`. Stores application configuration key-value pairs.
 
 ---

@@ -63,7 +63,7 @@ node --test html/tests/engine.test.mjs
 
 ### Coverage
 The test suite (`html/tests/engine.test.mjs`) validates:
-1. **Floor Generator:** Determinism, 40x40 grid boundaries, spawn (2,2) and stairs (35,35) placement, floor-to-stairs connectivity, biome mapping (Floors 1–20), and Abyssal Overlord boss stats.
+1. **Floor Generator:** Determinism, 40x40 grid boundaries, spawn (2,2) and stairs (35,35) placement, floor-to-stairs connectivity, tower-tier mapping, and Spire Warden boss stats.
 2. **GridMap & Tile Bounds:** Dimension initialization, tile types, and item management.
 3. **LightingSystem & FOV:** Vision radius computation (base 10, torch +2, degrading light spell +3/+2/+1), spatial circle lighting, and monster visibility.
 4. **ProgressionSystem:** 4 playable vocations (Magician, Archer, Fighter, Paladin), level scaling, and stat increments.

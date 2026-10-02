@@ -302,7 +302,7 @@ export function generateFloor(floorNumber = 1, seed = null) {
     }
   }
 
-  // Floor 20 Final Boss: Abyssal Overlord (600 HP, 20 ATK, 6 DEF)
+  // Floor 20 Final Boss: The Spire Warden (600 HP, 20 ATK, 6 DEF)
   if (floorId === 20 && ENCOUNTERS_CATALOG.tier_20_boss?.boss) {
     const bossSpec = ENCOUNTERS_CATALOG.tier_20_boss.boss;
     monsters.push({

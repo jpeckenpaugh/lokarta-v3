@@ -56,7 +56,7 @@ export class LokartaApp {
     this.isRunning = false;
     this.isGameOver = false;
     this.isFloorCleared = false;
-    this.currentFloorName = 'Crypt';
+    this.currentFloorName = 'The Gatehouse';
 
     this.tickTimer = null;
     this.animFrameId = null;
@@ -509,7 +509,7 @@ export class LokartaApp {
       await this.transition.run('selectToGame', async () => {
         this.adoptPlayer(data.player, data.floor);
         this.clearCombatLog();
-        this.logCombat(`Resumed expedition on Floor ${this.player.current_floor || 1}/20 (${this.currentFloorName}).`, 'system');
+        this.logCombat(`Resumed the ascent on Floor ${this.player.current_floor || 1} (${this.currentFloorName}).`, 'system');
         this.startGameLoop();
       });
 
@@ -531,7 +531,7 @@ export class LokartaApp {
   }
 
   applyDungeonData(floorData) {
-    this.currentFloorName = floorData.biome_name || 'Crypt';
+    this.currentFloorName = floorData.biome_name || 'The Gatehouse';
     this.gridMap.loadFromMatrix(floorData.tiles);
 
     for (const item of floorData.items || []) {
@@ -806,7 +806,7 @@ export class LokartaApp {
     // 5. Defeat check
     if (this.player.hp <= 0 && !this.isGameOver) {
       this.isGameOver = true;
-      this.logCombat('You have fallen in the crypt! Darkness consumes you...', 'warning');
+      this.logCombat('You have fallen in the tower! Darkness consumes you...', 'warning');
       this.onPlayerDeath();
     }
 
@@ -1575,7 +1575,7 @@ export class LokartaApp {
 
         soundFX.play('stairs');
         this.logCombat(
-          `Stepped on stairway! Descended to Floor ${nextFloor}/20 (+${floorBonusXp} Floor Clear XP)!`,
+          `Stepped on stairway! Climbed to Floor ${nextFloor} (+${floorBonusXp} Floor Clear XP)!`,
           'victory'
         );
         this.addFloatingText(`FLOOR ${nextFloor}`, this.player.x, this.player.y, '#38bdf8');
@@ -1587,7 +1587,7 @@ export class LokartaApp {
           LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
           this.updateHUD();
           await this.persistSave(true);
-        }, { skippable: false, label: `DESCENDING TO FLOOR ${nextFloor}` });
+        }, { skippable: false, label: `ASCENDING TO FLOOR ${nextFloor}` });
 
         if (lvlRes.leveledUp) {
           soundFX.play('levelUp');
@@ -1599,7 +1599,7 @@ export class LokartaApp {
         }
       } else {
         soundFX.play('victory');
-        this.logCombat('🎉 YOU CONQUERED THE ABYSSAL SANCTUM! ALL 20 FLOORS CLEARED!', 'victory');
+        this.logCombat('🎉 YOU CONQUERED THE CROWN SPIRE! THE TOWER IS LIT!', 'victory');
         this.addFloatingText('CAMPAIGN COMPLETED!', this.player.x, this.player.y, '#ffd700');
         await this.persistSave(true);
         this.showVictoryModal();
@@ -1672,7 +1672,7 @@ export class LokartaApp {
       const data = await this.gameClient.restartFloor(slotIndex);
       await this.transition.run('gameOverToRetry', async () => {
         this.adoptPlayer(data.player, data.floor);
-        this.logCombat(`Retrying Floor ${this.player.current_floor || 1}/20 from arrival.`, 'system');
+        this.logCombat(`Retrying Floor ${this.player.current_floor || 1} from arrival.`, 'system');
         this.startGameLoop();
       }, { skippable: false });
     } catch (err) {

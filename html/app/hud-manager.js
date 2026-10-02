@@ -137,11 +137,11 @@ export class HUDManager {
     const dmgBonusPct = Math.round(((player.skillBoosts?.damageMultiplier || 1.0) - 1.0) * 100);
 
     statusBarsEl.innerHTML = `
-      <div class="panel-header">HERO STATUS & DUNGEON PROGRESS</div>
+      <div class="panel-header">HERO STATUS & TOWER ASCENT</div>
       <div class="status-panel-inner">
         <div class="status-header">
           <div class="vocation-tag"><span class="level-badge">Lv. ${player.level || 1}</span> <strong class="val">${vocationDisplay}</strong></div>
-          <div class="floor-tag"><span class="label">Floor:</span> <strong class="val">${player.current_floor || 1}/20 (${currentFloorName})</strong></div>
+          <div class="floor-tag"><span class="label">Floor:</span> <strong class="val">${player.current_floor || 1} · ${currentFloorName}</strong></div>
         </div>
 
         <div class="meter-container hp-meter">

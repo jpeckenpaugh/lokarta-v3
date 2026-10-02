@@ -20,7 +20,7 @@ The **Procedural Web Audio Synthesizer** provides zero-dependency, code-generate
 - **Master Gain & Mute Controls:** Manages global master gain (`0.35` default volume) and provides instant mute/unmute toggles with preference persistence in `localStorage`.
 
 ### 3.2 Procedural Sound Effect Categories
-- **Movement & Exploration:** Low-frequency white noise bursts and sub-bass thumps simulating dungeon footsteps and opening doors.
+- **Movement & Exploration:** Low-frequency white noise bursts and sub-bass thumps simulating tower footsteps and opening doors.
 - **Vocation Abilities & Spells:**
   - *Wand Spark:* Frequency-swept sine wave with high-pass sparkle.
   - *Energy Beam:* Sawtooth oscillator sweep with low-pass resonant filtering.

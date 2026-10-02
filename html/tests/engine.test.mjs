@@ -191,14 +191,14 @@ describe('Floor Generator (1-20)', () => {
     }
   });
 
-  it('assigns correct biomes for floors 1 to 20', () => {
+  it('assigns correct tower tiers for floors 1 to 20', () => {
     for (let f = 1; f <= 5; f++) assert.equal(getBiomeForFloor(f).name, BIOMES.CRYPT.name);
     for (let f = 6; f <= 10; f++) assert.equal(getBiomeForFloor(f).name, BIOMES.CATACOMBS.name);
     for (let f = 11; f <= 15; f++) assert.equal(getBiomeForFloor(f).name, BIOMES.SHADOW_VAULTS.name);
     for (let f = 16; f <= 20; f++) assert.equal(getBiomeForFloor(f).name, BIOMES.ABYSSAL_SANCTUM.name);
   });
 
-  it('spawns the Abyssal Overlord boss on Floor 20 with exact stats (600 HP, 20 ATK, 6 DEF)', () => {
+  it('spawns The Spire Warden boss on Floor 20 with exact stats (600 HP, 20 ATK, 6 DEF)', () => {
     const floor20 = generateFloor(20);
     const boss = floor20.monsters.find(m => m.type === 'abyssal_overlord');
 

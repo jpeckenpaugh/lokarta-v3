@@ -46,8 +46,8 @@ The native Node.js test suite [`html/tests/engine.test.mjs`](file:///Users/jarad
   ✔ enforces 40x40 matrix boundaries on all floors 1 to 20 (0.862125ms)
   ✔ places player spawn at (2,2) and exit stairs at (35,35) (1.002208ms)
   ✔ guarantees connectivity between spawn (2,2) and stairs (35,35) on all floors (10.3995ms)
-  ✔ assigns correct biomes for floors 1 to 20 (0.106334ms)
-  ✔ spawns the Abyssal Overlord boss on Floor 20 with exact stats (600 HP, 20 ATK, 6 DEF) (0.078ms)
+  ✔ assigns correct tower tiers for floors 1 to 20 (0.106334ms)
+  ✔ spawns The Spire Warden boss on Floor 20 with exact stats (600 HP, 20 ATK, 6 DEF) (0.078ms)
 ✔ Floor Generator (1-20) (13.99925ms)
 ▶ GridMap & Tile Bounds
   ✔ initializes an empty grid with specified dimensions filled with WALL tiles (0.084209ms)
@@ -102,7 +102,7 @@ Each reverse-engineered feature brief under `features/briefs/` was mapped to aut
 
 | Brief ID & Title | Subsystems Audited | Automated Test Verification | Static Review Status | Result |
 | :--- | :--- | :--- | :--- | :---: |
-| **01-dungeon-generator** | `floor-generator.js` | 6 tests in Suite 1 (`Floor Generator (1-20)`) passed. Verifies PRNG Mulberry32 determinism, 40x40 grid, spawn (2,2), exit (35,35), BFS path connectivity across floors 1-20, biome tiers, and Floor 20 boss. | Verified exact matrix boundaries and boss parameters (600 HP, 20 ATK, 6 DEF). | **PASS** |
+| **01-dungeon-generator** | `floor-generator.js` | 6 tests in Suite 1 (`Floor Generator (1-20)`) passed. Verifies PRNG Mulberry32 determinism, 40x40 grid, spawn (2,2), exit (35,35), BFS path connectivity across floors 1-20, tower tiers, and Floor 20 boss. | Verified exact matrix boundaries and boss parameters (600 HP, 20 ATK, 6 DEF). | **PASS** |
 | **02-lighting-and-los** | `engine.js` (`LightingSystem`, `GridMap`) | 3 tests in Suite 2 (`GridMap`) & 3 tests in Suite 3 (`LightingSystem`) passed. Verifies FOV radii (Base 10, Torch 14, Spell 12), Bresenham LOS raycasting, and wall occlusion. | Verified light circle casting and wall occlusion algorithms. | **PASS** |
 | **03-combat-and-abilities** | `CombatSystem` + `InventorySystem` (equip path) | 4+ tests in Suite 5 (`CombatSystem`) plus equip-rejection tests in Suite 6 (`InventorySystem`) passed. Verifies no class multiplier (damage scales from `skillBoosts.damageMultiplier` only), vocation-locked equipment (wrong-class rejections incl. shared `["fighter","paladin"]` arrays; correct class accepted), Archer arrow consumption, and Paladin Heal/Holy Strike. | Verified no `NATIVE_CLASS_MULTIPLIER`, `isNativeItem`, or `getVocationMultiplier` remains in runtime code or UI strings; `buckler`/`plate_armor`/`relic_champions_crest` now carry `vocationAffinity`. | **PASS** |
 | **04-vocations-and-progression** | `engine.js` (`ProgressionSystem`) | 2 tests in Suite 4 (`ProgressionSystem`) passed. Verifies 4 vocations (Magician, Archer, Fighter, Paladin), starting vitals, XP level curves (`level * 100`), and stat growth. | Verified archetype vitals: Magician (60/150), Archer (90/80), Fighter (140/30), Paladin (120/90). | **PASS** |

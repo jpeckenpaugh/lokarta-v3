@@ -18,7 +18,7 @@
       },
       {
         "type": "crypt_skeleton",
-        "name": "Crypt Skeleton",
+        "name": "Bone Sentry",
         "baseHp": 40,
         "hpPerFloor": 6,
         "baseAtk": 8,
@@ -39,7 +39,7 @@
     "spawns": [
       {
         "type": "crypt_skeleton",
-        "name": "Crypt Skeleton",
+        "name": "Bone Sentry",
         "baseHp": 40,
         "hpPerFloor": 6,
         "baseAtk": 10,
@@ -82,7 +82,7 @@
       },
       {
         "type": "crypt_skeleton",
-        "name": "Crypt Skeleton",
+        "name": "Bone Sentry",
         "baseHp": 50,
         "hpPerFloor": 7,
         "baseAtk": 12,
@@ -98,7 +98,7 @@
     "boss": {
       "id": "f20_boss_overlord",
       "type": "abyssal_overlord",
-      "name": "Abyssal Overlord",
+      "name": "The Spire Warden",
       "x": 33,
       "y": 33,
       "hp": 600,
@@ -112,7 +112,7 @@
     "guardSpawns": [
       {
         "type": "elite_cultist",
-        "name": "Void Zealot",
+        "name": "Spire Sentinel",
         "hp": 80,
         "attack": 18,
         "defense": 4,
@@ -121,7 +121,7 @@
       },
       {
         "type": "crypt_skeleton",
-        "name": "Abyssal Guardian",
+        "name": "Tower Keeper",
         "hp": 80,
         "attack": 18,
         "defense": 4,

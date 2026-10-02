@@ -12,7 +12,7 @@
 
 - **Zero-Backend Architecture:** Self-contained static client application. Runs directly in any modern browser via standard HTTP static file servers.
 - **Off-Thread Simulation & Worker RPC:** Procedural floor generation and state persistence run off the UI thread in a dedicated Web Worker (`game-worker.js`), communicated via a Promise-wrapped RPC client bridge (`game-client.js`).
-- **20-Floor Procedural Dungeon & 4 Biomes:** Deterministic Mulberry32 PRNG dungeon generation on a $40 \times 40$ tile matrix with Breadth-First Search (BFS) connectivity verification. Progresses across 4 biomes (Subterranean Crypt, Catacombs of Whispers, Shadow Vaults, Abyssal Sanctum) culminating in the Floor 20 Abyssal Overlord boss fight.
+- **Procedural Tower Ascent & 5 Tiers:** Deterministic Mulberry32 PRNG tower generation on a $40 \times 40$ tile matrix with Breadth-First Search (BFS) connectivity verification. Ascends five tiers (The Gatehouse, The Hall of Banners, The Bell Keep, The Solar Gallery, The Crown Spire) culminating in the final Spire Warden boss fight.
 - **Dynamic Line-of-Sight (LOS) Lighting:** Circular radius field-of-view algorithm driven by JSON catalog specs (Base FOV: 10 tiles, Torch: +2 radius, degrading Light Spell: +3/+2/+1 radius).
 - **4 Playable Vocations & Vocation-Locked Equipment:** Play as Magician, Archer, Fighter, or Paladin with unique stat growth curves. The class advantage comes from **exclusive access to vocation-locked gear** — weapons, armor, and relics can only be equipped by their appropriate vocation.
 - **Fate Grant Leveling System:** 5-card draft reward selection upon leveling up (up to Level 20 cap), offering vocation-aligned skills, stat boosts, and gear.
@@ -71,7 +71,7 @@ The glob covers all 9 suites (`engine`, `audio`, `submodules`, `app-modules`, `d
 
 ### Test Suite Coverage (9 Test Suites, 140 Tests / 14 Suites / 0 Fail)
 
-- **Floor Generator (1–20):** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, biome mapping, and Floor 20 Abyssal Overlord stats (600 HP, 20 ATK, 6 DEF).
+- **Floor Generator:** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, tier mapping, and final guardian (The Spire Warden) stats (600 HP, 20 ATK, 6 DEF).
 - **GridMap & Tile Bounds:** Tests matrix initialization, tile opacity/walkability checks, and item placement/removal.
 - **LightingSystem & 10-Tile FOV:** Verifies FOV radius calculations (Base 10, Torch +2, degrading Light Spell +3/+2/+1), spatial circle lighting without wall occlusion.
 - **ProgressionSystem & 4 Vocations:** Verifies initial archetype vitals, XP level curves (`level * 100`), and stat growth from `vocations.json`.
@@ -98,7 +98,7 @@ The client application is structured into clean, modular vanilla ES JavaScript s
 | [`html/audio/`](file:///Users/jarad/git/lokarta-v3/html/audio/) | Audio Subsystem | Main UI Thread | Web Audio API procedural synthesizer (`audio-system.js`) driven by `sounds.json`. |
 | [`html/data/`](file:///Users/jarad/git/lokarta-v3/html/data/) | Data Catalogs | Shared | 12 JSON data catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tile_themes.json`, `keybindings.json`, `ui.json`. |
 | [`html/engine/`](file:///Users/jarad/git/lokarta-v3/html/engine/) | Core Engine | Shared | Submodules: `config.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `entity-ai.js`, `inventory-system.js`, `fate-grant-system.js`, `gesture-engine.js`. |
-| [`html/services/`](file:///Users/jarad/git/lokarta-v3/html/services/) | Services | Shared / Worker | Floor generator (`floor-generator.js`) and IndexedDB persistence (`storage.js`). |
+| [`html/services/`](file:///Users/jarad/git/lokarta-v3/html/services/) | Services | Shared / Worker | Tower floor generator (`floor-generator.js`) and IndexedDB persistence (`storage.js`). |
 | [`html/worker/`](file:///Users/jarad/git/lokarta-v3/html/worker/) | Worker RPC | Web Worker Thread | RPC Client (`game-client.js`) and background worker dispatcher (`game-worker.js`). |
 | [`html/tests/`](file:///Users/jarad/git/lokarta-v3/html/tests/) | Test Suite | CLI / Node.js | Automated unit test suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`, `packaging`, `sprite-assets`, `storage-migration`). |
 
@@ -126,7 +126,7 @@ The client application is structured into clean, modular vanilla ES JavaScript s
 
 Complete technical documentation and specifications reverse-engineered from the ground-truth application codebase:
 
-- **Concept Specification:** [`concept.md`](file:///Users/jarad/git/lokarta-v3/concept.md) — Product identity, target audience, stack summary, vocation specs, and biome catalog.
+- **Concept Specification:** [`concept.md`](file:///Users/jarad/git/lokarta-v3/concept.md) — Product identity, target audience, stack summary, vocation specs, and tower tier catalog.
 - **Technical Architecture:** [`docs/architecture.md`](file:///Users/jarad/git/lokarta-v3/docs/architecture.md) — Detailed subsystem architecture, RPC protocols, IndexedDB schemas, rendering lerp formulas, and audio graphs.
 - **AI Agent Development Guidelines:** [`docs/agents.md`](file:///Users/jarad/git/lokarta-v3/docs/agents.md) — Mandatory architecture rules, data-driven constraints, hot-path performance budgets, and regression testing standards.
 - **Optimization & Performance Report:** [`docs/optimizations.md`](file:///Users/jarad/git/lokarta-v3/docs/optimizations.md) — Detailed runtime bottlenecks, GC profiling, overdraw culling, and proposed optimization solutions.

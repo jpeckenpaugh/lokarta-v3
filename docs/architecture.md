@@ -44,7 +44,7 @@
 ### Key Architectural Principles:
 1. **Zero-Backend / Static Asset Hosting:** The application requires no remote application server or backend API. All client logic runs in the browser. Static assets are served over standard HTTP (`run.sh`).
 2. **Native ES Modules (ESM):** All JavaScript components are structured as native ES modules using standard `import`/`export` syntax, avoiding bundlers or transpilation steps.
-3. **Off-Thread State & Generation:** Heavy computational workloads (procedural dungeon generation, BFS connectivity checks, state mutations, and IndexedDB I/O) execute off the main thread in a dedicated Web Worker (`game-worker.js`).
+3. **Off-Thread State & Generation:** Heavy computational workloads (procedural tower floor generation, BFS connectivity checks, state mutations, and IndexedDB I/O) execute off the main thread in a dedicated Web Worker (`game-worker.js`).
 4. **Decoupled Simulation & Rendering Loops:** Engine simulation logic operates on a fixed 10 Hz tick loop (100 ms intervals), while the visual Canvas renderer interpolates tile coordinates smoothly at 60 FPS.
 
 ---
@@ -138,7 +138,7 @@ The game data systems are fully decoupled from codebase logic and driven by 12 J
 - **`vocations.json`**: Starting HP/MP, per-level growth, damage scaling steps, `eyeColor`, and `regenResource` for all 4 playable vocations.
 - **`sounds.json`**: 19 procedural sound definitions powering `AudioSystem`.
 - **`abilities.json`**: Cooldowns, range, MP costs, and damage parameters for spell skills.
-- **`biomes.json`**: Floor depth ranges and lighting colors for all 4 biomes.
+- **`biomes.json`**: Floor ranges and lighting colors for each tower tier.
 - **`encounters.json`**: Floor tier spawn groups, boss specifications, and monster density parameters.
 - **`dungeons.json`**: Macro 40x40 room layouts, doorway anchors, milestone bonuses, and floor name overrides.
 - **`tile_themes.json`**: Wall fills, highlights, floor colors, door fills, and stairs colors.

@@ -16,7 +16,7 @@ The **UI Controller and Canvas Renderer** delivers the visual presentation layer
   - `FLOOR`: `#1a1c23` base with subtle grid accent squares.
   - `STAIRS`: Multi-layered blue step rings (`#3878a8` / `#254e70`) with glowing center orb (`#88eeff`).
   - `DOOR`: Wood grain border (`#4a2f1b`).
-- **Entity Sprites:** Procedural monster icons (Rats, Skeletons, Cultists, Abyssal Overlord boss) and item sprites (Health/Mana Potions, Torches, Arrows, Weapons, Armor, Relics).
+- **Entity Sprites:** Procedural monster icons (Giant Rats, Bone Sentries, Cultists, The Spire Warden boss) and item sprites (Health/Mana Potions, Torches, Arrows, Weapons, Armor, Relics).
 
 ### 2.2 Particle FX & Lighting Shroud Overlays
 - **Particle Animations:** Floating damage text (red numbers for damage, green for heal), wand spark arc particles, energy beam ray renders, level-up celebration flashes.

@@ -39,7 +39,7 @@ The **Inventory, Paperdoll Equipment, and Offline Storage** feature governs item
 - **4 Dedicated Object Stores:**
   1. `profile`: Player settings, master sound toggle (`soundEnabled`), volume, creation timestamp.
   2. `characters`: Active character entity state (vocation, level, XP, stats, inventory, equipment, current floor).
-  3. `dungeon_floors`: Cached 20-floor state objects (explored tiles, floor items, cleared monsters).
+  3. `dungeon_floors`: Cached floor-state objects (explored tiles, floor items, cleared monsters).
   4. `game_settings`: Key-value application configuration and user preferences.
 
 ---

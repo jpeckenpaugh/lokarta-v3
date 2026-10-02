@@ -100,10 +100,10 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 ## 5. 🧵 Threading, Web Workers & Storage Guidelines
 
 1. **Keep Heavy Work Off the UI Thread:**
-   Procedural dungeon generation, BFS room connectivity validation, and IndexedDB I/O belong strictly in [`html/worker/game-worker.js`](file:///Users/jarad/git/lokarta-v3/html/worker/game-worker.js).
+   Procedural tower floor generation, BFS room connectivity validation, and IndexedDB I/O belong strictly in [`html/worker/game-worker.js`](file:///Users/jarad/git/lokarta-v3/html/worker/game-worker.js).
 2. **Debounce Persistence Calls:**
    Do not dispatch `saveCharacter` worker messages on every minor user action. Use a trailing debounce timer (e.g., 500 ms) for rapid actions (potions, looting), reserving immediate saves (`persistSave(true)`) for critical transitions:
-   - Floor descent stairs
+   - Floor ascent stairs
    - Player leveling up
    - Game over / defeat
 3. **Message Serialization (Structured Clone):**
@@ -114,9 +114,9 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 ## 6. 🎲 Determinism & Procedural Generation
 
 1. **Mulberry32 PRNG:**
-   Always use the deterministic Mulberry32 PRNG ([`createPRNG`](file:///Users/jarad/git/lokarta-v3/html/services/floor-generator.js)) for dungeon floor carving, room layout, and monster tier selection. Never use `Math.random()` in procedural generation.
+   Always use the deterministic Mulberry32 PRNG ([`createPRNG`](file:///Users/jarad/git/lokarta-v3/html/services/floor-generator.js)) for tower floor carving, room layout, and monster tier selection. Never use `Math.random()` in procedural generation.
 2. **BFS Connectivity Guarantee:**
-   Any modification to dungeon templates or floor generation algorithms must guarantee and verify full Breadth-First Search (BFS) path connectivity between player spawn `(2,2)` and exit stairs `(35,35)`.
+   Any modification to tower templates or floor generation algorithms must guarantee and verify full Breadth-First Search (BFS) path connectivity between player spawn `(2,2)` and the ascent stairs `(35,35)`.
 3. **Consistent Floor Seeds:**
    Use the canonical formula `(1337 + floorId * 42)` for floor seeds unless an explicit seed parameter is provided.
 

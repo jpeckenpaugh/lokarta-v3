@@ -29,12 +29,12 @@ The **Dynamic Lighting and Line-of-Sight (LOS)** system calculates player vision
 - Evaluates spatial distance $d = \sqrt{\Delta x^2 + \Delta y^2}$ from player grid coordinates $(x_p, y_p)$ to boundary targets within current FOV radius.
 - Light spreads in a uniform circular radius around the player with linear distance intensity falloff.
 
-### 3.4 Biome Light Color Tinting
-- Applies custom ambient color tint overlays over visible tiles based on the active biome:
-  - Crypt: Warm Amber/Orange (`#ff8800`).
-  - Catacombs: Ethereal Cyan (`#00d4ff`).
-  - Shadow Vaults: Arcane Purple (`#a855f7`).
-  - Abyssal Sanctum: Infernal Crimson (`#ef4444`).
+### 3.4 Tower Tier Light Color Tinting
+- Applies custom ambient color tint overlays over visible tiles based on the active tower tier:
+  - The Gatehouse: Warm Amber/Orange (`#ff8800`).
+  - The Hall of Banners: Ethereal Cyan (`#00d4ff`).
+  - The Bell Keep: Arcane Purple (`#a855f7`).
+  - The Solar Gallery: Infernal Crimson (`#ef4444`).
 
 ---
 

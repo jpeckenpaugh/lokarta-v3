@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-The **Web Worker Async RPC Bridge** offloads heavy computational operations—such as Mulberry32 dungeon floor generation, BFS path validation, and IndexedDB storage persistence—to a Dedicated Web Worker (`game-worker.js`). By isolating CPU-bound generation and async storage calls off the main thread, it guarantees smooth 60 FPS rendering on the primary UI thread without frame drops.
+The **Web Worker Async RPC Bridge** offloads heavy computational operations—such as Mulberry32 tower floor generation, BFS path validation, and IndexedDB storage persistence—to a Dedicated Web Worker (`game-worker.js`). By isolating CPU-bound generation and async storage calls off the main thread, it guarantees smooth 60 FPS rendering on the primary UI thread without frame drops.
 
 ---
 
@@ -41,7 +41,7 @@ The Dedicated Worker (`game-worker.js`) listens for messages and dispatches payl
 
 ## 4. User-Visible Experience
 
-- **Zero UI Lag:** Descending to a new floor triggers procedural generation in background thread while UI renders loading spinner or immediate transition.
+- **Zero UI Lag:** Climbing to a new floor triggers procedural generation in background thread while UI renders loading spinner or immediate transition.
 - **Background Auto-Save:** Game state periodically commits to disk without causing input stuttering or micro-freezes.
 
 ---
