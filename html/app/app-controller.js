@@ -12,6 +12,7 @@ import {
   EntityAI,
   InventorySystem,
   ChestSystem,
+  DoorSystem,
   GestureEngine,
   createPlayer,
 } from '../engine/index.js';
@@ -547,6 +548,10 @@ export class LokartaApp {
         }
       }
     }
+
+    // E3: reopen any gate whose key the player already carries, so re-entering
+    // a cleared level can never soft-lock behind an earned key.
+    DoorSystem.syncPlayerGates(this.gridMap, this.player);
 
     for (const item of floorData.items || []) {
       this.gridMap.addItem(item.x, item.y, item);
@@ -1512,6 +1517,27 @@ export class LokartaApp {
         this.monsters.splice(index, 1);
         if (this.selectedMonsterId === res.defeatedMonsterId) {
           this.selectedMonsterId = null;
+        }
+
+        // E3: defeating a key holder grants its key and unlocks the matching
+        // gated door, advancing the level's copper -> silver -> gold progression.
+        if (deadMonster.holdsKey) {
+          const keyDrop = DoorSystem.keyDropForMonster(deadMonster);
+          if (keyDrop) {
+            const addRes = InventorySystem.addItem(this.player, keyDrop);
+            if (addRes.success) {
+              this.logCombat(`${deadMonster.name} dropped the ${keyDrop.name}!`, 'loot');
+              this.addFloatingText(`+${keyDrop.name}`, deadMonster.x, deadMonster.y, '#facc15');
+            } else {
+              this.logCombat(`${keyDrop.name} could not be carried: ${addRes.message}`, 'warning');
+            }
+          }
+          const opened = DoorSystem.openTierGates(this.gridMap, deadMonster.holdsKey);
+          if (opened > 0) {
+            this.logCombat(`The ${deadMonster.holdsKey} gate unlocks!`, 'system');
+          }
+          this.updateHUD();
+          this.persistSave();
         }
 
         if (isBoss && this.player.current_floor >= 20) {

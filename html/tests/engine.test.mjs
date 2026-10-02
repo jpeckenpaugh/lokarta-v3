@@ -33,6 +33,7 @@ import {
   CombatSystem,
   EntityAI,
   InventorySystem,
+  DoorSystem,
   FateGrantSystem,
   GestureEngine,
 } from '../engine/index.js';
@@ -90,6 +91,21 @@ describe('Floor Generator (1-20)', () => {
       const floor = generateFloor(f);
       const grid = new GridMap(40, 40);
       grid.loadFromMatrix(floor.tiles);
+
+      // E3: gated doors physically block until keyed. This check owns the
+      // structural guarantee, so unlock every gate (all keys earned) first.
+      for (const [tier, gate] of Object.entries(floor.gates || {})) {
+        for (const t of gate.tiles || []) {
+          const tile = grid.getTile(t.x, t.y);
+          if (tile) {
+            tile.gateTier = tier;
+            tile.gateOpen = false;
+          }
+        }
+      }
+      for (const tier of Object.keys(floor.gates || {})) {
+        DoorSystem.openTierGates(grid, tier);
+      }
 
       const start = floor.spawn_coords;
       const goal = floor.stairs_down_coords;

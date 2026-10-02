@@ -80,7 +80,11 @@ export class GridMap {
 
   isWalkable(x, y) {
     if (!this.isInBounds(x, y)) return false;
-    return this.tiles[y][x].type !== TILE_TYPES.WALL;
+    const tile = this.tiles[y][x];
+    if (tile.type === TILE_TYPES.WALL) return false;
+    // E3: a locked gated door blocks movement until its key unlocks the tile.
+    if (tile.type === TILE_TYPES.GATED_DOOR && !tile.gateOpen) return false;
+    return true;
   }
 
   isWall(x, y) {

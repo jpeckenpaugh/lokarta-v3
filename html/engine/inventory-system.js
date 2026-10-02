@@ -126,6 +126,56 @@ export class InventorySystem {
     };
   }
 
+  /**
+   * Grants an item directly to the player (guaranteed drops such as the
+   * key-holder keys): stacks where possible, then fills the first empty
+   * Action Slot, then Backpack. Never drops to the ground.
+   * @returns {{ success: boolean, message: string, item: object|null }}
+   */
+  static addItem(player, item) {
+    if (!player || !item || !item.item_id) {
+      return { success: false, message: 'Nothing to add.', item: null };
+    }
+
+    const maxStack = InventorySystem.getMaxStack(item.item_id);
+    let remaining = item.quantity || 1;
+    const lists = [player.action_bar, player.backpack].filter(Boolean);
+
+    if (maxStack > 1) {
+      for (const list of lists) {
+        for (let i = 0; i < list.length && remaining > 0; i++) {
+          const slot = list[i];
+          if (slot && slot.item_id === item.item_id && slot.quantity < maxStack) {
+            const toAdd = Math.min(maxStack - slot.quantity, remaining);
+            slot.quantity += toAdd;
+            remaining -= toAdd;
+          }
+        }
+      }
+    }
+
+    for (const list of lists) {
+      for (let i = 0; i < list.length && remaining > 0; i++) {
+        if (list[i] === null) {
+          const toMove = Math.min(maxStack, remaining);
+          list[i] = { ...item, quantity: toMove };
+          remaining -= toMove;
+        }
+      }
+    }
+
+    if (remaining > 0) {
+      return { success: false, message: 'Action Slots & Backpack are full!', item: null };
+    }
+
+    const qty = item.quantity || 1;
+    return {
+      success: true,
+      message: `Added ${item.name}${qty > 1 ? ` (x${qty})` : ''}.`,
+      item,
+    };
+  }
+
   static dropItem(player, source, slotIndex, gridMap) {
     const list = source === 'action_bar' ? player.action_bar : player.backpack;
     if (!list || slotIndex < 0 || slotIndex >= list.length) {
