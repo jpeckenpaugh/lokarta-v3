@@ -6,10 +6,19 @@
  * the Web Worker API, or timers.
  */
 
-import { UI_CATALOG } from '../data/index.js';
+import { UI_CATALOG, TOWER_LEVELS_CATALOG } from '../data/index.js';
 
 /** Number of independent save slots (from the ui.json presentation catalog). */
 export const SAVE_SLOT_COUNT = (UI_CATALOG && UI_CATALOG.saveSlots && UI_CATALOG.saveSlots.count) || 5;
+
+/**
+ * Highest playable tower level (from the tower_levels.json catalog). Saves that
+ * predate the 20 -> 5 floor cut may point past this and must be clamped.
+ */
+export const TOWER_LEVEL_COUNT = Math.max(
+  1,
+  Math.floor(Number(TOWER_LEVELS_CATALOG?.levelCount) || 5)
+);
 
 /** Default persisted options (from the ui.json presentation catalog). */
 export const OPTION_DEFAULTS = Object.freeze({
@@ -52,6 +61,7 @@ export function emptySlotRecord(slotIndex) {
     id: slotId(slotIndex),
     slotIndex,
     status: 'empty',
+    saveVersion: SAVE_FORMAT_VERSION,
     characterId: null,
     name: null,
     vocation: null,
@@ -117,11 +127,12 @@ export function deriveSlotMeta(player, slotIndex, biome = null) {
     id: slotId(slotIndex),
     slotIndex,
     status: 'occupied',
+    saveVersion: SAVE_FORMAT_VERSION,
     characterId: player?.id || null,
     name: player?.name || null,
     vocation: player?.vocation || null,
     level: Number(player?.level) || 1,
-    currentFloor: Number(player?.current_floor) || 1,
+    currentFloor: clampTowerFloor(player?.current_floor),
     biome: biome || null,
     playtimeMs: Number(player?.playtimeMs) || 0,
     floorEntry: snapshotFloorEntry(player),
@@ -129,6 +140,108 @@ export function deriveSlotMeta(player, slotIndex, biome = null) {
     updatedAt: existing,
     lastPlayedAt: player?.lastPlayedAt || existing,
   };
+}
+
+/**
+ * Clamps an arbitrary floor number onto the playable 1..TOWER_LEVEL_COUNT
+ * tower. Legacy saves from the retired 20-floor layout can point as high as 20;
+ * clamping means they land on the tower without ever loading a floor beyond the
+ * final level. Non-finite values default to level 1.
+ * @param {number} floorNumber
+ * @returns {number} 1..TOWER_LEVEL_COUNT
+ */
+export function clampTowerFloor(floorNumber) {
+  const n = Math.floor(Number(floorNumber));
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(1, Math.min(TOWER_LEVEL_COUNT, n));
+}
+
+/**
+ * Migrates a persisted player character onto the 5-level tower. Returns a
+ * shallow copy with `current_floor` clamped to `1..TOWER_LEVEL_COUNT` and the
+ * `floorEntry` snapshot kept in sync. Returns the original reference when no
+ * field needs changing so callers can cheaply detect a no-op. Never throws.
+ * @param {object|null} player
+ * @returns {object|null}
+ */
+export function migratePlayerToTower(player) {
+  if (!player || typeof player !== 'object') return player;
+  let flatFloor = player.current_floor;
+  if (flatFloor === undefined || flatFloor === null || !Number.isFinite(Number(flatFloor))) {
+    flatFloor = 1;
+  }
+  const clamped = clampTowerFloor(flatFloor);
+  const entry = player.floorEntry;
+  let entryClamped = null;
+  if (entry && typeof entry === 'object') {
+    let entryFloor = entry.current_floor;
+    if (entryFloor === undefined || entryFloor === null || !Number.isFinite(Number(entryFloor))) {
+      entryFloor = 1;
+    }
+    entryClamped = clampTowerFloor(entryFloor);
+  }
+  const floorNeedsFix = Number(flatFloor) !== clamped;
+  const entryNeedsFix = entryClamped !== null && Number(entry.current_floor) !== entryClamped;
+  if (!floorNeedsFix && !entryNeedsFix) return player;
+
+  const next = { ...player, current_floor: clamped };
+  if (entryClamped !== null) {
+    next.floorEntry = { ...entry, current_floor: entryClamped };
+  }
+  return next;
+}
+
+/**
+ * Normalizes a persisted slot metadata record onto the 5-level tower. A slot is
+ * never "unavailable" merely because it points past level 5 — it is clamped to
+ * the final level so an old save stays loadable. Also keeps `floorEntry` in
+ * sync. Returns a new object when a field changed, else the original reference.
+ * @param {object|null} slot
+ * @returns {object|null}
+ */
+export function normalizeSlotToTower(slot) {
+  if (!slot || typeof slot !== 'object') return slot;
+  let rawFloor = slot.currentFloor;
+  if (rawFloor === undefined || rawFloor === null || !Number.isFinite(Number(rawFloor))) {
+    rawFloor = 1;
+  }
+  const clamped = clampTowerFloor(rawFloor);
+  const entry = slot.floorEntry;
+  let entryClamped = null;
+  if (entry && typeof entry === 'object') {
+    let entryFloor = entry.current_floor;
+    if (entryFloor === undefined || entryFloor === null || !Number.isFinite(Number(entryFloor))) {
+      entryFloor = 1;
+    }
+    entryClamped = clampTowerFloor(entryFloor);
+  }
+  const floorNeedsFix = Number(rawFloor) !== clamped;
+  const entryNeedsFix = entryClamped !== null && Number(entry.current_floor) !== entryClamped;
+  if (!floorNeedsFix && !entryNeedsFix) return slot;
+
+  const next = { ...slot, currentFloor: clamped };
+  if (entryClamped !== null) {
+    next.floorEntry = { ...entry, current_floor: entryClamped };
+  }
+  return next;
+}
+
+/**
+ * Version of the persisted slot/character shape. v1 = 20-floor cave layout;
+ * v2 = 5-level tower (floors clamped to `1..TOWER_LEVEL_COUNT`). The storage
+ * layer stamps v2 and resets pre-v2 floor caches (see `migrateLegacySave`).
+ */
+export const SAVE_FORMAT_VERSION = 2;
+
+/**
+ * Reads the save-format version stamped on a stored slot/character. Missing or
+ * malformed versions are treated as v1 (pre-tower) so they get normalized.
+ * @param {object|null} record
+ * @returns {number}
+ */
+export function saveFormatVersion(record) {
+  const n = Math.floor(Number(record?.saveVersion));
+  return Number.isFinite(n) && n >= 1 ? n : 1;
 }
 
 /**
@@ -146,7 +259,9 @@ export const SLOT_KIND = Object.freeze({
 /**
  * True when an occupied slot record carries every field the UI and loader
  * need. Missing/blank fields or a non-numeric level/floor mean the save cannot
- * be safely loaded and must render as DATA UNAVAILABLE.
+ * be safely loaded and must render as DATA UNAVAILABLE. A floor above the tower
+ * max is valid: the loader clamps it to the final level (`normalizeSlotToTower`),
+ * so an old 20-floor save stays loadable instead of vanishing.
  * @param {object|null} slot
  * @returns {boolean}
  */
@@ -342,15 +457,22 @@ export function planLegacyMigration(legacyCharacters, legacyFloors, guard = null
     return timeB.localeCompare(timeA);
   })[0];
 
-  const character = { ...newest, slotId: slotId(1), slotIndex: 1, playtimeMs: Number(newest.playtimeMs) || 0 };
+  const character = migratePlayerToTower({
+    ...newest,
+    slotId: slotId(1),
+    slotIndex: 1,
+    playtimeMs: Number(newest.playtimeMs) || 0,
+    saveVersion: SAVE_FORMAT_VERSION,
+  });
   const slot = deriveSlotMeta(character, 1, newest.biome || null);
   guardRecord.fromCharacterId = character.id || null;
 
-  const floors = (Array.isArray(legacyFloors) ? legacyFloors : [])
-    .filter(Boolean)
-    .map(floor => ({ key: slotFloorKey(1, floor.floor_number), floor }));
+  // Legacy 20-floor caches are intentionally dropped: their template is stale
+  // and their floor numbers can exceed the tower. The character keeps its
+  // clamped current floor and the generator rebuilds valid floors on load.
+  void legacyFloors;
 
-  return { alreadyDone: false, guard: guardRecord, slot, character, floors };
+  return { alreadyDone: false, guard: guardRecord, slot, character, floors: [] };
 }
 
 function clone(value) {

@@ -9,7 +9,9 @@ import {
   getAll,
   STORES,
   MIGRATION_GUARD_KEY,
+  TOWER_MIGRATION_GUARD_KEY,
   migrateLegacySave,
+  migrateTowerSave,
 } from '../services/storage.js';
 
 /**
@@ -195,7 +197,7 @@ const LEGACY_CHARACTER = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
-test('LIV-16 D3: legacy migration populates slot_floors', async (t) => {
+test('LIV-16 D3: legacy migration moves the v1 save into Slot 1 (E6 tower rules)', async (t) => {
   const originalIndexedDB = globalThis.indexedDB;
   globalThis.indexedDB = createFakeIndexedDB();
   t.after(() => {
@@ -220,19 +222,12 @@ test('LIV-16 D3: legacy migration populates slot_floors', async (t) => {
   assert.equal(result.migrated, true, 'legacy character should migrate');
   assert.equal(result.recovered, false);
 
-  await t.test('every legacy floor is copied into slot_floors keyed [1, n]', async () => {
-    const floors = await getAll(STORES.SLOT_FLOORS);
-    assert.equal(floors.length, 2, 'both legacy dungeon_floors rows copied');
-    for (const floor of floors) {
-      assert.equal(floor.slotIndex, 1, 'migrated floor must carry its slot index');
-    }
-    const byFloor = new Map(floors.map((f) => [f.floor_number, f]));
-    assert.ok(byFloor.has(7) && byFloor.has(8));
-
-    const direct = await read(STORES.SLOT_FLOORS, [1, 7]);
-    assert.ok(direct, 'composite key round-trips through the real key shape');
-    assert.equal(direct.floor_number, 7);
-    assert.equal(direct.slotIndex, 1);
+  await t.test('the migrated character is clamped onto the 5-level tower', async () => {
+    const character = await read(STORES.CHARACTERS, 'char_old');
+    assert.ok(character, 'legacy character rewritten with slot assignment');
+    assert.equal(character.slotIndex, 1);
+    // E6: original current_floor was 5 (already in range); ensure it stays valid.
+    assert.ok(character.current_floor >= 1 && character.current_floor <= 5);
   });
 
   await t.test('slot, guard, and legacy stores are all written/left intact', async () => {
@@ -240,12 +235,13 @@ test('LIV-16 D3: legacy migration populates slot_floors', async (t) => {
     assert.ok(slot, 'slot_1 metadata written');
     assert.equal(slot.characterId, 'char_old');
     assert.equal(slot.status, 'occupied');
+    assert.ok(slot.currentFloor >= 1 && slot.currentFloor <= 5, 'slot metadata floor clamps to the tower');
 
     const guard = await read(STORES.GAME_SETTINGS, MIGRATION_GUARD_KEY);
     assert.ok(guard && guard.done, 'migration guard written');
 
     const legacyFloors = await getAll(STORES.DUNGEON_FLOORS);
-    assert.equal(legacyFloors.length, 2, 'legacy dungeon_floors left untouched');
+    assert.equal(legacyFloors.length, 2, 'legacy dungeon_floors left untouched by the v1->v2 migration');
     const legacyCharacter = await read(STORES.CHARACTERS, 'char_old');
     assert.ok(legacyCharacter, 'legacy character left in place');
   });
@@ -253,7 +249,104 @@ test('LIV-16 D3: legacy migration populates slot_floors', async (t) => {
   await t.test('a second run is a no-op (idempotent)', async () => {
     const rerun = await migrateLegacySave();
     assert.equal(rerun.migrated, false);
-    const floors = await getAll(STORES.SLOT_FLOORS);
-    assert.equal(floors.length, 2, 'no duplicate floor rows after rerun');
+    const slot = await read(STORES.SAVE_SLOTS, 'slot_1');
+    assert.equal(slot.characterId, 'char_old', 'slot metadata unchanged after rerun');
+  });
+});
+
+test('LIV-13 E6: tower migration clamps old saves and drops stale floors', async (t) => {
+  const originalIndexedDB = globalThis.indexedDB;
+  globalThis.indexedDB = createFakeIndexedDB();
+  t.after(() => {
+    closeStorage();
+    globalThis.indexedDB = originalIndexedDB;
+  });
+
+  await openStorage();
+
+  // A pre-tower save sitting on floor 17 with a floorEntry on floor 17, plus a
+  // second slot on floor 9. Both must land on level 5 and keep their progress.
+  await put(STORES.CHARACTERS, {
+    id: 'char_tower_a', slotId: 'slot_1', slotIndex: 1, vocation: 'paladin',
+    level: 6, current_floor: 17, xp: 120, hp: 77, max_hp: 100,
+    floorEntry: { current_floor: 17, hp: 77, level: 6 },
+    backpack: [{ item_id: 'torch', quantity: 2 }],
+    updatedAt: '2026-03-01T00:00:00.000Z',
+  });
+  await put(STORES.SAVE_SLOTS, {
+    id: 'slot_1', slotIndex: 1, status: 'occupied', characterId: 'char_tower_a',
+    vocation: 'paladin', level: 6, currentFloor: 17,
+    floorEntry: { current_floor: 17 },
+  });
+  await put(STORES.CHARACTERS, {
+    id: 'char_tower_b', slotId: 'slot_2', slotIndex: 2, vocation: 'archer',
+    level: 4, current_floor: 9,
+    floorEntry: { current_floor: 9, hp: 40, level: 4 },
+    updatedAt: '2026-03-02T00:00:00.000Z',
+  });
+  await put(STORES.SAVE_SLOTS, {
+    id: 'slot_2', slotIndex: 2, status: 'occupied', characterId: 'char_tower_b',
+    vocation: 'archer', level: 4, currentFloor: 9,
+    floorEntry: { current_floor: 9 },
+  });
+
+  // Stale cached floors from the retired 20-floor layout.
+  await put(STORES.DUNGEON_FLOORS, { floor_number: 1, template_version: 2, tiles: [] });
+  await put(STORES.DUNGEON_FLOORS, { floor_number: 17, template_version: 2, tiles: [] });
+  await put(STORES.DUNGEON_FLOORS, { floor_number: 20, template_version: 2, tiles: [] });
+  await put(STORES.SLOT_FLOORS, { slotIndex: 1, floor_number: 17, template_version: 2, tiles: [] });
+  await put(STORES.SLOT_FLOORS, { slotIndex: 2, floor_number: 9, template_version: 2, tiles: [] });
+
+  const result = await migrateTowerSave();
+  assert.equal(result.floorsReset, 5, 'every stale cached floor is dropped');
+  assert.equal(result.recordsNormalized, 4, 'both characters and both slots normalized');
+
+  await t.test('no stale cached floor template survives', async () => {
+    assert.equal((await getAll(STORES.DUNGEON_FLOORS)).length, 0);
+    assert.equal((await getAll(STORES.SLOT_FLOORS)).length, 0);
+  });
+
+  await t.test('characters land on a valid 1..5 floor with progress preserved', async () => {
+    const a = await read(STORES.CHARACTERS, 'char_tower_a');
+    assert.equal(a.current_floor, 5, 'floor 17 clamps to the final level');
+    assert.equal(a.floorEntry.current_floor, 5, 'legacy floorEntry floor clamps too');
+    assert.equal(a.level, 6, 'level progress preserved');
+    assert.equal(a.xp, 120, 'xp preserved');
+    assert.deepEqual(a.backpack, [{ item_id: 'torch', quantity: 2 }], 'inventory preserved');
+    assert.equal(a.saveVersion, 2, 'save format stamped');
+
+    const b = await read(STORES.CHARACTERS, 'char_tower_b');
+    assert.equal(b.current_floor, 5, 'floor 9 clamps to the final level');
+    assert.equal(b.saveVersion, 2);
+  });
+
+  await t.test('slot records clamp to the tower', async () => {
+    const s1 = await read(STORES.SAVE_SLOTS, 'slot_1');
+    assert.equal(s1.currentFloor, 5);
+    assert.equal(s1.floorEntry.current_floor, 5);
+    assert.equal(s1.saveVersion, 2);
+    const s2 = await read(STORES.SAVE_SLOTS, 'slot_2');
+    assert.equal(s2.currentFloor, 5);
+  });
+
+  await t.test('a second run is an idempotent no-op', async () => {
+    const rerun = await migrateTowerSave();
+    assert.equal(rerun.floorsReset, 0);
+    assert.equal(rerun.recordsNormalized, 0);
+    const guard = await read(STORES.GAME_SETTINGS, TOWER_MIGRATION_GUARD_KEY);
+    assert.ok(guard && guard.done, 'tower migration guard written');
+  });
+
+  await t.test('fresh in-range saves are untouched (no-op normalization)', async () => {
+    await closeStorage();
+    globalThis.indexedDB = createFakeIndexedDB();
+    await openStorage();
+    const fresh = { id: 'c', current_floor: 3, floorEntry: { current_floor: 3 } };
+    await put(STORES.CHARACTERS, fresh);
+    const before = await read(STORES.CHARACTERS, 'c');
+    const res = await migrateTowerSave();
+    assert.equal(res.floorsReset, 0);
+    const after = await read(STORES.CHARACTERS, 'c');
+    assert.equal(after.current_floor, before.current_floor);
   });
 });

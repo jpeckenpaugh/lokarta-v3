@@ -133,9 +133,12 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
     assert.equal(plan.character.slotId, 'slot_1');
     assert.equal(plan.character.slotIndex, 1);
     assert.equal(plan.character.id, 'char_new');
-    assert.equal(plan.floors.length, 2);
-    assert.deepEqual(plan.floors[0].key, [1, 7]);
-    assert.deepEqual(plan.floors[1].key, [1, 8]);
+    // E6: pre-tower floor caches are dropped, not copied — they are stale and
+    // may point past level 5.
+    assert.deepEqual(plan.floors, []);
+    // E6: the migrated character is clamped onto the 5-level tower.
+    assert.equal(plan.character.current_floor, 5);
+    assert.equal(plan.slot.currentFloor, 5);
 
     // Empty legacy data writes only the guard.
     const emptyPlan = planLegacyMigration([], [], null);

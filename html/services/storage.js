@@ -3,7 +3,15 @@
  * IndexedDB database manager for persistent offline gameplay.
  */
 
-import { planLegacyMigration, emptySlotRecord, SAVE_SLOT_COUNT } from './save-slots.js';
+import {
+  planLegacyMigration,
+  emptySlotRecord,
+  SAVE_SLOT_COUNT,
+  SAVE_FORMAT_VERSION,
+  saveFormatVersion,
+  normalizeSlotToTower,
+  migratePlayerToTower,
+} from './save-slots.js';
 
 export const DB_NAME = 'lokarta_browser_db';
 export const DB_VERSION = 2;
@@ -18,6 +26,13 @@ export const STORES = {
 };
 
 export const MIGRATION_GUARD_KEY = 'migration_slot_v2';
+
+/**
+ * One-time guard for the 20 -> 5 tower migration. When absent, every persisted
+ * character/slot is clamped onto the 5-level tower and all cached floors are
+ * dropped so the generator rebuilds them with the current template.
+ */
+export const TOWER_MIGRATION_GUARD_KEY = 'migration_tower_v3';
 
 let dbInstance = null;
 
@@ -313,7 +328,9 @@ export async function readSlots() {
   const byIndex = new Map();
   for (const record of records || []) {
     if (record && typeof record.slotIndex === 'number' && record.slotIndex >= 1) {
-      byIndex.set(record.slotIndex, record);
+      // Clamp any pre-tower save onto the 5-level tower so it renders and loads
+      // without the caller having to special-case a floor beyond the max.
+      byIndex.set(record.slotIndex, normalizeSlotToTower(record));
     }
   }
   const slots = [];
@@ -377,4 +394,72 @@ export async function migrateLegacySave() {
     recovered: false,
     fromCharacterId: plan.guard ? plan.guard.fromCharacterId : null,
   };
+}
+
+/**
+ * One-time migration from the retired 20-floor cave layout onto the 5-level
+ * tower. Makes old saves loadable without error:
+ *
+ * - Drops every cached floor (`dungeon_floors` + `slot_floors`). Pre-tower
+ *   caches are both structurally stale (old template) and can carry floor
+ *   numbers above 5, so they must never be served. The generator rebuilds a
+ *   valid floor on the next load.
+ * - Clamps every persisted character and slot record to `1..5`, keeping
+ *   progression (level, xp, inventory) and stamping the v2 save format.
+ *
+ * Idempotent via `TOWER_MIGRATION_GUARD_KEY`: reruns are no-ops. If an older
+ * run dropped the caches but did not finish stamping records, recovery
+ * re-normalizes records so no save is left pointing past level 5.
+ *
+ * @returns {Promise<{ floorsReset: number, recordsNormalized: number, recovered: boolean }>}
+ */
+export async function migrateTowerSave() {
+  await openStorage();
+
+  const guard = await read(STORES.GAME_SETTINGS, TOWER_MIGRATION_GUARD_KEY);
+  if (guard && guard.done) {
+    return { floorsReset: 0, recordsNormalized: 0, recovered: false };
+  }
+
+  let floorsReset = 0;
+  const legacyFloors = await getAll(STORES.DUNGEON_FLOORS);
+  if (legacyFloors.length > 0) {
+    await clearStore(STORES.DUNGEON_FLOORS);
+    floorsReset += legacyFloors.length;
+  }
+  const slotFloors = await getAll(STORES.SLOT_FLOORS);
+  if (slotFloors.length > 0) {
+    await clearStore(STORES.SLOT_FLOORS);
+    floorsReset += slotFloors.length;
+  }
+
+  let recordsNormalized = 0;
+  const characters = await getAll(STORES.CHARACTERS);
+  for (const character of characters || []) {
+    const migrated = migratePlayerToTower(character);
+    const needsStamp = saveFormatVersion(character) !== SAVE_FORMAT_VERSION;
+    if (migrated !== character || needsStamp) {
+      await put(STORES.CHARACTERS, { ...migrated, saveVersion: SAVE_FORMAT_VERSION });
+      recordsNormalized += 1;
+    }
+  }
+
+  const slots = await getAll(STORES.SAVE_SLOTS);
+  for (const slot of slots || []) {
+    const normalized = normalizeSlotToTower(slot);
+    const needsStamp = saveFormatVersion(slot) !== SAVE_FORMAT_VERSION;
+    if (normalized !== slot || needsStamp) {
+      await put(STORES.SAVE_SLOTS, { ...normalized, saveVersion: SAVE_FORMAT_VERSION });
+      recordsNormalized += 1;
+    }
+  }
+
+  await put(STORES.GAME_SETTINGS, {
+    key: TOWER_MIGRATION_GUARD_KEY,
+    done: true,
+    doneAt: now(),
+    floorsReset,
+  });
+
+  return { floorsReset, recordsNormalized, recovered: floorsReset > 0 };
 }

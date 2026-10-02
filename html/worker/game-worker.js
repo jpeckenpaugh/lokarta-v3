@@ -13,9 +13,11 @@ import {
   clearStore,
   readSlots,
   migrateLegacySave,
+  migrateTowerSave,
   now,
   STORES,
   MIGRATION_GUARD_KEY,
+  TOWER_MIGRATION_GUARD_KEY,
 } from '../services/storage.js';
 import {
   slotId,
@@ -25,6 +27,9 @@ import {
   snapshotFloorEntry,
   restoreFloorEntry,
   normalizeOptions,
+  migratePlayerToTower,
+  clampTowerFloor,
+  SAVE_FORMAT_VERSION,
   OPTION_DEFAULTS,
   SAVE_SLOT_COUNT,
 } from '../services/save-slots.js';
@@ -46,7 +51,7 @@ export function isStaleFloor(floor) {
 }
 
 function clampFloor(value) {
-  return Math.max(1, Math.min(20, Math.floor(Number(value) || 1)));
+  return clampTowerFloor(value);
 }
 
 function clampSlotIndex(value) {
@@ -127,6 +132,7 @@ function makeSlotPlayer(vocation, slotIndex) {
   const timestamp = now();
   player.slotId = slotId(slotIndex);
   player.slotIndex = slotIndex;
+  player.saveVersion = SAVE_FORMAT_VERSION;
   player.playtimeMs = 0;
   player.createdAt = timestamp;
   player.updatedAt = timestamp;
@@ -166,6 +172,15 @@ async function handleBootstrap() {
     await migrateLegacySave();
   } catch (err) {
     console.warn('game-worker: legacy save migration failed; continuing with empty slots.', err);
+  }
+
+  // One-time 20 -> 5 tower migration: reset stale floor caches and clamp any
+  // pre-tower character/slot onto the 5 levels. Runs after the slot migration
+  // so a freshly migrated v1 save is also normalized.
+  try {
+    await migrateTowerSave();
+  } catch (err) {
+    console.warn('game-worker: tower save migration failed; saves will clamp on load.', err);
   }
 
   const options = await readOptionsRecord();
@@ -236,10 +251,16 @@ async function handleLoadSlot(payload = {}) {
     throw new Error(`Slot ${slotIndex} is empty.`);
   }
 
-  const player = await read(STORES.CHARACTERS, slot.characterId);
-  if (!player) {
+  const stored = await read(STORES.CHARACTERS, slot.characterId);
+  if (!stored) {
     throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
   }
+  // Clamp a pre-tower save (which may point past level 5) onto the tower and
+  // stamp the current save format before any floor is generated or cached.
+  const player = {
+    ...migratePlayerToTower(stored),
+    saveVersion: SAVE_FORMAT_VERSION,
+  };
 
   const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1);
   player.slotId = slotId(slotIndex);
@@ -304,9 +325,16 @@ async function handleRestartFloor(payload = {}) {
     throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
   }
 
+  // Clamp the pre-tower snapshot floor before restoring so a legacy floorEntry
+  // can never put the player past level 5.
+  if (slot.floorEntry) {
+    slot.floorEntry = { ...slot.floorEntry, current_floor: clampTowerFloor(slot.floorEntry.current_floor) };
+  }
   restoreFloorEntry(player, slot.floorEntry);
+  player.current_floor = clampTowerFloor(player.current_floor);
   player.slotId = slotId(slotIndex);
   player.slotIndex = slotIndex;
+  player.saveVersion = SAVE_FORMAT_VERSION;
   const timestamp = now();
   player.updatedAt = timestamp;
   player.lastPlayedAt = timestamp;
@@ -367,6 +395,9 @@ async function handleSaveCharacter(payload = {}) {
   await openStorage();
   const savedAt = now();
   player.updatedAt = savedAt;
+  // Never persist a floor outside the tower, whatever the caller sent.
+  player.current_floor = clampTowerFloor(player.current_floor);
+  player.saveVersion = SAVE_FORMAT_VERSION;
 
   await put(STORES.CHARACTERS, player);
 
@@ -434,6 +465,7 @@ async function handleAdvanceFloor(payload = {}) {
   }
 
   player.current_floor = nextFloor;
+  player.saveVersion = SAVE_FORMAT_VERSION;
   if (floor.spawn_coords) {
     player.x = floor.spawn_coords.x;
     player.y = floor.spawn_coords.y;
@@ -502,6 +534,7 @@ async function handleResetProgress() {
   await clearStore(STORES.SAVE_SLOTS);
   await clearStore(STORES.SLOT_FLOORS);
   await deleteRecord(STORES.GAME_SETTINGS, MIGRATION_GUARD_KEY);
+  await deleteRecord(STORES.GAME_SETTINGS, TOWER_MIGRATION_GUARD_KEY);
   await deleteRecord(STORES.GAME_SETTINGS, LAST_PLAYED_KEY);
 
   return { success: true };
