@@ -53,7 +53,7 @@ This brief converts the LIV-4 product decisions (ascend a 5-level tower, copper�
   "levels": {
     "1": {
       "id": "tier_1",
-      "name": "Foundation Gate",
+      "name": "The Gatehouse",
       "wall":     { "fill": "#38332b", "topHighlight": "#524a3d", "gridLine": "#131210", "border": "#0b0a08" },
       "floor":    { "fill": "#1c1a17", "gridLine": "#131210", "accentSquare": "#2a2620" },
       "stairs":   { "bg": "#2b2418", "stepEven": "#b07a2e", "stepOdd": "#7a5320", "orb": "#ffcf7a", "border": "#e0a82e" },
@@ -61,10 +61,10 @@ This brief converts the LIV-4 product decisions (ascend a 5-level tower, copper�
       "features": { "banner": "#b23a2e", "bannerTrim": "#e0a82e", "sconce": "#8b5a2b", "flame": "#ffb347", "window": "#c98a4a" },
       "decor":    { "banner": 0.0, "sconce": 0.12, "window": 0.0 }
     },
-    "2": { "id": "tier_2", "name": "Banner Hall",  ... },
-    "3": { "id": "tier_3", "name": "Bellworks",    ... },
-    "4": { "id": "tier_4", "name": "Shadow Vaults",... },
-    "5": { "id": "tier_5", "name": "Crown Spire",  ... }
+    "2": { "id": "tier_2", "name": "The Hall of Banners",  ... },
+    "3": { "id": "tier_3", "name": "The Bell Keep",    ... },
+    "4": { "id": "tier_4", "name": "The Solar Gallery",... },
+    "5": { "id": "tier_5", "name": "The Crown Spire",  ... }
   }
 }
 ```
@@ -73,7 +73,7 @@ This brief converts the LIV-4 product decisions (ascend a 5-level tower, copper�
 
 - Keys `"1"`–`"5"` are **stringified floor numbers**, not array indices; the level number is the run's current floor.
 - Each level block is **complete** (all five groups). A resolver must merge `levels[n]` over the legacy root as a fallback, never replace the root object.
-- `features` are the castle/tower motifs; `decor` is a **deterministic 0..1 density** per feature (see §3.3). Densities are tuned so `banner`=0 on floor 1 makes the Banner Hall reveal on floor 2 read as progression.
+- `features` are the castle/tower motifs; `decor` is a **deterministic 0..1 density** per feature (see §3.3). Densities are tuned so `banner`=0 on floor 1 makes The Hall of Banners reveal on floor 2 read as progression.
 - `wall.fill` must be unique per level (test-enforced). `floor.fill` luminance ≤ 0.02 (test-enforced).
 - **No new token type is introduced**: every value is a hex token following the existing `tile_themes` shape, so `SpriteRenderer.drawTile` keeps its `(ctx, screenX, screenY, size, theme)` signature.
 
@@ -93,11 +93,11 @@ Five tiers, ascending. The progression reads as: **guard post → occupied hall 
 
 | Lv | id | Name | Wall fill | Floor fill | Stair material | Motif emphasis | Floor L |
 | --: | :-- | :-- | :-- | :-- | :-- | :-- | --: |
-| 1 | `tier_1` | Foundation Gate | `#38332b` | `#1c1a17` | `#b07a2e` bronze | Sconces only (a bare watch-post) | 0.0105 |
-| 2 | `tier_2` | Banner Hall | `#43342b` | `#201a17` | `#c98a4a` bronze | Banners appear (occupied floor) | 0.0111 |
-| 3 | `tier_3` | Bellworks | `#333d4a` | `#171a20` | `#4a90c0` cold iron/steel | Tower windows + cool light | 0.0103 |
-| 4 | `tier_4` | Shadow Vaults | `#3d2f4a` | `#1b1620` | `#8a5cc0` polished dark stone | Violet banners + violet flame | 0.0091 |
-| 5 | `tier_5` | Crown Spire | `#3a2f22` | `#1a1410` | `#d4af37` gold | All motifs; gold + scarlet | 0.0076 |
+| 1 | `tier_1` | The Gatehouse | `#38332b` | `#1c1a17` | `#b07a2e` bronze | Sconces only (a bare watch-post) | 0.0105 |
+| 2 | `tier_2` | The Hall of Banners | `#43342b` | `#201a17` | `#c98a4a` bronze | Banners appear (occupied floor) | 0.0111 |
+| 3 | `tier_3` | The Bell Keep | `#333d4a` | `#171a20` | `#4a90c0` cold iron/steel | Tower windows + cool light | 0.0103 |
+| 4 | `tier_4` | The Solar Gallery | `#3d2f4a` | `#1b1620` | `#8a5cc0` polished dark stone | Violet banners + violet flame | 0.0091 |
+| 5 | `tier_5` | The Crown Spire | `#3a2f22` | `#1a1410` | `#d4af37` gold | All motifs; gold + scarlet | 0.0076 |
 
 ### 3.1 Per-level theme values (normative)
 
@@ -117,11 +117,11 @@ The 4 cave biomes map cleanly onto the 5 tiers. Recommended (E1 owns the final c
 
 | Floor | Biome id | Name | Light tint (`lightColor`) |
 | --: | :-- | :-- | :-- |
-| 1 | `tier_1` | Foundation Gate | `#b07a2e` warm bronze |
-| 2 | `tier_2` | Banner Hall | `#c0392b` banner red |
-| 3 | `tier_3` | Bellworks | `#00d4ff` cold daylight (keep the existing cyan read) |
-| 4 | `tier_4` | Shadow Vaults | `#a855f7` violet |
-| 5 | `tier_5` | Crown Spire | `#ffd700` gold |
+| 1 | `tier_1` | The Gatehouse | `#b07a2e` warm bronze |
+| 2 | `tier_2` | The Hall of Banners | `#c0392b` banner red |
+| 3 | `tier_3` | The Bell Keep | `#00d4ff` cold daylight (keep the existing cyan read) |
+| 4 | `tier_4` | The Solar Gallery | `#a855f7` violet |
+| 5 | `tier_5` | The Crown Spire | `#ffd700` gold |
 
 Rationale: keeps a warm→cool→violet→gold arc so the player feels they are climbing into light, while preserving the existing cyan for tier 3 (its palette is already cyan-family, satisfying "color-independence" against the light too).
 
@@ -133,7 +133,7 @@ Drawn on lit **WALL** tiles in `SpriteRenderer.drawTile` after the base wall fil
 | :-- | :-- | :-- | :-- |
 | **Sconce** | `decor.sconce` deterministic hash; only on a wall tile with a floor neighbour below | Bracket `4×10` at `x 24..27, y 10..19` (`sconce`), flame teardrop at `(25.5, 8)` (`flame` + white core) | Ambient castle light; the staple motif |
 | **Banner** | `decor.banner`; wall tiles 2+ away from any door tile | `12×18` cloth at `x 10..21, y 4..21` (`banner`), 2 px trim bars top/bottom (`bannerTrim`), pole `1×20` | Occupied-floor signal; strong Von Restorff at distance |
-| **Tower window** | `decor.window`; wall tiles with **no** floor neighbour | `10×16` arrow-slit at `x 11..20, y 5..20`, 3 px frame (`wall.topHighlight`), pane (`window`) + `wall.gridLine` mullion | Daylight/height signal unique to Bellworks; reads in greyscale by shape |
+| **Tower window** | `decor.window`; wall tiles with **no** floor neighbour | `10×16` arrow-slit at `x 11..20, y 5..20`, 3 px frame (`wall.topHighlight`), pane (`window`) + `wall.gridLine` mullion | Daylight/height signal unique to The Bell Keep; reads in greyscale by shape |
 | **Stair material** | Always on STAIRS | Existing 4-ring + orb; ring colors from `levels[n].stairs` | Level-appropriate stair (bronze → steel → gold) reinforces ascent |
 
 **Determinism (required):** feature placement uses a pure hash of tile coordinates, e.g. `hash = ((x*73856093) ^ (y*19349663)) >>> 0; on = (hash % 1000) / 1000 < density`. Same grid → same decoration every run (preserves seeded determinism and the soft-lock validator's reproducibility). **Never** `Math.random()` in tile decoration.

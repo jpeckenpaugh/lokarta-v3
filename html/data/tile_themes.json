@@ -46,53 +46,193 @@
   "levels": {
     "1": {
       "id": "tier_1",
-      "name": "Foundation Gate",
-      "wall": { "fill": "#38332b", "topHighlight": "#524a3d", "gridLine": "#131210", "border": "#0b0a08" },
-      "floor": { "fill": "#1c1a17", "gridLine": "#131210", "accentSquare": "#2a2620" },
-      "stairs": { "bg": "#2b2418", "stepEven": "#b07a2e", "stepOdd": "#7a5320", "orb": "#ffcf7a", "border": "#e0a82e" },
-      "door": { "fill": "#4a3320", "border": "#2a1c10" },
-      "features": { "banner": "#b23a2e", "bannerTrim": "#e0a82e", "sconce": "#8b5a2b", "flame": "#ffb347", "window": "#c98a4a" },
-      "decor": { "banner": 0.0, "sconce": 0.12, "window": 0.0 }
+      "name": "The Gatehouse",
+      "wall": {
+        "fill": "#38332b",
+        "topHighlight": "#524a3d",
+        "gridLine": "#131210",
+        "border": "#0b0a08"
+      },
+      "floor": {
+        "fill": "#1c1a17",
+        "gridLine": "#131210",
+        "accentSquare": "#2a2620"
+      },
+      "stairs": {
+        "bg": "#2b2418",
+        "stepEven": "#b07a2e",
+        "stepOdd": "#7a5320",
+        "orb": "#ffcf7a",
+        "border": "#e0a82e"
+      },
+      "door": {
+        "fill": "#4a3320",
+        "border": "#2a1c10"
+      },
+      "features": {
+        "banner": "#b23a2e",
+        "bannerTrim": "#e0a82e",
+        "sconce": "#8b5a2b",
+        "flame": "#ffb347",
+        "window": "#c98a4a"
+      },
+      "decor": {
+        "banner": 0.0,
+        "sconce": 0.12,
+        "window": 0.0
+      }
     },
     "2": {
       "id": "tier_2",
-      "name": "Banner Hall",
-      "wall": { "fill": "#43342b", "topHighlight": "#5e493b", "gridLine": "#17110e", "border": "#0d0906" },
-      "floor": { "fill": "#201a17", "gridLine": "#17110e", "accentSquare": "#2e2420" },
-      "stairs": { "bg": "#33241a", "stepEven": "#c98a4a", "stepOdd": "#8a5a2e", "orb": "#ffd9a0", "border": "#e0a82e" },
-      "door": { "fill": "#4f331d", "border": "#2a1c10" },
-      "features": { "banner": "#c0392b", "bannerTrim": "#e0a82e", "sconce": "#8b5a2b", "flame": "#ffb347", "window": "#d9a15a" },
-      "decor": { "banner": 0.18, "sconce": 0.08, "window": 0.0 }
+      "name": "The Hall of Banners",
+      "wall": {
+        "fill": "#43342b",
+        "topHighlight": "#5e493b",
+        "gridLine": "#17110e",
+        "border": "#0d0906"
+      },
+      "floor": {
+        "fill": "#201a17",
+        "gridLine": "#17110e",
+        "accentSquare": "#2e2420"
+      },
+      "stairs": {
+        "bg": "#33241a",
+        "stepEven": "#c98a4a",
+        "stepOdd": "#8a5a2e",
+        "orb": "#ffd9a0",
+        "border": "#e0a82e"
+      },
+      "door": {
+        "fill": "#4f331d",
+        "border": "#2a1c10"
+      },
+      "features": {
+        "banner": "#c0392b",
+        "bannerTrim": "#e0a82e",
+        "sconce": "#8b5a2b",
+        "flame": "#ffb347",
+        "window": "#d9a15a"
+      },
+      "decor": {
+        "banner": 0.18,
+        "sconce": 0.08,
+        "window": 0.0
+      }
     },
     "3": {
       "id": "tier_3",
-      "name": "Bellworks",
-      "wall": { "fill": "#333d4a", "topHighlight": "#4c5a6b", "gridLine": "#0f1216", "border": "#080a0d" },
-      "floor": { "fill": "#171a20", "gridLine": "#0f1216", "accentSquare": "#232a34" },
-      "stairs": { "bg": "#14283a", "stepEven": "#4a90c0", "stepOdd": "#2e5f88", "orb": "#9be8ff", "border": "#66ccff" },
-      "door": { "fill": "#3a3f4a", "border": "#1c2027" },
-      "features": { "banner": "#2e86c1", "bannerTrim": "#a9d6f5", "sconce": "#5a6b7a", "flame": "#8fe3ff", "window": "#7fd4ff" },
-      "decor": { "banner": 0.0, "sconce": 0.08, "window": 0.16 }
+      "name": "The Bell Keep",
+      "wall": {
+        "fill": "#333d4a",
+        "topHighlight": "#4c5a6b",
+        "gridLine": "#0f1216",
+        "border": "#080a0d"
+      },
+      "floor": {
+        "fill": "#171a20",
+        "gridLine": "#0f1216",
+        "accentSquare": "#232a34"
+      },
+      "stairs": {
+        "bg": "#14283a",
+        "stepEven": "#4a90c0",
+        "stepOdd": "#2e5f88",
+        "orb": "#9be8ff",
+        "border": "#66ccff"
+      },
+      "door": {
+        "fill": "#3a3f4a",
+        "border": "#1c2027"
+      },
+      "features": {
+        "banner": "#2e86c1",
+        "bannerTrim": "#a9d6f5",
+        "sconce": "#5a6b7a",
+        "flame": "#8fe3ff",
+        "window": "#7fd4ff"
+      },
+      "decor": {
+        "banner": 0.0,
+        "sconce": 0.08,
+        "window": 0.16
+      }
     },
     "4": {
       "id": "tier_4",
-      "name": "Shadow Vaults",
-      "wall": { "fill": "#3d2f4a", "topHighlight": "#57436b", "gridLine": "#120e16", "border": "#0a070d" },
-      "floor": { "fill": "#1b1620", "gridLine": "#120e16", "accentSquare": "#28202f" },
-      "stairs": { "bg": "#2a183a", "stepEven": "#8a5cc0", "stepOdd": "#5a3a88", "orb": "#d9b3ff", "border": "#a855f7" },
-      "door": { "fill": "#3a2b47", "border": "#1c1226" },
-      "features": { "banner": "#8e44ad", "bannerTrim": "#e0c3fc", "sconce": "#4a3a5a", "flame": "#c084fc", "window": "#c9a0ff" },
-      "decor": { "banner": 0.16, "sconce": 0.09, "window": 0.0 }
+      "name": "The Solar Gallery",
+      "wall": {
+        "fill": "#3d2f4a",
+        "topHighlight": "#57436b",
+        "gridLine": "#120e16",
+        "border": "#0a070d"
+      },
+      "floor": {
+        "fill": "#1b1620",
+        "gridLine": "#120e16",
+        "accentSquare": "#28202f"
+      },
+      "stairs": {
+        "bg": "#2a183a",
+        "stepEven": "#8a5cc0",
+        "stepOdd": "#5a3a88",
+        "orb": "#d9b3ff",
+        "border": "#a855f7"
+      },
+      "door": {
+        "fill": "#3a2b47",
+        "border": "#1c1226"
+      },
+      "features": {
+        "banner": "#8e44ad",
+        "bannerTrim": "#e0c3fc",
+        "sconce": "#4a3a5a",
+        "flame": "#c084fc",
+        "window": "#c9a0ff"
+      },
+      "decor": {
+        "banner": 0.16,
+        "sconce": 0.09,
+        "window": 0.0
+      }
     },
     "5": {
       "id": "tier_5",
-      "name": "Crown Spire",
-      "wall": { "fill": "#3a2f22", "topHighlight": "#5a4a34", "gridLine": "#100c08", "border": "#080604" },
-      "floor": { "fill": "#1a1410", "gridLine": "#100c08", "accentSquare": "#2a2018" },
-      "stairs": { "bg": "#2e1a12", "stepEven": "#d4af37", "stepOdd": "#8a6a1e", "orb": "#ffe9a8", "border": "#ffd700" },
-      "door": { "fill": "#3f2a16", "border": "#1f1408" },
-      "features": { "banner": "#c0392b", "bannerTrim": "#d4af37", "sconce": "#6a4a1e", "flame": "#ff6a00", "window": "#ff9a6a" },
-      "decor": { "banner": 0.14, "sconce": 0.08, "window": 0.12 }
+      "name": "The Crown Spire",
+      "wall": {
+        "fill": "#3a2f22",
+        "topHighlight": "#5a4a34",
+        "gridLine": "#100c08",
+        "border": "#080604"
+      },
+      "floor": {
+        "fill": "#1a1410",
+        "gridLine": "#100c08",
+        "accentSquare": "#2a2018"
+      },
+      "stairs": {
+        "bg": "#2e1a12",
+        "stepEven": "#d4af37",
+        "stepOdd": "#8a6a1e",
+        "orb": "#ffe9a8",
+        "border": "#ffd700"
+      },
+      "door": {
+        "fill": "#3f2a16",
+        "border": "#1f1408"
+      },
+      "features": {
+        "banner": "#c0392b",
+        "bannerTrim": "#d4af37",
+        "sconce": "#6a4a1e",
+        "flame": "#ff6a00",
+        "window": "#ff9a6a"
+      },
+      "decor": {
+        "banner": 0.14,
+        "sconce": 0.08,
+        "window": 0.12
+      }
     }
   }
 }
