@@ -79,6 +79,26 @@ const TILE_RENDERERS = {
     ctx.lineWidth = 2 * u;
     ctx.strokeRect(screenX + 2 * u, screenY + 2 * u, size - 4 * u, size - 4 * u);
   },
+  [TILE_TYPES.GATED_DOOR]: (ctx, screenX, screenY, size, theme) => {
+    const u = size / 32;
+
+    ctx.fillStyle = theme.door.fill;
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.strokeStyle = theme.door.border;
+    ctx.lineWidth = 2 * u;
+    ctx.strokeRect(screenX + 2 * u, screenY + 2 * u, size - 4 * u, size - 4 * u);
+
+    // Locked-gate affordance: a bolt bar across the door. Tier accents land in E5.
+    ctx.strokeStyle = '#c0c0c8';
+    ctx.lineWidth = 3 * u;
+    ctx.beginPath();
+    ctx.moveTo(screenX + size * 0.3, screenY + size * 0.5);
+    ctx.lineTo(screenX + size * 0.7, screenY + size * 0.5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(screenX + size * 0.5, screenY + size * 0.5, 3 * u, 0, Math.PI * 2);
+    ctx.stroke();
+  },
   default: (ctx, screenX, screenY, size, theme) => {
     const u = size / 32;
 
