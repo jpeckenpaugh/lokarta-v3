@@ -68,30 +68,39 @@ describe('Floor Generator (1-20)', () => {
     }
   });
 
-  it('places player spawn at (2,2) and exit stairs at (35,35)', () => {
-    for (let f = 1; f <= 20; f++) {
-      const floor = generateFloor(f);
-      assert.deepEqual(floor.spawn_coords, { x: 2, y: 2 });
-      assert.deepEqual(floor.stairs_down_coords, { x: 35, y: 35 });
-      assert.equal(floor.tiles[2][2], TILE_TYPES.FLOOR);
-      assert.equal(floor.tiles[35][35], TILE_TYPES.STAIRS);
+  it('places the level-1 spawn at the room-2 doorway and the stair room exit', () => {
+    const floor1 = generateFloor(1);
+    assert.deepEqual(floor1.spawn_coords, { x: 19, y: 2 });
+    assert.equal(floor1.entry_room, 2);
+    assert.deepEqual(floor1.stairs_down_coords, { x: 33, y: 33 });
+    assert.equal(floor1.tiles[2][19], TILE_TYPES.FLOOR);
+    assert.equal(floor1.tiles[33][33], TILE_TYPES.STAIRS);
+
+    // Levels 2-5 spawn one tile off the arrival up-stair of the shaft.
+    for (const level of [2, 3, 4, 5]) {
+      const floor = generateFloor(level);
+      assert.ok(floor.spawn_coords, `level ${level} must expose a spawn`);
+      assert.equal(floor.tiles[floor.spawn_coords.y][floor.spawn_coords.x], TILE_TYPES.FLOOR);
+      assert.equal(floor.tiles[floor.stairs_down_coords.y][floor.stairs_down_coords.x], TILE_TYPES.STAIRS);
     }
   });
 
-  it('guarantees connectivity between spawn (2,2) and stairs (35,35) on all floors', () => {
+  it('guarantees connectivity between the room-2 entry and the stair room on all floors', () => {
     for (let f = 1; f <= 20; f++) {
       const floor = generateFloor(f);
       const grid = new GridMap(40, 40);
       grid.loadFromMatrix(floor.tiles);
 
+      const start = floor.spawn_coords;
+      const goal = floor.stairs_down_coords;
       const visited = new Set();
-      const queue = [{ x: 2, y: 2 }];
-      visited.add('2,2');
+      const queue = [{ x: start.x, y: start.y }];
+      visited.add(`${start.x},${start.y}`);
       let reachedStairs = false;
 
       while (queue.length > 0) {
         const { x, y } = queue.shift();
-        if (x === 35 && y === 35) {
+        if (x === goal.x && y === goal.y) {
           reachedStairs = true;
           break;
         }
@@ -112,7 +121,7 @@ describe('Floor Generator (1-20)', () => {
         }
       }
 
-      assert.ok(reachedStairs, `Floor ${f} must have a walkable path from spawn (2,2) to stairs (35,35)`);
+      assert.ok(reachedStairs, `Floor ${f} must have a walkable path from the entry to the stair room`);
     }
   });
 
@@ -191,19 +200,22 @@ describe('Floor Generator (1-20)', () => {
     }
   });
 
-  it('assigns correct tower tiers for floors 1 to 20', () => {
-    for (let f = 1; f <= 5; f++) assert.equal(getBiomeForFloor(f).name, BIOMES.CRYPT.name);
-    for (let f = 6; f <= 10; f++) assert.equal(getBiomeForFloor(f).name, BIOMES.CATACOMBS.name);
-    for (let f = 11; f <= 15; f++) assert.equal(getBiomeForFloor(f).name, BIOMES.SHADOW_VAULTS.name);
-    for (let f = 16; f <= 20; f++) assert.equal(getBiomeForFloor(f).name, BIOMES.ABYSSAL_SANCTUM.name);
+  it('assigns one tower tier per level for levels 1 to 5', () => {
+    assert.equal(getBiomeForFloor(1).name, BIOMES.CRYPT.name);
+    assert.equal(getBiomeForFloor(2).name, BIOMES.CATACOMBS.name);
+    assert.equal(getBiomeForFloor(3).name, BIOMES.SHADOW_VAULTS.name);
+    assert.equal(getBiomeForFloor(4).name, BIOMES.ABYSSAL_SANCTUM.name);
+    assert.equal(getBiomeForFloor(5).name, BIOMES.CROWN_SPIRE.name);
+    // Every level resolves to a distinct tier id/name.
+    const names = new Set([1, 2, 3, 4, 5].map((l) => getBiomeForFloor(l).name));
+    assert.equal(names.size, 5);
   });
 
-  it('spawns The Spire Warden boss on Floor 20 with exact stats (600 HP, 20 ATK, 6 DEF)', () => {
-    const floor20 = generateFloor(20);
-    const boss = floor20.monsters.find(m => m.type === 'abyssal_overlord');
+  it('spawns The Spire Warden on the final level with exact stats (600 HP, 20 ATK, 6 DEF)', () => {
+    const floor5 = generateFloor(5);
+    const boss = floor5.monsters.find(m => m.type === 'abyssal_overlord');
 
     assert.ok(boss);
-    assert.equal(boss.id, 'f20_boss_overlord');
     assert.equal(boss.hp, 600);
     assert.equal(boss.max_hp, 600);
     assert.equal(boss.attack, 20);
@@ -211,34 +223,45 @@ describe('Floor Generator (1-20)', () => {
     assert.equal(boss.isBoss, true);
   });
 
-  it('replaces the spawn-adjacent torch with arrows x22 on floor 1 only', () => {
-    // Spawn room is [1,1,11,11]; the torch slot sits at (6,6), visible at game start.
+  it('spawns a 3–4 monster group in every room from the tower level pool', () => {
+    for (const level of [1, 2, 3, 4, 5]) {
+      const floor = generateFloor(level);
+      const nonBoss = floor.monsters.filter(m => !m.isBoss);
+      const expectedSize = level <= 2 ? 3 : 4;
+      const byRoom = {};
+      for (const m of nonBoss) byRoom[m.room] = (byRoom[m.room] || 0) + 1;
+      // All 9 rooms carry a group. Level 5's Summit (room 5) adds two guards.
+      const expectedBase = 9 * expectedSize + (level === 5 ? 2 : 0);
+      assert.equal(nonBoss.length, expectedBase, `level ${level} must spawn groups in every room`);
+      assert.equal(Object.keys(byRoom).length, 9, `level ${level} groups must cover all 9 rooms`);
+    }
+  });
+
+  it('places the level-1 starter cache (arrows x22) near the spawn', () => {
     const floor1 = generateFloor(1);
     const spawnCoords = floor1.spawn_coords;
-    assert.deepEqual(spawnCoords, { x: 2, y: 2 });
 
-    const spawnArrows = floor1.items.find(i => i.item_id === 'arrows' && i.x === 6 && i.y === 6);
-    assert.ok(spawnArrows, 'level-1 floor must carry the spawn-adjacent arrows pickup');
-    assert.equal(spawnArrows.quantity, 22, 'exact pickup quantity must be 22');
+    const spawnArrows = floor1.items.find(i => i.item_id === 'arrows' && i.quantity === 22);
+    assert.ok(spawnArrows, 'level-1 must carry the 22-arrow starter cache');
     assert.equal(spawnArrows.type, 'ammo');
-
-    // Adjacent / visible near the player spawn (same spawn room footprint)
+    // Adjacent / near the player spawn (within the spawn room footprint).
     assert.ok(
-      Math.abs(spawnArrows.x - spawnCoords.x) <= 6 && Math.abs(spawnArrows.y - spawnCoords.y) <= 6,
-      'arrows pickup must stay near the player spawn'
+      Math.abs(spawnArrows.x - spawnCoords.x) <= 8 && Math.abs(spawnArrows.y - spawnCoords.y) <= 8,
+      'arrows starter cache must stay near the player spawn'
     );
 
-    // Torch is gone from that slot on floor 1
-    assert.ok(
-      !floor1.items.some(i => i.item_id === 'torch' && i.x === 6 && i.y === 6),
-      'spawn-room torch must be gone from that slot on floor 1'
-    );
-
-    // Higher floors keep the torch in the spawn room untouched
-    const floor2 = generateFloor(2);
-    const torch2 = floor2.items.find(i => i.item_id === 'torch' && i.x === 6 && i.y === 6);
-    assert.ok(torch2, 'higher floors must keep the spawn-room torch');
-    assert.equal(torch2.quantity, 1 + Math.floor(2 / 5));
+    // Levels 2-5 use the health_potion + torch starter cache from the catalog.
+    for (const level of [2, 3, 4, 5]) {
+      const floor = generateFloor(level);
+      assert.ok(
+        floor.items.some(i => i.item_id === 'health_potion'),
+        `level ${level} starter cache must include a health potion`
+      );
+      assert.ok(
+        floor.items.some(i => i.item_id === 'torch'),
+        `level ${level} starter cache must include a torch`
+      );
+    }
   });
 });
 

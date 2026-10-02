@@ -9,6 +9,7 @@ export const TILE_TYPES = {
   WALL: 1,
   STAIRS: 2,
   DOOR: 3,
+  GATED_DOOR: 4,
 };
 
 export const CONFIG = {

@@ -13,6 +13,8 @@ import {
   BIOMES_CATALOG,
   ENCOUNTERS_CATALOG,
   DUNGEONS_CATALOG,
+  TOWER_LEVELS_CATALOG,
+  DOORS_CATALOG,
   TILE_THEMES_CATALOG,
   KEYBINDINGS_CATALOG,
   UI_CATALOG,
@@ -148,26 +150,152 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(ABILITIES_CATALOG.paladin_heal.vocation, 'paladin');
   });
 
-  await t.test('loads and validates biomes.json catalog', () => {
-    assert.equal(Object.keys(BIOMES_CATALOG).length, 4);
+  await t.test('loads and validates biomes.json catalog (5 tower tiers)', () => {
+    assert.equal(Object.keys(BIOMES_CATALOG).length, 5);
     assert.ok(BIOMES_CATALOG.crypt);
-    assert.equal(BIOMES_CATALOG.crypt.minFloor, 1);
-    assert.equal(BIOMES_CATALOG.crypt.maxFloor, 5);
-    assert.ok(BIOMES_CATALOG.abyssal_sanctum);
-    assert.equal(BIOMES_CATALOG.abyssal_sanctum.maxFloor, 20);
+    assert.equal(BIOMES_CATALOG.crypt.minLevel, 1);
+    assert.equal(BIOMES_CATALOG.crypt.maxLevel, 1);
+    assert.ok(BIOMES_CATALOG.crown_spire);
+    assert.equal(BIOMES_CATALOG.crown_spire.minLevel, 5);
+    assert.equal(BIOMES_CATALOG.crown_spire.maxLevel, 5);
+    // Every level 1..5 is covered by exactly one tier.
+    for (let level = 1; level <= 5; level++) {
+      const matches = Object.values(BIOMES_CATALOG).filter(
+        (b) => level >= b.minLevel && level <= b.maxLevel
+      );
+      assert.equal(matches.length, 1, `level ${level} must map to exactly one tower tier`);
+    }
   });
 
-  await t.test('loads and validates encounters.json catalog', () => {
-    assert.ok(ENCOUNTERS_CATALOG.tier_1_5);
-    assert.ok(ENCOUNTERS_CATALOG.tier_20_boss);
-    assert.equal(ENCOUNTERS_CATALOG.tier_20_boss.boss.hp, 600);
+  await t.test('loads and validates encounters.json catalog (monster groups + boss)', () => {
+    assert.ok(ENCOUNTERS_CATALOG.groups, 'encounters must expose monster group data');
+    assert.equal(ENCOUNTERS_CATALOG.boss.hp, 600);
+    assert.equal(ENCOUNTERS_CATALOG.boss.type, 'abyssal_overlord');
+    assert.equal(ENCOUNTERS_CATALOG.boss.level, 5);
+    assert.ok(!ENCOUNTERS_CATALOG.tier_1_5, 'cave-era tier keys must be gone');
+    assert.ok(!ENCOUNTERS_CATALOG.tier_20_boss, 'cave-era boss tier key must be gone');
   });
 
-  await t.test('loads and validates dungeons.json catalog', () => {
-    assert.ok(DUNGEONS_CATALOG.standard_40x40);
-    assert.equal(DUNGEONS_CATALOG.standard_40x40.width, 40);
-    assert.equal(DUNGEONS_CATALOG.standard_40x40.height, 40);
-    assert.equal(DUNGEONS_CATALOG.standard_40x40.rooms.length, 9);
+  await t.test('loads and validates tower_levels.json catalog', () => {
+    assert.equal(TOWER_LEVELS_CATALOG.levelCount, 5);
+    assert.equal(TOWER_LEVELS_CATALOG.levels.length, 5);
+    assert.equal(TOWER_LEVELS_CATALOG.entry.room, 2);
+    assert.deepEqual(TOWER_LEVELS_CATALOG.entry.doorTile, [19, 1]);
+    assert.deepEqual(TOWER_LEVELS_CATALOG.entry.spawnTile, [19, 2]);
+    assert.deepEqual(TOWER_LEVELS_CATALOG.stairShaft, { 1: 9, 2: 6, 3: 3, 4: 8, 5: 5 });
+
+    for (const level of TOWER_LEVELS_CATALOG.levels) {
+      assert.ok(level.openEdges.length === 8, `level ${level.level} must open 8 edges`);
+      assert.ok(level.sealedEdges.length === 4, `level ${level.level} must seal 4 edges`);
+      assert.deepEqual(Object.keys(level.gates).sort(), ['copper', 'gold', 'silver']);
+      assert.deepEqual(Object.keys(level.keyRooms).sort(), ['copper', 'gold', 'silver']);
+      assert.equal(Object.keys(level.roomTiers).length, 9);
+    }
+  });
+
+  await t.test('tower_levels.json progression is soft-lock-free on every level', () => {
+    const edges = DUNGEONS_CATALOG.standard_40x40.edges;
+    const neighbors = (level, room) => {
+      const gateByEdge = new Map(Object.entries(level.gates).map(([tier, edge]) => [edge, tier]));
+      const out = [];
+      for (const edgeId of level.openEdges) {
+        const edge = edges[edgeId];
+        if (!edge) continue;
+        const [a, b] = edge.rooms;
+        if (a === room) out.push({ room: b, gate: gateByEdge.get(edgeId) || null });
+        if (b === room) out.push({ room: a, gate: gateByEdge.get(edgeId) || null });
+      }
+      return out;
+    };
+    const bfs = (level, keys) => {
+      const seen = new Set([level.entryRoom]);
+      const queue = [level.entryRoom];
+      while (queue.length) {
+        const room = queue.shift();
+        for (const { room: next, gate } of neighbors(level, room)) {
+          const locked = gate && !keys[gate];
+          if (locked || seen.has(next)) continue;
+          seen.add(next);
+          queue.push(next);
+        }
+      }
+      return seen;
+    };
+
+    // Every level is a connected tree of 9 rooms: 8 carved (open) edges, and
+    // all three gate edges are among those carved edges (locked until keyed).
+    for (const level of TOWER_LEVELS_CATALOG.levels) {
+      assert.equal(new Set(level.openEdges).size, 8, `L${level.level}: exactly 8 open edges`);
+      for (const [tier, edge] of Object.entries(level.gates)) {
+        assert.ok(level.openEdges.includes(edge), `L${level.level}: ${tier} gate ${edge} must be carved`);
+      }
+      // Reachability with all keys held must span all 9 rooms (connected tree).
+      const allKeys = { copper: true, silver: true, gold: true };
+      const allReach = bfs(level, allKeys);
+      assert.equal(allReach.size, 9, `L${level.level}: carved graph must connect all 9 rooms`);
+    }
+
+    for (const level of TOWER_LEVELS_CATALOG.levels) {
+      const keys = { copper: false, silver: false, gold: false };
+      const R0 = bfs(level, keys);
+      assert.ok(R0.has(level.keyRooms.copper), `L${level.level}: copper holder reachable`);
+      assert.ok(!R0.has(level.keyRooms.silver), `L${level.level}: silver gated`);
+      assert.ok(!R0.has(level.keyRooms.gold), `L${level.level}: gold gated`);
+      assert.ok(!R0.has(level.stairRoom), `L${level.level}: stair gated`);
+      keys.copper = true;
+      const R1 = bfs(level, keys);
+      assert.ok(R1.has(level.keyRooms.silver), `L${level.level}: silver reachable after copper`);
+      assert.ok(!R1.has(level.keyRooms.gold), `L${level.level}: gold still gated`);
+      assert.ok(!R1.has(level.stairRoom), `L${level.level}: stair still gated`);
+      keys.silver = true;
+      const R2 = bfs(level, keys);
+      assert.ok(R2.has(level.keyRooms.gold), `L${level.level}: gold reachable after silver`);
+      assert.ok(!R2.has(level.stairRoom), `L${level.level}: stair still gated`);
+      keys.gold = true;
+      const R3 = bfs(level, keys);
+      assert.ok(R3.has(level.stairRoom), `L${level.level}: stair reachable after gold`);
+    }
+  });
+
+  await t.test('loads and validates doors.json catalog (tier → key + shape cue)', () => {
+    for (const tier of ['copper', 'silver', 'gold']) {
+      const door = DOORS_CATALOG[tier];
+      assert.ok(door, `missing door definition for ${tier}`);
+      assert.equal(door.keyItemId, `key_${tier}`);
+      assert.ok(['circle', 'square', 'crown'].includes(door.shape));
+      assert.ok(door.accent);
+    }
+  });
+
+  await t.test('items.json exposes three gated keys and lootTier metadata', () => {
+    for (const tier of ['copper', 'silver', 'gold']) {
+      const key = ITEMS_CATALOG[`key_${tier}`];
+      assert.ok(key, `missing key_${tier}`);
+      assert.equal(key.type, 'key');
+      assert.equal(key.keyTier, tier);
+      assert.equal(key.maxStack, 1);
+      assert.equal(key.droppable, false);
+    }
+    // Every lootTier in §7.4 maps to a real item tagged with that tier.
+    const tiered = Object.values(ITEMS_CATALOG).filter((i) => typeof i.lootTier === 'number');
+    assert.ok(tiered.length >= 15, 'expected vocation gear to carry lootTier metadata');
+    for (const item of tiered) {
+      assert.ok([1, 2, 3].includes(item.lootTier), `item ${item.item_id} has invalid lootTier`);
+    }
+  });
+
+  await t.test('loads and validates dungeons.json catalog (v3 edges layout)', () => {
+    const spec = DUNGEONS_CATALOG.standard_40x40;
+    assert.ok(spec);
+    assert.equal(spec.templateVersion, 3);
+    assert.equal(spec.width, 40);
+    assert.equal(spec.height, 40);
+    assert.equal(spec.rooms.length, 9);
+    assert.equal(Object.keys(spec.edges).length, 12);
+    for (const edge of Object.values(spec.edges)) {
+      assert.equal(edge.tiles.length, 2, 'each edge must expose two threshold tiles');
+      assert.equal(edge.rooms.length, 2, 'each edge must connect exactly two rooms');
+    }
   });
 
   await t.test('loads and validates tile_themes.json catalog', () => {

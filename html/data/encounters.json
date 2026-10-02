@@ -1,133 +1,45 @@
 {
-  "tier_1_5": {
-    "minFloor": 1,
-    "maxFloor": 5,
-    "baseMonstersPerRoom": 1,
-    "extraMonsterFloorThreshold": 4,
-    "spawns": [
-      {
-        "type": "giant_rat",
-        "name": "Giant Rat",
-        "baseHp": 22,
-        "hpPerFloor": 4,
-        "baseAtk": 6,
-        "atkStep": 1.0,
-        "defense": 1,
-        "moveCadence": 0.6,
-        "attackCadence": 1.2
-      },
-      {
-        "type": "crypt_skeleton",
-        "name": "Bone Sentry",
-        "baseHp": 40,
-        "hpPerFloor": 6,
-        "baseAtk": 8,
-        "atkStep": 1.0,
-        "defense": 2,
-        "moveCadence": 0.8,
-        "attackCadence": 1.5
-      }
-    ]
-  },
-  "tier_6_10": {
-    "minFloor": 6,
-    "maxFloor": 10,
-    "baseMonstersPerRoom": 1,
-    "extraMonsterFloorThreshold": 4,
-    "bonusMonsterChanceFloor": 10,
-    "bonusMonsterChance": 0.6,
-    "spawns": [
-      {
-        "type": "crypt_skeleton",
-        "name": "Bone Sentry",
-        "baseHp": 40,
-        "hpPerFloor": 6,
-        "baseAtk": 10,
-        "atkStep": 1.0,
-        "defense": 2,
-        "moveCadence": 0.8,
-        "attackCadence": 1.5
-      },
-      {
-        "type": "shadow_cultist",
-        "name": "Shadow Cultist",
-        "baseHp": 30,
-        "hpPerFloor": 5,
-        "baseAtk": 10,
-        "atkStep": 1.0,
-        "defense": 1,
-        "moveCadence": 1.0,
-        "attackCadence": 2.0
-      }
-    ]
-  },
-  "tier_11_19": {
-    "minFloor": 11,
-    "maxFloor": 19,
-    "baseMonstersPerRoom": 1,
-    "extraMonsterFloorThreshold": 4,
-    "bonusMonsterChanceFloor": 10,
-    "bonusMonsterChance": 0.6,
-    "spawns": [
-      {
-        "type": "elite_cultist",
-        "name": "Elite Shadow Cultist",
-        "baseHp": 60,
-        "hpPerFloor": 6,
-        "baseAtk": 14,
-        "atkStep": 1.0,
-        "defense": 3,
-        "moveCadence": 0.9,
-        "attackCadence": 1.8
-      },
-      {
-        "type": "crypt_skeleton",
-        "name": "Bone Sentry",
-        "baseHp": 50,
-        "hpPerFloor": 7,
-        "baseAtk": 12,
-        "atkStep": 1.0,
-        "defense": 3,
-        "moveCadence": 0.8,
-        "attackCadence": 1.5
-      }
-    ]
-  },
-  "tier_20_boss": {
-    "exactFloor": 20,
-    "boss": {
-      "id": "f20_boss_overlord",
-      "type": "abyssal_overlord",
-      "name": "The Spire Warden",
-      "x": 33,
-      "y": 33,
-      "hp": 600,
-      "max_hp": 600,
-      "attack": 20,
-      "defense": 6,
-      "moveCadence": 0.7,
-      "attackCadence": 1.4,
-      "isBoss": true
+  "source": "tower_levels.json#monsterGroups",
+  "monsterBaseStats": "monsters.json",
+  "description": "Monster group composition and per-level stat scaling are defined in tower_levels.json.monsterGroups. This catalog no longer carries per-tier hardcoded cave encounter tables.",
+  "groups": {
+    "groupSize": { "1": 3, "2": 3, "3": 4, "4": 4, "5": 4 },
+    "pool": {
+      "1": ["giant_rat", "crypt_skeleton"],
+      "2": ["giant_rat", "crypt_skeleton", "shadow_cultist"],
+      "3": ["crypt_skeleton", "shadow_cultist"],
+      "4": ["shadow_cultist", "elite_cultist"],
+      "5": ["elite_cultist", "shadow_cultist", "elite_cultist"]
     },
-    "guardSpawns": [
-      {
-        "type": "elite_cultist",
-        "name": "Spire Sentinel",
-        "hp": 80,
-        "attack": 18,
-        "defense": 4,
-        "moveCadence": 0.75,
-        "attackCadence": 1.5
-      },
-      {
-        "type": "crypt_skeleton",
-        "name": "Tower Keeper",
-        "hp": 80,
-        "attack": 18,
-        "defense": 4,
-        "moveCadence": 0.75,
-        "attackCadence": 1.5
-      }
-    ]
+    "keyHolderType": {
+      "1": { "copper": "crypt_skeleton", "silver": "crypt_skeleton", "gold": "shadow_cultist" },
+      "2": { "copper": "crypt_skeleton", "silver": "shadow_cultist", "gold": "shadow_cultist" },
+      "3": { "copper": "shadow_cultist", "silver": "shadow_cultist", "gold": "elite_cultist" },
+      "4": { "copper": "elite_cultist", "silver": "elite_cultist", "gold": "elite_cultist" },
+      "5": { "copper": "elite_cultist", "silver": "elite_cultist", "gold": "elite_cultist" }
+    },
+    "statScale": {
+      "1": { "hp": 1.0, "atk": 1.0 },
+      "2": { "hp": 1.35, "atk": 1.25 },
+      "3": { "hp": 1.8, "atk": 1.55 },
+      "4": { "hp": 2.4, "atk": 1.9 },
+      "5": { "hp": 3.2, "atk": 2.4 }
+    },
+    "keyHolderModifier": { "hp": 1.5, "atk": 1.15 }
+  },
+  "boss": {
+    "level": 5,
+    "room": 5,
+    "tile": [19, 19],
+    "type": "abyssal_overlord",
+    "name": "The Spire Warden",
+    "hp": 600,
+    "max_hp": 600,
+    "attack": 20,
+    "defense": 6,
+    "moveCadence": 0.7,
+    "attackCadence": 1.4,
+    "isBoss": true,
+    "guards": { "count": 2, "type": "elite_cultist", "name": "Spire Sentinel" }
   }
 }
