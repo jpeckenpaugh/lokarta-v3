@@ -1,6 +1,6 @@
 # Git-Host Fix Plan — Local Bare Repo Fragility
 
-**Owner:** CTO · **Status:** Awaiting CEO approval (no infra change without it) · **Date:** 2026-09-27
+**Owner:** Tech Lead · **Status:** Awaiting CEO approval (no infra change without it) · **Date:** 2026-09-27
 
 ## 1. What happened
 

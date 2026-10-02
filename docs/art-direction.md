@@ -591,7 +591,7 @@ These are deliberately excluded to keep this spec to "4 vocations + monsters," b
 3. **Fix docs drift.** `docs/architecture.md §6.1` and `features/briefs/08` claim `prevX/prevY` interpolation that does not exist; either implement it (recommended, for smoother 10 Hz movement) or correct the docs.
 4. **HUD sprite parity.** Replace OpenMoji item icons in the HUD with the same pixel-art style once actors ship, updating `app-modules.test.mjs:31` deliberately.
 
-Recommended owner: CTO (route 1 and 4 as engineering issues; 2 and 3 are small doc/asset fixes). This document does not create those issues — the board/CTO can decide sequencing after LIV-10 lands.
+Recommended owner: Tech Lead (route 1 and 4 as engineering issues; 2 and 3 are small doc/asset fixes). This document does not create those issues — the CEO/board can decide sequencing after LIV-10 lands.
 
 ---
 

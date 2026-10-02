@@ -13,6 +13,16 @@ Lokarta is a zero-backend, client-side 2D roguelike RPG designed to run natively
 
 All changes must preserve this zero-backend, dual-loop, multi-threaded architecture.
 
+### Operating team & verification ownership
+
+The project is delivered by a **flat three-seat team**, not a layered org chart:
+
+1. **CEO** — thin facilitator and single gate between the team and the board. Sets priorities, routes work, hires/unblocks. Not an implementation or quality gate.
+2. **Tech Lead (engineering)** — owns all code, tests, CI, deploy, and infra. Absorbs the former CTO, Engineer, and QA seats.
+3. **Designer** — owns UX, visual/art direction, and design specs. Absorbs the former Game Designer.
+
+The **board** owns product direction, priorities, final approvals, and browser/gameplay verification (T2). There is no separate CTO, no dedicated QA agent, and no Producer seat. The full testing model is in [Section 8](#8--testing-model-t0t1t2).
+
 ---
 
 ## 2. 🗃️ The Golden Rule: Data-Driven Architecture (No Lazy Hardcoding)
@@ -126,32 +136,34 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 
 ---
 
-## 8. 🚦 QA Gate Policy (v2) — Single-Flight Verification
+## 8. 🚦 Testing Model (T0/T1/T2)
 
 > [!IMPORTANT]
-> **One QA gate at a time per release candidate.** Verification is a single-flight, SHA-frozen, bounded process owned by the CTO. These five rules are team-visible and mandatory.
+> **Only T0 — the unit/code suite plus CI — is an agent gate.** Full browser/gameplay verification belongs to the board (T2). There is **no CTO-owned QA gate, no single-flight lock, no SHA freeze, and no per-PR browser-evidence bundle.** This section supersedes and retires the former "QA Gate Policy v2".
 
-1. **Single-flight.** One open QA gate per release candidate (RC). Additional verification requests are created `blocked` on the active gate; never run two verifications at once.
-2. **Frozen RC SHA; batch; re-verify once.** A gate names the exact RC SHA and the exact check list. No in-scope commits land while the gate is open — batch fixes into the next RC. At most one re-verify per RC, and never a duplicate "final verdict" issue.
-3. **One gate owner — the CTO.** The CTO opens the gate on a named SHA, adjudicates the verdict, and closes it. CEO, Producer, Designer, and Engineer request verification *through* the CTO; they do not open parallel gates.
-4. **Bounded runs on the preinstalled tooling.** Standard gate ≤ 30 min; full-epic gate ≤ 60 min. Use the preinstalled headless browser and the in-repo evidence runners — **no runtime installs** (see Section 7 above and the "Tooling: headless browser is preinstalled" directive in the agent instructions). At the time box, QA posts done/remaining/blocker status and the CTO narrows, splits, or escalates.
-5. **Close-out hygiene.** When an issue is closed or cancelled, clear or replace its dependents' `blockedByIssueIds`. A cancelled blocker is never "resolved."
+Three tiers:
 
-Agent-facing directives: QA `AGENTS.md` (Rules 1, 2, 4), CTO `AGENTS.md` (Rules 1, 2, 3, 5), Engineer `AGENTS.md` (Rule 2, batch + report SHA).
+1. **T0 — unit/code (agents, every change).** Run `node --test html/tests/*.test.mjs` (baseline 140 tests / 14 suites / 0 fail, ~0.2s, zero dependencies) and keep [`.github/workflows/test.yml`](../../.github/workflows/test.yml) green on push/PR. New behavior updates its tests; never delete a test to go green. This is the definition-of-done gate.
+2. **T1 — build/preview smoke (agents, light).** CI deploys `main` to GitHub Pages via [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml). The Tech Lead posts the preview URL plus a 3–5 line manual test script on the issue. No screenshot archive and no committed evidence bundle.
+3. **T2 — browser/gameplay (board only).** The board plays the preview and confirms. Agents do not block on browser verification, do not own it, and do not build per-change browser evidence.
+
+**On-demand tooling (not a gate).** Keep `tools/render-*.mjs` available as a self-serve smoke aid for anyone who wants a rendered preview. They are optional, not required for any change, and are not wired into CI.
+
+**Ownership.** The Tech Lead owns T0 and T1. The board owns T2. Verification is never routed through a CTO or a separate QA seat.
 
 ---
 
-## 9. 🧪 Testing & Verification Mandate
+## 9. 🧪 T0 Unit Test Mandate
 
 > [!IMPORTANT]
-> **Every change must pass the automated test suite before completion.**
+> **Every change must pass the automated test suite before completion. This is the only agent verification gate (see [Section 8](#8--testing-model-t0t1t2)).**
 
 1. **Run the Test Suite:**
    Before completing any task, execute the native Node.js test runner from repository root:
    ```bash
    node --test html/tests/*.test.mjs
    ```
-   The glob covers all 9 suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`, `packaging`, `sprite-assets`, `storage-migration`). CI (`test.yml`) runs the same command on every push.
+   The glob covers all 9 test files (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`, `packaging`, `sprite-assets`, `storage-migration`). CI (`test.yml`) runs the same command on every push.
    **Acceptance Criteria:** All test suites must pass with zero failures (140 tests / 14 suites / 0 fail baseline).
 2. **Synchronize Catalog Tests:**
    When adding or modifying entries in `html/data/*.json`, always update or verify the corresponding schema test assertions in [`html/tests/data-catalogs.test.mjs`](file:///Users/jarad/git/lokarta-v3/html/tests/data-catalogs.test.mjs).

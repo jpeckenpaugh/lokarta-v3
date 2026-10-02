@@ -1,6 +1,6 @@
 # Lokarta Packaging — UX + Visual Design Spec
 
-**Issue:** LIV-13 · **Parent:** LIV-12 · **Owner:** Game Designer · **Audience:** CTO / Engineer (implementation), QA (verification)
+**Issue:** LIV-13 · **Parent:** LIV-12 · **Owner:** Designer · **Audience:** Tech Lead (implementation), board (browser verification)
 
 This is an implementation-ready spec for the "packaging" pass. It is an **upgrade** of the
 existing title / character-select / victory / game-over modals (`html/app/modal-manager.js`)
@@ -638,7 +638,7 @@ Update existing: `audio.test.mjs` and `data-catalogs.test.mjs` sound counts 19 �
 `data-catalogs.test.mjs` add `UI_CATALOG` assertions; `app-modules.test.mjs` assert the new
 `ModalManager` methods exist.
 
-### 8.2 Browser QA checklist (QA stage on `main`)
+### 8.2 Browser QA checklist (board T2 pass on `main`)
 
 Splash timing + skip + reduced; title nav with keyboard/mouse/touch; `CONTINUE` disabled with no
 save; each option applies immediately and survives reload; reset-to-defaults; fullscreen reflects
@@ -678,7 +678,7 @@ with the SVG fetch blocked (fallback path).
 `html/styles/*.css` defined no app-level focus style, so keyboard users only saw the Chromium UA
 ring — and a pointer-opened destructive confirm, whose programmatic `.focus()` lands on
 `#confirm-cancel`, rendered no ring at all. This section is the design decision; implementation is
-delegated to the Engineer.
+delegated to the Tech Lead.
 
 ### 10.1 Decision
 
@@ -762,7 +762,7 @@ exclusive to keyboard focus to remain a reliable modality signal.
 
 ### 10.7 Verification
 
-**Native test (`html/tests/packaging.test.mjs`)** — the Engineer adds:
+**Native test (`html/tests/packaging.test.mjs`)** — the Tech Lead adds:
 
 ```js
 await t.test('global :focus-visible ring is token-only (LIV-22)', () => {
@@ -797,4 +797,4 @@ await t.test('global :focus-visible ring is token-only (LIV-22)', () => {
 handler), so keyboard users cannot draft cards at all — only the disabled `#confirm-draft-btn` is a
 button. A focus ring cannot help a control that cannot receive focus. Recommended follow-up: render
 each card as a `<button>`, expose selection with `aria-pressed`, and support Arrow-key movement
-within the grid. Not part of this issue; flag for the Producer/CTO to schedule.
+within the grid. Not part of this issue; flag for the CEO/Tech Lead to schedule.
