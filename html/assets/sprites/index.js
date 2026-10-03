@@ -35,4 +35,4 @@ export const SPRITE_CATALOG = {
 
 // Prop/tile art (keys, chests, gated doors) lives in a separate catalog so it
 // does not participate in the actor animation contract. See props.js.
-export { PROP_CATALOG, PROP_MANIFEST, PROP_IDS_BY_TIER } from './props.js';
+export { PROP_CATALOG, PROP_MANIFEST, PROP_IDS_BY_TIER, PROP_IDS_BY_KIND } from './props.js';

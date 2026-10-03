@@ -69,7 +69,8 @@ export class CanvasRenderer {
     selectedMonsterId,
     particles = [],
     deathEffects = [],
-    chests = []
+    chests = [],
+    props = []
   ) {
     if (!this.canvas || !this.ctx) return;
     const { width, height } = this.canvas;
@@ -139,6 +140,9 @@ export class CanvasRenderer {
       }
     }
 
+    // 1b. Decor Layer (rugs): under ground items, so loot always draws on top.
+    this.renderProps(ctx, props, 'decor', gridMap, clampStartX, clampEndX, clampStartY, clampEndY);
+
     // 2. Ground Items Layer
     for (let y = clampStartY; y <= clampEndY; y++) {
       for (let x = clampStartX; x <= clampEndX; x++) {
@@ -165,6 +169,10 @@ export class CanvasRenderer {
         chest.y * CONFIG.GRID_SIZE - this.cameraY
       );
     }
+
+    // 2c. Furniture Props Layer: behind actors (a walk-over table is honestly
+    //     drawn under the player), culled on unlit tiles like chests.
+    this.renderProps(ctx, props, 'prop', gridMap, clampStartX, clampEndX, clampStartY, clampEndY);
 
     // 3. World light: fog hides unexplored space, not visible enemies. Actors    // and projectiles therefore draw after the mask (docs/art-direction.md §6.3).
     this.renderLightMask(ctx, gridMap, player, ambientLights, width, height, projectiles);
@@ -219,6 +227,30 @@ export class CanvasRenderer {
 
     // 8. Floating Combat Damage & XP Numbers
     this.renderFloatingTexts(ctx, floatingTexts);
+  }
+
+  /**
+   * Draws one prop layer (`decor` rugs or `prop` furniture) on lit, in-bounds
+   * tiles. No per-frame allocation; props are static data (D4 §6.1/§6.3).
+   */
+  renderProps(ctx, props, layer, gridMap, startX, endX, startY, endY) {
+    if (!props || props.length === 0) return;
+    const wantDecor = layer === 'decor';
+    for (const prop of props) {
+      if (!prop) continue;
+      const isDecor = prop.layer === 'decor';
+      if (wantDecor !== isDecor) continue;
+      if (prop.x < startX || prop.x > endX || prop.y < startY || prop.y > endY) continue;
+      const tile = gridMap.tiles[prop.y] && gridMap.tiles[prop.y][prop.x];
+      if (!tile || !tile.isLit) continue;
+      SpriteRenderer.drawProp(
+        ctx,
+        prop,
+        prop.x * CONFIG.GRID_SIZE - this.cameraX,
+        prop.y * CONFIG.GRID_SIZE - this.cameraY,
+        CONFIG.GRID_SIZE
+      );
+    }
   }
 
   renderProjectiles(ctx, projectiles) {

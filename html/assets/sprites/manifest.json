@@ -21,6 +21,16 @@
     "chest_gold": { "kind": "prop", "tier": "gold", "file": "./items/chest_gold.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["closed", "open"] },
     "gated_door_copper": { "kind": "tile", "tier": "copper", "file": "./tiles/gated_door_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["closed", "open"] },
     "gated_door_silver": { "kind": "tile", "tier": "silver", "file": "./tiles/gated_door_silver.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["closed", "open"] },
-    "gated_door_gold": { "kind": "tile", "tier": "gold", "file": "./tiles/gated_door_gold.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["closed", "open"] }
+    "gated_door_gold": { "kind": "tile", "tier": "gold", "file": "./tiles/gated_door_gold.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["closed", "open"] },
+    "prop_table": { "kind": "prop", "class": "free", "file": "./props/prop_table.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 28 }, "frames": ["idle"] },
+    "prop_crate": { "kind": "prop", "class": "free", "file": "./props/prop_crate.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 28 }, "frames": ["idle"] },
+    "prop_barrel": { "kind": "prop", "class": "free", "file": "./props/prop_barrel.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_brazier": { "kind": "prop", "class": "free", "file": "./props/prop_brazier.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 28 }, "frames": ["idle"] },
+    "prop_candelabra": { "kind": "prop", "class": "wall", "file": "./props/prop_candelabra.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_bookshelf": { "kind": "prop", "class": "wall", "file": "./props/prop_bookshelf.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_sarcophagus": { "kind": "prop", "class": "wall", "file": "./props/prop_sarcophagus.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_altar": { "kind": "prop", "class": "free", "file": "./props/prop_altar.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_throne": { "kind": "prop", "class": "wall", "file": "./props/prop_throne.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "decor_rug": { "kind": "decor", "class": "decor", "file": "./decor/decor_rug.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["idle"] }
   }
 }

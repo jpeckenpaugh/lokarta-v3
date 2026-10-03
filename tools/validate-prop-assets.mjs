@@ -53,6 +53,18 @@ export function validatePropAssets({ spritesDir = SPRITES_DIR } = {}) {
   const floorByTier = { copper: '#1c1a17', silver: '#1c1a17', gold: '#1c1a17' };
   for (const t of Object.values(themes.levels)) floorByTier[t.id] = t.floor.fill;
 
+  /** Floors a furniture prop appears on, derived from levels[n].props.set. */
+  const levelsForPropId = id => {
+    const bare = id.replace(/^prop_/, '');
+    const floors = new Set();
+    for (const lv of Object.values(themes.levels || {})) {
+      const set = (lv.props && lv.props.set) || [];
+      if (set.includes(bare)) floors.add(lv.floor.fill);
+    }
+    if (floors.size === 0) floors.add(themes.floor.fill);
+    return [...floors];
+  };
+
   const defs = {};
   for (const [id, meta] of Object.entries(manifest.props || {})) {
     const def = JSON.parse(fs.readFileSync(path.join(spritesDir, meta.file), 'utf8'));
@@ -75,12 +87,38 @@ export function validatePropAssets({ spritesDir = SPRITES_DIR } = {}) {
         if (ch !== '.' && !def.palette[ch]) errors.push(`${id}: undeclared char "${ch}"`);
       }
     }
-    // rim contrast vs the tier floor
-    const floor = floorByTier[def.tier];
-    if (!floor) errors.push(`${id}: unknown tier ${def.tier}`);
-    else {
-      const best = Math.max(0, ...Object.values(def.palette).filter(Boolean).map(v => contrast(v, floor)));
-      if (best < 3.0) errors.push(`${id}: best contrast ${best.toFixed(2)} < 3.0 vs ${floor}`);
+
+    // D4 prop/decor shape (additive; tier props keep the legacy tier checks).
+    const kind = def.kind || meta.kind;
+    const cls = def.class || meta.class;
+    if (cls !== undefined && !['wall', 'free', 'decor'].includes(cls)) {
+      errors.push(`${id}: invalid class "${cls}"`);
+    }
+    if (meta.frames !== undefined) {
+      if (!Array.isArray(meta.frames) || meta.frames.length === 0) errors.push(`${id}: frames must be a non-empty array`);
+      else for (const f of meta.frames) if (!def.frames[f]) errors.push(`${id}: declared frame "${f}" missing`);
+    }
+    if (meta.anchor && (!Number.isInteger(meta.anchor.x) || !Number.isInteger(meta.anchor.y))) {
+      errors.push(`${id}: anchor must be integer {x,y}`);
+    }
+
+    // Rim gate. Tier props validate against their tier floor; D4 furniture
+    // validates against every level floor it appears on; decor is exempt.
+    if (def.tier) {
+      const floor = floorByTier[def.tier];
+      if (!floor) errors.push(`${id}: unknown tier ${def.tier}`);
+      else {
+        const best = Math.max(0, ...Object.values(def.palette).filter(Boolean).map(v => contrast(v, floor)));
+        if (best < 3.0) errors.push(`${id}: best contrast ${best.toFixed(2)} < 3.0 vs ${floor}`);
+      }
+    } else if (kind === 'decor') {
+      // Floor decals are intentionally low-contrast; exempt from the rim gate.
+    } else {
+      if (!['wall', 'free'].includes(cls)) errors.push(`${id}: prop must declare class "wall"|"free"`);
+      for (const floor of levelsForPropId(id)) {
+        const best = Math.max(0, ...Object.values(def.palette).filter(Boolean).map(v => contrast(v, floor)));
+        if (best < 3.0) errors.push(`${id}: best contrast ${best.toFixed(2)} < 3.0 vs ${floor}`);
+      }
     }
   }
 

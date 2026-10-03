@@ -111,6 +111,15 @@
     "byRoomTier": { "0": "copper", "1": "silver", "2": "silver", "3": "gold" },
     "goldKeyRoomOverride": "gold"
   },
+  "propPolicy": {
+    "countByRoomTier": { "0": 2, "1": 3, "2": 3, "3": 2 },
+    "arrivalRoomMax": 1,
+    "clearCenter": true,
+    "minSpacingFromChest": 1,
+    "brazierLightRadius": 2.5,
+    "maxBrazierLights": 2,
+    "bossRoomFixed": { "room": 5, "props": ["throne", "brazier", "brazier"] }
+  },
   "placement": {
     "roles": {
       "keyHolder": [2, 2],

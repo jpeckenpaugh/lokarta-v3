@@ -446,6 +446,25 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
     }
   });
 
+  await t.test('every sprite manifest entry points at a committed asset file (LIV-20)', () => {
+    const spritesDir = resolve(process.cwd(), 'html', 'assets', 'sprites');
+    const manifest = JSON.parse(readFileSync(resolve(spritesDir, 'manifest.json'), 'utf8'));
+    const missing = [];
+    for (const [group, entries] of Object.entries(manifest)) {
+      if (!entries || typeof entries !== 'object' || Array.isArray(entries)) continue;
+      for (const [id, meta] of Object.entries(entries)) {
+        if (!meta || typeof meta.file !== 'string') continue;
+        if (!existsSync(resolve(spritesDir, meta.file))) missing.push(`${group}/${id} -> ${meta.file}`);
+      }
+    }
+    assert.deepEqual(missing, [], `missing sprite assets: ${missing.join(', ')}`);
+    // D4 furniture/decor entries ship a single static `idle` frame.
+    for (const [id, meta] of Object.entries(manifest.props)) {
+      if (meta.class === undefined) continue;
+      assert.ok(Array.isArray(meta.frames) && meta.frames.includes('idle'), `${id} must declare an idle frame`);
+    }
+  });
+
   await t.test('pause modal keeps at most one window Escape handler (D1)', () => {
     const listeners = new Set();
     const fakeWindow = {

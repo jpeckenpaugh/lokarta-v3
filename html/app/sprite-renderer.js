@@ -742,6 +742,32 @@ export class SpriteRenderer {
   }
 
   /**
+   * Draws a room prop (furniture or floor decor) at a tile, using the authored
+   * `idle` frame resolved from `PROP_CATALOG[prop.propId]`. Furniture uses the
+   * same tile-origin blit as chests (the authored art is bottom-aligned); decor
+   * is authored at the tile origin. Falls back to a procedural rim-lit block so
+   * the prop set can land incrementally (D4 §6.2/§6.4).
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {{propId?:string, layer?:string, class?:string}} prop
+   * @returns {boolean}
+   */
+  static drawProp(ctx, prop, screenX, screenY, size = CONFIG.GRID_SIZE) {
+    if (!prop) return false;
+    const def = prop.propId ? PROP_CATALOG[prop.propId] : null;
+    if (drawPropFrame(ctx, def, 'idle', screenX, screenY, size)) return true;
+
+    const u = size / 32;
+    const decor = prop.layer === 'decor' || (def && def.class) === 'decor';
+    ctx.fillStyle = decor ? 'rgba(107,68,35,0.55)' : '#6b4423';
+    ctx.fillRect(screenX + 4 * u, screenY + 4 * u, size - 8 * u, size - 8 * u);
+    if (!decor) {
+      ctx.fillStyle = '#c98a4a';
+      ctx.fillRect(screenX + 4 * u, screenY + 4 * u, size - 8 * u, 2 * u);
+    }
+    return true;
+  }
+
+  /**
    * Draw an actor from its sprite definition. Returns sprite geometry
    * `{ dx, dy, w, h, scale }` when a sprite was drawn, or `null` when the
    * caller should use the procedural fallback.

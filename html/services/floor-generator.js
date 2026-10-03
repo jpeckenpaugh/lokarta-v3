@@ -17,7 +17,9 @@ import {
   DUNGEONS_CATALOG,
   TOWER_LEVELS_CATALOG,
   CHESTS_CATALOG,
+  TILE_THEMES_CATALOG,
 } from '../data/index.js';
+import { PROP_MANIFEST } from '../assets/sprites/index.js';
 
 export const TILE_TYPES = {
   FLOOR: 0,
@@ -437,29 +439,17 @@ function takeCandidate(room, blocked, anchor, occupied) {
 }
 
 /**
- * True when a tile is orthogonally adjacent to a WALL/boundary, i.e. it sits
- * against a room wall rather than floating in the middle of the room.
- * Walkable floor tiles only.
+ * Every FLOOR tile in a room's full carved bounds, excluding `blocked` tiles.
+ * Unlike `orderedCandidates` (which insets by 1) this includes the perimeter
+ * ring, so it is the candidate source for wall-first chest placement and for
+ * prop placement (D4 §5/§7).
  */
-function isWallAdjacent(matrix, x, y) {
-  if (!matrix[y] || matrix[y][x] === undefined || matrix[y][x] === TILE_TYPES.WALL) return false;
-  for (const n of neighbors(x, y)) {
-    if (!matrix[n.y] || matrix[n.y][n.x] === undefined) return true;
-    if (matrix[n.y][n.x] === TILE_TYPES.WALL) return true;
-  }
-  return false;
-}
-
-/**
- * Every floor tile of a room (its full carved bounds), excluding blocked
- * tiles. Unlike `orderedCandidates` this includes the room's perimeter ring,
- * which is where wall-adjacent placement lives.
- */
-function roomFloorTiles(room, blocked) {
+function roomBoundsCandidates(room, blocked, matrix) {
   const [x1, y1, x2, y2] = room;
   const tiles = [];
   for (let y = y1; y <= y2; y++) {
     for (let x = x1; x <= x2; x++) {
+      if (matrix[y] && matrix[y][x] !== undefined && matrix[y][x] !== TILE_TYPES.FLOOR) continue;
       if (blocked.has(`${x},${y}`)) continue;
       tiles.push({ x, y });
     }
@@ -467,29 +457,115 @@ function roomFloorTiles(room, blocked) {
   return tiles;
 }
 
-/**
- * Ordered free tiles in a room that sit against a wall, rotated so `anchor` is
- * scanned first. Falls back to any free tile inside the room when a room has no
- * wall-adjacent free tile (so a chest is never dropped).
- */
-function orderedWallCandidates(room, blocked, anchor, matrix) {
-  const all = roomFloorTiles(room, blocked);
-  const wallAdjacent = all.filter(tile => isWallAdjacent(matrix, tile.x, tile.y));
-  const pool = wallAdjacent.length > 0 ? wallAdjacent : all;
-  if (!anchor) return pool;
-  const idx = pool.findIndex(t => t.x === anchor.x && t.y === anchor.y);
-  if (idx > 0) return pool.slice(idx).concat(pool.slice(0, idx));
-  return pool;
+/** True when a tile has a WALL (pillar) or boundary 4-neighbour. */
+function hasWallNeighbour(x, y, matrix) {
+  for (const n of neighbors(x, y)) {
+    if (!matrix[n.y] || matrix[n.y][n.x] === undefined) return true;
+    if (matrix[n.y][n.x] === TILE_TYPES.WALL) return true;
+  }
+  return false;
 }
 
-/** Takes the first free wall-adjacent tile from an anchor-rotated list. */
-function takeWallCandidate(room, blocked, anchor, occupied, matrix) {
-  for (const tile of orderedWallCandidates(room, blocked, anchor, matrix)) {
+/** In-place Fisher–Yates using the generator's seeded rng (deterministic). */
+function seededShuffle(list, rng) {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(rng.random() * (i + 1));
+    const tmp = list[i];
+    list[i] = list[j];
+    list[j] = tmp;
+  }
+  return list;
+}
+
+/** Resolves a theme prop id (no prefix) to its PROP_MANIFEST key, or null. */
+function propManifestKey(id) {
+  if (!id) return null;
+  if (PROP_MANIFEST[id]) return id;
+  if (PROP_MANIFEST[`prop_${id}`]) return `prop_${id}`;
+  if (PROP_MANIFEST[`decor_${id}`]) return `decor_${id}`;
+  return null;
+}
+
+/** `class` of a themed prop id: 'wall' | 'free' | 'decor' (default 'free'). */
+function propClassOf(id) {
+  const key = propManifestKey(id);
+  return (key && PROP_MANIFEST[key].class) || 'free';
+}
+
+/**
+ * Class-aware, de-duplicated prop pick. A wall-class prop is only returned for
+ * a tile that has a WALL neighbour; `wantWall` biases the preference but never
+ * violates the class constraint (D4 §5).
+ */
+function pickFromSet(set, tileCls, wantWall, rng, used) {
+  const free = set.filter(id => propClassOf(id) === 'free');
+  const wall = set.filter(id => propClassOf(id) === 'wall');
+  let pool;
+  if (tileCls === 'free') pool = free;
+  else pool = wantWall ? wall.concat(free) : free.concat(wall);
+  if (pool.length === 0) pool = set.slice();
+  const fresh = pool.filter(id => !used.has(id));
+  const choice = fresh.length ? fresh : pool;
+  return choice.length ? rng.choice(choice) : null;
+}
+
+/**
+ * Ordered chest candidates: full room bounds, north-wall-adjacent tiles first
+ * (a bottom-anchored chest reads correctly backed against the top wall), then
+ * any other wall-adjacent tile, then the remaining tiles. `anchor` rotates the
+ * tie-break order inside each tier (D4 §7).
+ */
+function orderedCandidatesWallFirst(room, blocked, anchor, matrix) {
+  const all = roomBoundsCandidates(room, blocked, matrix);
+  const north = [];
+  const side = [];
+  const rest = [];
+  for (const tile of all) {
+    const above = matrix[tile.y - 1] && matrix[tile.y - 1][tile.x];
+    if (above === TILE_TYPES.WALL) north.push(tile);
+    else if (hasWallNeighbour(tile.x, tile.y, matrix)) side.push(tile);
+    else rest.push(tile);
+  }
+  const rotate = list => {
+    if (!anchor || list.length === 0) return list;
+    const idx = list.findIndex(t => t.x === anchor.x && t.y === anchor.y);
+    return idx > 0 ? list.slice(idx).concat(list.slice(0, idx)) : list;
+  };
+  return rotate(north).concat(rotate(side), rotate(rest));
+}
+
+/** Takes the first unoccupied tile from a wall-first candidate order. */
+function takeWallFirstCandidate(room, blocked, anchor, occupied, matrix) {
+  for (const tile of orderedCandidatesWallFirst(room, blocked, anchor, matrix)) {
     if (occupied.has(`${tile.x},${tile.y}`)) continue;
     occupied.add(`${tile.x},${tile.y}`);
     return tile;
   }
   return null;
+}
+
+/** Nearest eligible FLOOR tile to `start` for a prop of `propCls`, or null. */
+function findNearestPropTile(start, room, propCls, blocked, matrix, hardExclude) {
+  const [x1, y1, x2, y2] = room;
+  const tiles = [];
+  for (let y = y1; y <= y2; y++) {
+    for (let x = x1; x <= x2; x++) {
+      const key = `${x},${y}`;
+      if (matrix[y][x] !== TILE_TYPES.FLOOR) continue;
+      if (blocked.has(key) || (hardExclude && hardExclude.has(key))) continue;
+      if (propCls === 'wall' && !hasWallNeighbour(x, y, matrix)) continue;
+      tiles.push({ x, y, d: Math.abs(x - start.x) + Math.abs(y - start.y) });
+    }
+  }
+  tiles.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x);
+  return tiles[0] || null;
+}
+
+/** Merged level theme's `props` block (data-driven; no per-level code). */
+function themePropsForLevel(levelId) {
+  const root = TILE_THEMES_CATALOG;
+  const level = root.levels && root.levels[String(levelId)];
+  return (level && level.props) || root.props || null;
 }
 
 function round(n) {
@@ -656,16 +732,17 @@ export function generateFloor(floorNumber = 1, seed = null) {
   };
 
   // 8a. Chests: exactly one per room at its D2 §7.2 tier, placed deterministically
-  //     against a room wall (LIV-18) rather than floating mid-room. The wall-adjacent
-  //     anchor scan keeps chests reachable: the player only ever needs to step onto
-  //     the walkable tile from the room side. Chests claim their tile before monsters
-  //     so the two never overlap (D2 §9.2 order).
+  //     against a room wall (LIV-17 item 3 / D4 §7) rather than floating mid-room.
+  //     Full room bounds are scanned with north-wall tiles ordered first so the
+  //     bottom-anchored chest reads as backed against the top wall; the scan keeps
+  //     chests reachable (the player only steps onto the walkable tile). Chests
+  //     claim their tile before monsters so the two never overlap (D2 §9.2 order).
   const chests = [];
   let chestId = 1;
   for (let room = 1; room <= 9; room++) {
     const bounds = rooms[room - 1];
     const anchor = absAnchor(room, roles.chest);
-    const tile = takeWallCandidate(bounds, blocked, anchor, occupied, matrix);
+    const tile = takeWallFirstCandidate(bounds, blocked, anchor, occupied, matrix);
     if (!tile) continue;
     chests.push({
       id: `f${levelId}_chest_${chestId++}`,
@@ -843,6 +920,142 @@ export function generateFloor(floorNumber = 1, seed = null) {
     }
   }
 
+  // 10. Room props & floor decor (D4 / LIV-20). Cosmetic and non-blocking, and
+  //     placed LAST from the generator's own rng (after monster jitter): the
+  //     existing `occupied` set is the hard exclusion set, so a prop can never
+  //     land on a chest, key holder, monster, stair, spawn, entry, arrival,
+  //     pillar, or item tile. Tile/monster/item/stairs structure is unchanged,
+  //     so the D2 §10 no-soft-lock proof is untouched (props are walk-over).
+  const props = [];
+  const propPolicy = tower.propPolicy || {};
+  const themeProps = themePropsForLevel(levelId);
+  const levelTheme = (TILE_THEMES_CATALOG.levels && TILE_THEMES_CATALOG.levels[String(levelId)]) || {};
+  const flameColor = (levelTheme.features && levelTheme.features.flame) || lightColor;
+  if (themeProps && Array.isArray(themeProps.set) && themeProps.set.length > 0) {
+    const propBlocked = new Set(occupied);
+    for (const m of monsters) propBlocked.add(`${m.x},${m.y}`);
+
+    // Chest + neighbours spacing so the room's single reward object reads clearly.
+    const chestExclude = new Set();
+    const spacing = Number(propPolicy.minSpacingFromChest ?? 0);
+    for (const c of chests) {
+      chestExclude.add(`${c.x},${c.y}`);
+      if (spacing >= 1) for (const n of neighbors(c.x, c.y)) chestExclude.add(`${n.x},${n.y}`);
+    }
+    const clearCenter = propPolicy.clearCenter !== false;
+    const excludeForRoom = room => {
+      const ex = new Set(chestExclude);
+      if (clearCenter) {
+        const c = roomCenters[String(room)];
+        ex.add(`${c[0]},${c[1]}`);
+      }
+      return ex;
+    };
+    const pushProp = (room, tile, id, layer) => {
+      propBlocked.add(`${tile.x},${tile.y}`);
+      props.push({
+        id: `f${levelId}_prop_${props.length + 1}`,
+        room,
+        x: tile.x,
+        y: tile.y,
+        propId: layer === 'decor' ? `decor_${id}` : `prop_${id}`,
+        class: layer === 'decor' ? 'decor' : propClassOf(id),
+        layer,
+      });
+    };
+
+    // Boss room (level 5, room 5): fixed throne flanked by two braziers, taking
+    // the nearest eligible tile to each authored anchor (D4 §4/§5).
+    const bossFixed = propPolicy.bossRoomFixed;
+    for (let room = 1; room <= 9; room++) {
+      const bounds = rooms[room - 1];
+      if (levelSpec.isFinal && bossFixed && Number(bossFixed.room) === room && Array.isArray(bossFixed.props)) {
+        const c = roomCenters[String(room)];
+        const offsets = [[0, 1], [-2, 1], [2, 1]];
+        bossFixed.props.forEach((pid, i) => {
+          const off = offsets[i] || [0, 0];
+          const start = { x: c[0] + off[0], y: c[1] + off[1] };
+          const tile = findNearestPropTile(start, bounds, propClassOf(pid), propBlocked, matrix, excludeForRoom(room));
+          if (tile) pushProp(room, tile, pid, 'prop');
+        });
+        continue;
+      }
+
+      const tier = levelSpec.roomTiers[String(room)];
+      const cap = Math.min(
+        Number(propPolicy.countByRoomTier?.[String(tier)] ?? 2),
+        Number(themeProps.maxPerRoom ?? 4),
+        Number(themeProps.density ?? 4)
+      );
+      let target = cap;
+      if (room === levelSpec.entryRoom || room === levelSpec.stairRoom) {
+        target = Math.min(target, Number(propPolicy.arrivalRoomMax ?? 1));
+      }
+
+      const excluded = excludeForRoom(room);
+      const used = new Set();
+      let placed = 0;
+
+      // Focal guarantee: key rooms and the stair room spend one slot on the
+      // theme's focal prop first, so an arrival stair room's single prop (cap 1)
+      // is the focal rather than a random scatter.
+      const isKeyRoom = GATE_TIERS.some(t => levelSpec.keyRooms[t] === room);
+      const focal = themeProps.focal;
+      if (focal && (isKeyRoom || room === levelSpec.stairRoom) && placed < target) {
+        const c = roomCenters[String(room)];
+        const tile = findNearestPropTile({ x: c[0], y: c[1] }, bounds, propClassOf(focal), propBlocked, matrix, excluded);
+        if (tile) {
+          used.add(focal);
+          pushProp(room, tile, focal, 'prop');
+          placed++;
+        }
+      }
+
+      const candidates = seededShuffle(
+        roomBoundsCandidates(bounds, propBlocked, matrix).filter(t => !excluded.has(`${t.x},${t.y}`)),
+        rng
+      );
+      for (const tile of candidates) {
+        if (placed >= target) break;
+        if (propBlocked.has(`${tile.x},${tile.y}`)) continue;
+        const cls = hasWallNeighbour(tile.x, tile.y, matrix) ? 'wall' : 'free';
+        const wantWall = rng.random() < Number(themeProps.wallBias ?? 0.4);
+        const pid = pickFromSet(themeProps.set, cls, wantWall, rng, used);
+        if (!pid) continue;
+        used.add(pid);
+        pushProp(room, tile, pid, 'prop');
+        placed++;
+      }
+    }
+
+    // Decor pass: floor decals under items, one 50% roll per non-arrival room.
+    if (Array.isArray(themeProps.decor) && themeProps.decor.length > 0) {
+      const did = themeProps.decor[0];
+      for (let room = 1; room <= 9; room++) {
+        if (room === levelSpec.entryRoom || room === levelSpec.stairRoom) continue;
+        if (props.some(p => p.room === room && p.layer === 'decor')) continue;
+        if (rng.random() >= 0.5) continue;
+        const c = roomCenters[String(room)];
+        const tile = findNearestPropTile({ x: c[0], y: c[1] }, rooms[room - 1], 'decor', propBlocked, matrix, excludeForRoom(room));
+        if (tile) pushProp(room, tile, did, 'decor');
+      }
+    }
+
+    // Bounded brazier light: at most maxBrazierLights ambient nodes per floor.
+    const maxBrazier = Number(propPolicy.maxBrazierLights ?? 0);
+    let brazierLights = 0;
+    for (const p of props) {
+      if (p.propId !== 'prop_brazier' || brazierLights >= maxBrazier) continue;
+      ambientLights.push({
+        x: p.x,
+        y: p.y,
+        radius: Number(propPolicy.brazierLightRadius ?? 2.5),
+        color: flameColor,
+      });
+      brazierLights++;
+    }
+  }
+
   const toCoords = tile => (tile ? { x: tile.x, y: tile.y } : null);
 
   return {
@@ -878,6 +1091,7 @@ export function generateFloor(floorNumber = 1, seed = null) {
     room_tiers: { ...levelSpec.roomTiers },
     chests,
     chest_tiers: Object.fromEntries(chests.map(c => [String(c.room), c.tier])),
+    props,
     monsters,
     spawns: monsters,
     items,

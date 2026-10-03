@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "wall": {
     "fill": "#2a2f3b",
     "topHighlight": "#444d61",
@@ -91,6 +91,14 @@
         "banner": 0.0,
         "sconce": 0.12,
         "window": 0.0
+      },
+      "props": {
+        "set": ["candelabra", "crate", "barrel", "sarcophagus"],
+        "decor": [],
+        "focal": "sarcophagus",
+        "density": 2,
+        "maxPerRoom": 3,
+        "wallBias": 0.5
       }
     },
     "2": {
@@ -130,6 +138,14 @@
         "banner": 0.18,
         "sconce": 0.08,
         "window": 0.0
+      },
+      "props": {
+        "set": ["candelabra", "table", "crate", "bookshelf"],
+        "decor": ["rug"],
+        "focal": "table",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.4
       }
     },
     "3": {
@@ -169,6 +185,14 @@
         "banner": 0.0,
         "sconce": 0.08,
         "window": 0.16
+      },
+      "props": {
+        "set": ["crate", "barrel", "brazier", "table"],
+        "decor": [],
+        "focal": "brazier",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.25
       }
     },
     "4": {
@@ -208,6 +232,14 @@
         "banner": 0.16,
         "sconce": 0.09,
         "window": 0.0
+      },
+      "props": {
+        "set": ["bookshelf", "table", "candelabra", "altar"],
+        "decor": ["rug"],
+        "focal": "altar",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.4
       }
     },
     "5": {
@@ -247,6 +279,14 @@
         "banner": 0.14,
         "sconce": 0.08,
         "window": 0.12
+      },
+      "props": {
+        "set": ["throne", "altar", "brazier", "candelabra"],
+        "decor": ["rug"],
+        "focal": "altar",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.5
       }
     }
   }

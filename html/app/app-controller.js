@@ -56,6 +56,7 @@ export class LokartaApp {
     this.gridMap = new GridMap();
     this.monsters = [];
     this.chests = [];
+    this.props = [];
     this.ambientLights = [];
     this.projectiles = [];
     this.particles = [];
@@ -588,6 +589,9 @@ export class LokartaApp {
     // Chests are world entities, not tile items. Restore persisted opened-state
     // so a save/load keeps opened chests empty (E4 persistence).
     this.chests = (floorData.chests || []).map(chest => ({ ...chest }));
+
+    // D4 room props/decor (LIV-20) are render-only, non-blocking world data.
+    this.props = (floorData.props || []).map(p => ({ ...p }));
 
     this.ambientLights = [];
     this.monsters = (floorData.monsters || []).map(s => ({
@@ -1240,7 +1244,8 @@ export class LokartaApp {
       this.selectedMonsterId,
       this.particles,
       this.deathEffects,
-      this.chests
+      this.chests,
+      this.props
     );
   }
 
