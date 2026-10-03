@@ -220,18 +220,21 @@ describe('E2 Floor Generator — 5-level tower', () => {
     }
   });
 
-  it('spawns a group per room with a key holder in each key room, but none in the entrance room', () => {
+  it('spawns a group per room with a key holder in each key room, but none in either arrival room', () => {
     for (const level of LEVELS) {
       const spec = getLevelSpec(level);
       const floor = generateFloor(level);
       const groupSize = TOWER_LEVELS_CATALOG.monsterGroups.groupSize[String(level)];
-      // No authored key room is the entrance room, so the entrance-room rule
+      // No authored key room is an arrival room, so the empty-arrival-room rule
       // (LIV-16) never removes a key holder.
-      assert.ok(!Object.values(spec.keyRooms).includes(spec.entryRoom), `L${level} key room must not be the entrance`);
+      const arrivalRooms = [spec.entryRoom, spec.stairRoom];
+      for (const room of arrivalRooms) {
+        assert.ok(!Object.values(spec.keyRooms).includes(room), `L${level} key room must not be arrival room ${room}`);
+      }
 
       for (let room = 1; room <= 9; room++) {
         const inRoom = floor.monsters.filter(m => m.room === room && !m.isBoss && !m.isGuard);
-        const expected = room === spec.entryRoom ? 0 : groupSize;
+        const expected = arrivalRooms.includes(room) ? 0 : groupSize;
         assert.equal(inRoom.length, expected, `L${level} room ${room} group size`);
       }
 

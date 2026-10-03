@@ -32,6 +32,13 @@ export class InventorySystem {
     const maxStack = InventorySystem.getMaxStack(groundItem.item_id);
     let totalPickedUp = 0;
 
+    // Auto-equip gear into its empty paperdoll slot on pickup (LIV-16), so a
+    // picked-up weapon/armor/relic goes straight onto the player.
+    if (InventorySystem.autoEquipIfEmpty(player, groundItem)) {
+      gridMap.popTopItem(player.x, player.y);
+      return { success: true, message: `Auto-equipped ${groundItem.name}.`, item: groundItem };
+    }
+
     // 0. Floor arrow drops fill the equipped quiver first (Grey Stalker arrow
     //    economy); any remainder spills to the `arrows` reserve stack below.
     if (groundItem.item_id === 'arrows') {
@@ -137,6 +144,12 @@ export class InventorySystem {
       return { success: false, message: 'Nothing to add.', item: null };
     }
 
+    // Auto-equip gear into its empty paperdoll slot on grant (LIV-16): chest
+    // loot and rewards go straight onto the player when the slot is free.
+    if (InventorySystem.autoEquipIfEmpty(player, item)) {
+      return { success: true, message: `Auto-equipped ${item.name}.`, item };
+    }
+
     const maxStack = InventorySystem.getMaxStack(item.item_id);
     let remaining = item.quantity || 1;
     const lists = [player.action_bar, player.backpack].filter(Boolean);
@@ -240,6 +253,39 @@ export class InventorySystem {
       player._gearBonusMaxHp = hpBonus;
       player._gearBonusMaxMana = manaBonus;
     }
+  }
+
+  /**
+   * Auto-equips a picked-up/just-granted item into its empty paperdoll slot
+   * (LIV-16). Data-driven via the item's `slot` (or its catalog `slot`), and
+   * vocation-gated by `vocationAffinity` exactly like manual `equipItem`.
+   * Consumables, keys, ammo (no `slot`) and wrong-vocation gear are left alone.
+   *
+   * @param {object} player
+   * @param {object} item
+   * @returns {boolean} true when the item was equipped
+   */
+  static autoEquipIfEmpty(player, item) {
+    if (!player || !item) return false;
+    const catalogItem = ITEMS_CATALOG[item.item_id];
+    const targetSlot = item.slot || catalogItem?.slot;
+    if (!targetSlot) return false;
+    if (!player.paperdoll) {
+      player.paperdoll = { main_hand: null, off_hand: null, armor: null, relic: null };
+    }
+    if (player.paperdoll[targetSlot] !== null && player.paperdoll[targetSlot] !== undefined) {
+      return false;
+    }
+
+    const affinity = item.vocationAffinity || catalogItem?.vocationAffinity;
+    if (affinity && affinity !== 'neutral' && player.vocation) {
+      const matches = Array.isArray(affinity) ? affinity.includes(player.vocation) : affinity === player.vocation;
+      if (!matches) return false;
+    }
+
+    player.paperdoll[targetSlot] = { ...item, quantity: 1 };
+    InventorySystem.recomputeGearBonuses(player);
+    return true;
   }
 
   static equipItem(player, source, slotIndex) {

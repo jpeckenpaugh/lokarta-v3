@@ -397,3 +397,55 @@ test('E7: pure tower clamp/migration helpers handle legacy edge cases', () => {
   assert.equal(slot.currentFloor, TOWER_FLOOR_COUNT);
   assert.equal(slot.floorEntry.current_floor, TOWER_FLOOR_COUNT);
 });
+
+test('LIV-16: load spawns at the level start; death descends a level and full-heals', async (t) => {
+  const originalIndexedDB = globalThis.indexedDB;
+  globalThis.indexedDB = createFakeIndexedDB();
+  t.after(() => {
+    closeStorage();
+    globalThis.indexedDB = originalIndexedDB;
+  });
+
+  const { COMMAND_HANDLERS } = await import('../worker/game-worker.js');
+  await openStorage();
+
+  // Create a real slot (level 1), then advance it to level 3 and move the player
+  // to an arbitrary mid-room tile to prove load ignores the saved position.
+  const created = await COMMAND_HANDLERS.createSlot({ slotIndex: 1, vocation: 'magician' });
+  const slotIndex = 1;
+  created.player.current_floor = 3;
+  created.player.x = 7;
+  created.player.y = 9;
+  created.player.hp = 12;
+  await put(STORES.CHARACTERS, created.player);
+  // Keep the slot's floorEntry in sync with where it was saved.
+  const slotRec = await read(STORES.SAVE_SLOTS, 'slot_1');
+  slotRec.currentFloor = 3;
+  await put(STORES.SAVE_SLOTS, slotRec);
+
+  await t.test('loadSlot places the player at the level start position', async () => {
+    const loaded = await COMMAND_HANDLERS.loadSlot({ slotIndex });
+    assert.equal(loaded.player.current_floor, 3);
+    const start = loaded.floor.spawn_coords;
+    assert.deepEqual({ x: loaded.player.x, y: loaded.player.y }, { x: start.x, y: start.y },
+      'continuing a save must start at the level start position, not the saved tile');
+  });
+
+  await t.test('respawnAfterDeath descends one level, spawns at start, and full-heals', async () => {
+    const respawned = await COMMAND_HANDLERS.respawnAfterDeath({ slotIndex });
+      assert.equal(respawned.player.current_floor, 2, 'descends from 3 to 2');
+      assert.equal(respawned.player.hp, respawned.player.max_hp, 'full health on respawn');
+    assert.equal(respawned.player.mana, respawned.player.max_mana, 'full mana on respawn');
+    const start = respawned.floor.spawn_coords;
+    assert.deepEqual({ x: respawned.player.x, y: respawned.player.y }, { x: start.x, y: start.y });
+  });
+
+  await t.test('respawnAfterDeath never descends below level 1', async () => {
+    const slot = await read(STORES.CHARACTERS, (await read(STORES.SAVE_SLOTS, 'slot_1')).characterId);
+    slot.current_floor = 1;
+    await put(STORES.CHARACTERS, slot);
+    const respawned = await COMMAND_HANDLERS.respawnAfterDeath({ slotIndex });
+    assert.equal(respawned.player.current_floor, 1);
+    assert.equal(respawned.player.hp, respawned.player.max_hp);
+  });
+});

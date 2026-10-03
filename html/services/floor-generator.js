@@ -657,11 +657,13 @@ export function generateFloor(floorNumber = 1, seed = null) {
     const bounds = rooms[room - 1];
     const isKeyRoom = GATE_TIERS.some(t => levelSpec.keyRooms[t] === room);
     const holderTier = isKeyRoom ? keyRoomTier(room) : null;
-    const isEntryRoom = room === levelSpec.entryRoom;
-
-    // Entrance rooms stay empty by default so first entering a level never
-    // drops the player into a chase. No authored key room is an entrance room.
-    if (isEntryRoom) continue;
+    // The two arrival rooms stay empty so neither entering nor descending lands
+    // the player next to a monster: the entry room (arrival from below, beside
+    // the up-stair) and the stair room (arrival from above, beside the down-stair
+    // = the room you descend into from the level above). No authored key room is
+    // either, so progression is unaffected.
+    const isArrivalRoom = room === levelSpec.entryRoom || room === levelSpec.stairRoom;
+    if (isArrivalRoom) continue;
 
     // A key room replaces its last group slot with the tier's key holder, so it
     // still spawns exactly `groupSize` monsters.

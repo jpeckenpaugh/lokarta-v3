@@ -239,20 +239,23 @@ describe('Floor Generator (1-20)', () => {
     assert.equal(boss.isBoss, true);
   });
 
-  it('spawns a 3–4 monster group in every non-entrance room from the tower level pool', () => {
+  it('spawns a 3–4 monster group in every non-arrival room from the tower level pool', () => {
     for (const level of [1, 2, 3, 4, 5]) {
       const floor = generateFloor(level);
-      const entryRoom = floor.entry_room;
-      const nonBoss = floor.monsters.filter(m => !m.isBoss);
+      const arrivalRooms = new Set([floor.entry_room, floor.stair_room]);
+      // Boss and its guards are intentional final-floor content in room 5.
+      const nonBoss = floor.monsters.filter(m => !m.isBoss && !m.isGuard);
       const expectedSize = level <= 2 ? 3 : 4;
       const byRoom = {};
       for (const m of nonBoss) byRoom[m.room] = (byRoom[m.room] || 0) + 1;
-      // The entrance room is empty by rule (LIV-16); the other 8 rooms carry a
-      // group. Level 5's Summit (room 5) adds two guards.
-      const expectedBase = 8 * expectedSize + (level === 5 ? 2 : 0);
-      assert.equal(nonBoss.length, expectedBase, `level ${level} must spawn groups in every non-entrance room`);
-      assert.equal(byRoom[entryRoom], undefined, `level ${level} entrance room ${entryRoom} must be empty`);
-      assert.equal(Object.keys(byRoom).length, 8, `level ${level} groups must cover the 8 non-entrance rooms`);
+      // The entry room and stair room spawn no regular groups (LIV-16); the other
+      // 7 rooms carry a group. Level 5's Summit (room 5) also holds the boss+guards.
+      const expectedBase = 7 * expectedSize;
+      assert.equal(nonBoss.length, expectedBase, `level ${level} must spawn regular groups only in non-arrival rooms`);
+      for (const room of arrivalRooms) {
+        assert.equal(byRoom[room], undefined, `level ${level} arrival room ${room} must have no regular group`);
+      }
+      assert.equal(Object.keys(byRoom).length, 7, `level ${level} regular groups must cover the 7 non-arrival rooms`);
     }
   });
 

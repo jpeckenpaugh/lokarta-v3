@@ -26,6 +26,8 @@ import {
   deriveSlotMeta,
   snapshotFloorEntry,
   restoreFloorEntry,
+  descendOnDeath,
+  applyFullRestore,
   normalizeOptions,
   migratePlayerToTower,
   clampTowerFloor,
@@ -263,6 +265,14 @@ async function handleLoadSlot(payload = {}) {
   };
 
   const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1);
+  // Continuing a save always starts at the level's start position (LIV-16),
+  // regardless of where the player stood when last saved.
+  const start = floor.spawn_coords || floor.entrance;
+  if (start) {
+    player.x = start.x;
+    player.y = start.y;
+  }
+  player.floorEntry = snapshotFloorEntry(player);
   player.slotId = slotId(slotIndex);
   player.slotIndex = slotIndex;
   const timestamp = now();
@@ -345,6 +355,52 @@ async function handleRestartFloor(payload = {}) {
     player.y = player.y ?? floor.spawn_coords.y;
   }
   player.floorEntry = snapshotFloorEntry(player);
+
+  await put(STORES.CHARACTERS, player);
+  await refreshSlot(slotIndex, player, floor.biome_name, timestamp);
+  await writeLastPlayed(slotIndex);
+
+  return { player, floor };
+}
+
+/**
+ * Respawns a defeated player one level lower (never below level 1) with full
+ * health and mana, landing at that level's start position (LIV-16).
+ * @param {{ slotIndex: number }} payload
+ * @returns {Promise<{ player: object, floor: object }>}
+ */
+async function handleRespawnAfterDeath(payload = {}) {
+  const slotIndex = clampSlotIndex(payload.slotIndex);
+  await openStorage();
+
+  const slot = await read(STORES.SAVE_SLOTS, slotId(slotIndex));
+  if (!slot || slot.status !== 'occupied' || !slot.characterId) {
+    throw new Error(`Slot ${slotIndex} is empty.`);
+  }
+  const player = await read(STORES.CHARACTERS, slot.characterId);
+  if (!player) {
+    throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
+  }
+
+  const respawnFloor = descendOnDeath(player);
+  player.current_floor = respawnFloor;
+  applyFullRestore(player);
+
+  const floor = await loadOrGenerateSlotFloor(slotIndex, respawnFloor);
+  // Land at the level's start position (its entrance spawn / arrival from below).
+  const start = resolveArrivalCoords(floor, respawnFloor - 1) || floor.spawn_coords || floor.entrance;
+  if (start) {
+    player.x = start.x;
+    player.y = start.y;
+  }
+
+  player.slotId = slotId(slotIndex);
+  player.slotIndex = slotIndex;
+  player.saveVersion = SAVE_FORMAT_VERSION;
+  player.floorEntry = snapshotFloorEntry(player);
+  const timestamp = now();
+  player.updatedAt = timestamp;
+  player.lastPlayedAt = timestamp;
 
   await put(STORES.CHARACTERS, player);
   await refreshSlot(slotIndex, player, floor.biome_name, timestamp);
@@ -571,13 +627,16 @@ async function handleSaveFloorState(payload = {}) {
   return { success: true };
 }
 
-const COMMAND_HANDLERS = {
+// Exported for the native test runner (the worker-safe module still guards its
+// `self.onmessage` hook below, so importing this in Node is inert).
+export const COMMAND_HANDLERS = {
   bootstrap: handleBootstrap,
   listSlots: handleListSlots,
   createSlot: handleCreateSlot,
   loadSlot: handleLoadSlot,
   deleteSlot: handleDeleteSlot,
   restartFloor: handleRestartFloor,
+  respawnAfterDeath: handleRespawnAfterDeath,
   newGame: handleNewGame,
   saveCharacter: handleSaveCharacter,
   getFloor: handleGetFloor,

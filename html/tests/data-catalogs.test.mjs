@@ -319,7 +319,8 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(spec.rooms.length, 9);
     assert.equal(Object.keys(spec.edges).length, 12);
     for (const edge of Object.values(spec.edges)) {
-      assert.equal(edge.tiles.length, 2, 'each edge must expose two threshold tiles');
+      // Doorways are a single tile wide (LIV-16).
+      assert.equal(edge.tiles.length, 1, 'each edge must expose exactly one doorway tile');
       assert.equal(edge.rooms.length, 2, 'each edge must connect exactly two rooms');
     }
   });

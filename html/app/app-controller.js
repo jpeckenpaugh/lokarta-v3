@@ -1882,35 +1882,47 @@ export class LokartaApp {
   }
 
   async onPlayerDeath() {
-    // Never persist HP 0: write the slot's floor-entry snapshot back instead.
+    // Death sends the player down one level (min level 1) with full HP/mana
+    // (LIV-16). Never persist HP 0 — the worker respawn restores a full-heal
+    // state on the lower level.
     const slotIndex = this.player?.slotIndex;
-    if (slotIndex) {
-      try {
-        await this.gameClient.restartFloor(slotIndex);
-      } catch (err) {
-        console.warn('Failed to restore floor-entry snapshot on death:', err);
-      }
-    }
-    this.showGameOverModal();
-  }
+    const fromFloor = this.player?.current_floor || 1;
+    this.isPaused = true;
 
-  async retryFloor() {
-    const slotIndex = this.player?.slotIndex;
     if (!slotIndex) {
-      this.returnToTitle();
+      // No slot (legacy run): just fall back to the title/game-over screen.
+      this.showGameOverModal(fromFloor, fromFloor);
       return;
     }
+
     try {
-      const data = await this.gameClient.restartFloor(slotIndex);
-      await this.transition.run('gameOverToRetry', async () => {
-        this.adoptPlayer(data.player, data.floor);
-        this.logCombat(`Retrying Floor ${this.player.current_floor || 1} from arrival.`, 'system');
-        this.startGameLoop();
-      }, { skippable: false });
+      const data = await this.gameClient.respawnAfterDeath(slotIndex);
+      const toFloor = data.player?.current_floor || 1;
+      this.player = data.player;
+      this.monsters = [];
+      this.applyDungeonData(data.floor);
+      LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+      this.updateHUD();
+      await this.persistSave(true);
+      if (toFloor < fromFloor) {
+        this.logCombat(`You fell on Floor ${fromFloor}. You awaken on Floor ${toFloor}, restored.`, 'warning');
+      } else {
+        this.logCombat(`You fell on Floor ${fromFloor}. You awaken at the tower gate, restored.`, 'warning');
+      }
+      this.showGameOverModal(fromFloor, toFloor);
     } catch (err) {
-      console.error('Retry failed:', err);
-      this.returnToTitle();
+      console.error('Death respawn failed:', err);
+      this.showGameOverModal(fromFloor, fromFloor);
     }
+  }
+
+  /** Resumes play at the already-respawned lower level. */
+  resumeAfterDeath() {
+    this.isGameOver = false;
+    this.isFloorCleared = false;
+    this.isPaused = false;
+    this.closeModal();
+    this.startGameLoop();
   }
 
   showVictoryModal() {
@@ -1920,9 +1932,11 @@ export class LokartaApp {
     });
   }
 
-  showGameOverModal() {
+  showGameOverModal(fromFloor = this.player?.current_floor || 1, toFloor = fromFloor) {
     ModalManager.showGameOverModal(this.modalOverlayEl, this.player, {
-      onRetry: () => this.retryFloor(),
+      fromFloor,
+      toFloor,
+      onRetry: () => this.resumeAfterDeath(),
       onContinue: () => this.returnToTitle(),
     });
   }

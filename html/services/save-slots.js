@@ -157,6 +157,32 @@ export function clampTowerFloor(floorNumber) {
 }
 
 /**
+ * Floor the player respawns on after death: one level lower (LIV-16), clamped so
+ * the first level is the floor. `current_floor` is clamped onto the tower first.
+ * @param {object|null} player
+ * @returns {number} 1..TOWER_LEVEL_COUNT
+ */
+export function descendOnDeath(player) {
+  const current = clampTowerFloor(player?.current_floor);
+  return Math.max(1, current - 1);
+}
+
+/**
+ * Restores full health and mana (LIV-16 death respawn). Mutates and returns the
+ * player. Safe on partial players; only touches hp/mana when the max is known.
+ * @param {object|null} player
+ * @returns {object|null}
+ */
+export function applyFullRestore(player) {
+  if (!player || typeof player !== 'object') return player;
+  if (Number.isFinite(Number(player.max_hp))) player.max_hp = Number(player.max_hp);
+  if (Number.isFinite(Number(player.max_mana))) player.max_mana = Number(player.max_mana);
+  player.hp = player.max_hp;
+  player.mana = player.max_mana;
+  return player;
+}
+
+/**
  * Migrates a persisted player character onto the 5-level tower. Returns a
  * shallow copy with `current_floor` clamped to `1..TOWER_LEVEL_COUNT` and the
  * `floorEntry` snapshot kept in sync. Returns the original reference when no

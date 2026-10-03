@@ -730,16 +730,23 @@ export class ModalManager {
   static showGameOverModal(modalOverlayEl, player, callbacks = {}) {
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
-    const floor = player?.current_floor || 1;
+    const fromFloor = callbacks.fromFloor || player?.current_floor || 1;
+    const toFloor = callbacks.toFloor || fromFloor;
+    const descended = toFloor < fromFloor;
+    const subtitle = descended
+      ? `Floor ${fromFloor} claims another soul. You descend to Floor ${toFloor}, restored to full health and magic.`
+      : `Floor ${fromFloor} claims another soul. You awaken at the tower gate, restored to full health and magic.`;
+    const primaryLabel = descended ? `DESCEND TO FLOOR ${toFloor}` : `CONTINUE ON FLOOR ${toFloor}`;
+
     modalOverlayEl.innerHTML = `
       <div class="result-modal defeat-modal">
         <h2>YOU HAVE PERISHED</h2>
-        <p class="result-subtitle">Floor ${floor} claims another soul.</p>
+        <p class="result-subtitle">${subtitle}</p>
         <div class="confirm-actions">
-          <button class="action-btn" id="btn-retry">RETRY FLOOR ${floor}</button>
-          <button class="action-btn" id="btn-continue">CONTINUE</button>
+          <button class="action-btn" id="btn-retry">${primaryLabel}</button>
+          <button class="action-btn" id="btn-continue">RETURN TO TITLE</button>
         </div>
-        <p class="result-hint">Both options restart Floor ${floor} from your arrival.<br />Retry stays in the tower; Continue returns to the title screen.</p>
+        <p class="result-hint">Death sends you down one level (never below Floor 1) with full HP and MP.<br />Continue stays in the tower; Return to Title exits to the main menu.</p>
       </div>
     `;
 

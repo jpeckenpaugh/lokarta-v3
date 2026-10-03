@@ -217,6 +217,16 @@ export class GameClient {
   }
 
   /**
+   * Respawns a defeated player one level lower (min level 1) with full HP/mana
+   * at that level's start position.
+   * @param {number} slotIndex
+   * @returns {Promise<{ player: object, floor: object }>}
+   */
+  async respawnAfterDeath(slotIndex) {
+    return this.request('respawnAfterDeath', { slotIndex });
+  }
+
+  /**
    * Reads persisted options.
    * @returns {Promise<{ options: object }>}
    */
