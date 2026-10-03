@@ -310,7 +310,7 @@ Met by: exact `tile_themes.levels` schema + values (§2–3), exact prop files +
 
 ## 9. Residual risks and follow-ups
 
-1. **No per-level *furniture* set** (tables, crates, altars). The castle read comes from wall palette + sconce/banner/window + stair material. If the board wants richer interiors, that is a bounded follow-up (5 small furniture props); **no mid-sprint art hire is required** for the D3 scope. Recommended owner: Designer, Wave 3, only if board requests.
+1. **Per-level *furniture* set deferred to D4.** For the D3 scope the castle read came from wall palette + sconce/banner/window + stair material. Richer interiors are now specified in [docs/art-direction-room-props.md](art-direction-room-props.md) (LIV-19 / D4): 9 furniture props + 1 floor decal, a per-level `tile_themes.levels[n].props` block, a `tower_levels.propPolicy` placement contract, non-blocking placement that preserves the no-soft-lock proof, and chest-against-wall placement. Implemented by E10 ([LIV-20](/LIV/issues/LIV-20)).
 2. **`biomes.json` name reuse:** §3.2 recommends tier ids/floors; E1 must update `biomes.json` and any string tests together (data-catalogs.test.mjs asserts current cave names; that test is E1/E7 scope and will need updating with the tower rewrite).
 3. **Feature overlap with walls near doors:** banners are suppressed within 2 tiles of a door to protect the door read. If E2 places many doors, banner density may look sparse on a floor — tune `decor.banner` per level without code changes.
 4. **Contrast is a design gate, not certification:** values are approximate to ±0.05 (same method as art-direction.md Appendix C).
