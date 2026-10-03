@@ -11,5 +11,6 @@ export * from './entity-ai.js';
 export * from './inventory-system.js';
 export * from './chest-system.js';
 export * from './door-system.js';
+export * from './stair-system.js';
 export * from './fate-grant-system.js';
 export * from './gesture-engine.js';

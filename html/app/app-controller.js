@@ -13,6 +13,7 @@ import {
   InventorySystem,
   ChestSystem,
   DoorSystem,
+  StairSystem,
   GestureEngine,
   createPlayer,
 } from '../engine/index.js';
@@ -25,6 +26,7 @@ import { InputController } from './input-controller.js';
 import { TransitionController } from './transition-controller.js';
 import { TitleAmbient } from './title-ambient.js';
 import { normalizeOptions, resolveReducedMotion, slotSummary } from '../services/save-slots.js';
+import { TOWER_LEVEL_COUNT } from '../services/floor-generator.js';
 import {
   createAnimState,
   ensureAnim,
@@ -60,6 +62,12 @@ export class LokartaApp {
     this.isGameOver = false;
     this.isFloorCleared = false;
     this.currentFloorName = 'The Gatehouse';
+
+    // E8: active-floor stair traversal state (dir/targetLevel + §9.3 arming).
+    this.stairs = [];
+    this.isFinalFloor = false;
+    this.stairSystem = null;
+    this.stairHint = null;
 
     this.tickTimer = null;
     this.animFrameId = null;
@@ -537,6 +545,20 @@ export class LokartaApp {
     this.currentFloorName = floorData.biome_name || 'The Gatehouse';
     this.gridMap.loadFromMatrix(floorData.tiles);
 
+    // E8: retain the active floor's authored stair metadata + final-floor flag so
+    // runtime traversal honors each stair's `dir`/`targetLevel` (D2 §3/§9.3)
+    // instead of blindly advancing. The arrival tile is disarmed so stepping onto
+    // it can never immediately re-trigger a transition.
+    this.stairs = (floorData.stairs || []).map(stair => ({ ...stair }));
+    this.isFinalFloor =
+      floorData.is_final === true || (floorData.floor_number || 0) >= TOWER_LEVEL_COUNT;
+    this.stairSystem = new StairSystem(
+      this.stairs,
+      this.player?.current_floor || floorData.floor_number || 1,
+      this.player ? { x: this.player.x, y: this.player.y } : null
+    );
+    this.stairHint = null;
+
     // Tag gated-door tiles with their tier so the renderer can resolve the
     // copper/silver/gold prop (data-driven; no per-level renderer branches).
     for (const [tier, gate] of Object.entries(floorData.gates || {})) {
@@ -833,9 +855,13 @@ export class LokartaApp {
       this.onPlayerDeath();
     }
 
-    // 6. Stairs check
-    if (!this.isFloorCleared && this.gridMap.isStairs(this.player.x, this.player.y)) {
-      this.handleFloorClear();
+    // 6. Stair traversal (E8): resolve the stair under the player against the
+    //    active floor's authored dir/targetLevel, honoring the §9.3 arrival
+    //    arming so a transition can never immediately re-trigger.
+    if (!this.isFloorCleared && this.stairSystem) {
+      this.stairSystem.syncArmed(this.player.x, this.player.y);
+      const resolution = this.stairSystem.resolve(this.player.x, this.player.y);
+      if (resolution) this.handleFloorClear(resolution);
     }
 
     // 7. Update HUD
@@ -1540,8 +1566,13 @@ export class LokartaApp {
           this.persistSave();
         }
 
-        if (isBoss && this.player.current_floor >= 20) {
-          setTimeout(() => this.handleFloorClear(), 600);
+        // E8: the catalog-driven final floor (not the retired 20-floor cave)
+        // resolves the boss kill into the campaign ending.
+        if (isBoss && (this.isFinalFloor || (this.player.current_floor || 1) >= TOWER_LEVEL_COUNT)) {
+          setTimeout(
+            () => this.handleFloorClear({ kind: 'summit', dir: 'summit', targetLevel: null }),
+            600
+          );
         }
       }
     }
@@ -1657,57 +1688,102 @@ export class LokartaApp {
     }
   }
 
-  async handleFloorClear() {
+  /** True while the final floor's boss guardian is still alive (D2 §9.3). */
+  isGuardianAlive() {
+    return Boolean(this.monsters) && this.monsters.some(m => m.isBoss && m.hp > 0);
+  }
+
+  /**
+   * Resolves a floor-clear event. `resolution` comes from `StairSystem.resolve`
+   * and carries the authored stair `dir`/`targetLevel`, so traversal honors the
+   * two-way shaft (up -> previous level, down -> next level) instead of always
+   * advancing. A `summit` resolves to victory, but only after the final floor's
+   * guardian falls (D2 §9.3). Called with no arguments by the boss-death path,
+   * which resolves through the catalog-driven final-floor check.
+   */
+  async handleFloorClear(resolution = null) {
     if (this.isFloorCleared) return;
+
+    const dir = resolution?.dir || null;
+    const kind = resolution?.kind || null;
+    const currentFloor = this.player?.current_floor || 1;
+    const finalFloor = this.isFinalFloor || currentFloor >= TOWER_LEVEL_COUNT;
+    const isSummit = kind === 'summit' || dir === 'summit';
+    const targetLevel = resolution?.targetLevel ?? null;
+
+    // D2 §9.3: the Summit stays sealed until the level-5 guardian is dead.
+    if (isSummit && this.isGuardianAlive()) {
+      const hint = `summit:${this.player.x},${this.player.y}`;
+      if (this.stairHint !== hint) {
+        this.stairHint = hint;
+        this.logCombat('The Summit is sealed until the Spire Warden falls.', 'warning');
+        this.addFloatingText('SEALED', this.player.x, this.player.y, '#ef4444');
+      }
+      return;
+    }
+
+    const isVictory = isSummit || (targetLevel === null && finalFloor);
+
+    if (isVictory) {
+      this.isFloorCleared = true;
+      this.isPaused = true;
+      soundFX.play('victory');
+      this.logCombat('🎉 YOU CONQUERED THE CROWN SPIRE! THE TOWER IS LIT!', 'victory');
+      this.addFloatingText('CAMPAIGN COMPLETED!', this.player.x, this.player.y, '#ffd700');
+      await this.persistSave(true);
+      this.showVictoryModal();
+      return;
+    }
+
+    if (targetLevel === null) {
+      // Missing/unknown direction: no-op with a one-shot feedback cue (§9.3).
+      const hint = `noop:${this.player.x},${this.player.y}`;
+      if (this.stairHint !== hint) {
+        this.stairHint = hint;
+        this.logCombat('These stairs lead nowhere yet.', 'warning');
+      }
+      return;
+    }
+
     this.isFloorCleared = true;
     this.isPaused = true;
-    const onFinalFloor = this.player.current_floor >= 20;
 
     try {
-      if (!onFinalFloor) {
-        const nextFloor = this.player.current_floor + 1;
-        const floorBonusXp = 50 * this.player.current_floor;
-        const lvlRes = ProgressionSystem.awardXP(this.player, floorBonusXp);
+      const nextFloor = targetLevel;
+      const floorBonusXp = 50 * currentFloor;
+      const lvlRes = ProgressionSystem.awardXP(this.player, floorBonusXp);
+      const descending = dir === 'up';
 
-        soundFX.play('stairs');
-        this.logCombat(
-          `Stepped on stairway! Climbed to Floor ${nextFloor} (+${floorBonusXp} Floor Clear XP)!`,
-          'victory'
-        );
-        this.addFloatingText(`FLOOR ${nextFloor}`, this.player.x, this.player.y, '#38bdf8');
+      soundFX.play('stairs');
+      this.logCombat(
+        `Stepped on stairway! ${descending ? 'Descended' : 'Climbed'} to Floor ${nextFloor} (+${floorBonusXp} Floor Clear XP)!`,
+        'victory'
+      );
+      this.addFloatingText(`FLOOR ${nextFloor}`, this.player.x, this.player.y, '#38bdf8');
 
-        await this.transition.run('floorAdvance', async () => {
-          const transition = await this.gameClient.advanceFloor(this.player, nextFloor);
-          this.player = transition.player;
-          this.applyDungeonData(transition.floor);
-          LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
-          this.updateHUD();
-          await this.persistSave(true);
-        }, { skippable: false, label: `ASCENDING TO FLOOR ${nextFloor}` });
-
-        if (lvlRes.leveledUp) {
-          soundFX.play('levelUp');
-          this.logCombat(
-            `⭐ LEVEL UP! You reached Level ${lvlRes.newLevel}! (+${lvlRes.hpGained} Max HP, +${lvlRes.manaGained} Max MP)`,
-            'spell'
-          );
-          this.showFateGrantModal(lvlRes.newLevel);
-        }
-      } else {
-        soundFX.play('victory');
-        this.logCombat('🎉 YOU CONQUERED THE CROWN SPIRE! THE TOWER IS LIT!', 'victory');
-        this.addFloatingText('CAMPAIGN COMPLETED!', this.player.x, this.player.y, '#ffd700');
+      await this.transition.run('floorAdvance', async () => {
+        const transition = await this.gameClient.advanceFloor(this.player, nextFloor);
+        this.player = transition.player;
+        this.applyDungeonData(transition.floor);
+        LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+        this.updateHUD();
         await this.persistSave(true);
-        this.showVictoryModal();
+      }, { skippable: false, label: `${descending ? 'DESCENDING TO' : 'ASCENDING TO'} FLOOR ${nextFloor}` });
+
+      if (lvlRes.leveledUp) {
+        soundFX.play('levelUp');
+        this.logCombat(
+          `⭐ LEVEL UP! You reached Level ${lvlRes.newLevel}! (+${lvlRes.hpGained} Max HP, +${lvlRes.manaGained} Max MP)`,
+          'spell'
+        );
+        this.showFateGrantModal(lvlRes.newLevel);
       }
     } catch (err) {
       console.error('Floor transition error:', err);
     } finally {
-      if (!onFinalFloor) {
-        this.isFloorCleared = false;
-        if (this.modalOverlayEl.classList.contains('hidden')) {
-          this.isPaused = false;
-        }
+      this.isFloorCleared = false;
+      if (this.modalOverlayEl.classList.contains('hidden')) {
+        this.isPaused = false;
       }
     }
   }
