@@ -20,6 +20,7 @@ import {
   themeForFloor,
   wallFeatureFor,
   resolvePropId,
+  wallShadeFor,
 } from '../app/sprite-renderer.js';
 import { exportPreviews } from '../../tools/render-sprite-preview.mjs';
 import { validatePropAssets } from '../../tools/validate-prop-assets.mjs';
@@ -452,4 +453,17 @@ test('Tower art integration (LIV-12)', async t => {
     });
     assert.ok(renderer.ctx.calls.filter(c => c.name === 'fillRect').length > 50, 'silver gate prop should blit');
   });
+});
+
+test('LIV-21 wall shade variation', () => {
+  const level2 = themeForFloor(2);
+  // Deterministic by tile coordinate: same (x, y) always resolves the same shade.
+  assert.equal(wallShadeFor(level2, 4, 7), wallShadeFor(level2, 4, 7), 'pure hash: repeatable');
+  // The authored palette is used across a wall run.
+  const seen = new Set();
+  for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) seen.add(wallShadeFor(level2, x, y));
+  assert.ok(seen.size >= 2, 'a wall run must show more than one shade');
+  // Falls back to the flat fill when no palette is authored.
+  assert.equal(wallShadeFor({ wall: { fill: '#123456' } }, 1, 2), '#123456');
+  assert.equal(wallShadeFor(null, 0, 0), undefined);
 });

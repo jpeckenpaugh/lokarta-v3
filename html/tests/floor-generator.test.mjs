@@ -321,4 +321,27 @@ describe('E2 Floor Generator — 5-level tower', () => {
     assert.deepEqual(r.stages.gold, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
     assert.ok(!r.stages.silver.includes(9), 'stair room 9 must not be reachable before the gold gate');
   });
+
+  it('LIV-21 level 2 topology: gold gate sits between rooms 3/6, and 5/6 is sealed', () => {
+    const spec = getLevelSpec(2);
+    // Requested layout: gold gate moved from 5/6 to 3/6; the vacated 5/6 edge
+    // becomes a solid wall so the stair room stays gated behind the gold key.
+    assert.equal(spec.gates.gold, 'v36', 'gold gate must be between rooms 3 and 6');
+    assert.equal(spec.gates.copper, 'h78');
+    assert.equal(spec.gates.silver, 'v47');
+    assert.ok(spec.openEdges.includes('v36'), 'the new 3/6 gold gate must be carved');
+    assert.ok(!spec.openEdges.includes('h56'), 'the old 5/6 gate must no longer be carved');
+    assert.ok(spec.sealedEdges.includes('h56'), 'the old 5/6 gate must now be a wall');
+    assert.ok(!spec.sealedEdges.includes('v36'), 'the new 3/6 gate must not be sealed');
+
+    // Progression order is preserved, and the stair room is only reachable through
+    // the gold gate between rooms 3 and 6.
+    const r = validateFloorSoftlock(spec);
+    assert.equal(r.ok, true, r.failures.join('; '));
+    assert.deepEqual(r.stages.entry, [8, 9]);
+    assert.deepEqual(r.stages.copper, [7, 8, 9]);
+    assert.deepEqual(r.stages.silver, [1, 2, 3, 4, 5, 7, 8, 9]);
+    assert.deepEqual(r.stages.gold, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    assert.ok(!r.stages.silver.includes(6), 'stair room 6 must not be reachable before the gold gate');
+  });
 });

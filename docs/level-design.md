@@ -181,7 +181,7 @@ Level 5 has **no down-stair**. `(20,20)` in room 5 is the Summit: defeating the 
 
 ### Level 2 — The Hall of Banners
 - **Entry** room 9 (up-stair) · **Stair** room 6 (down)
-- **Open edges:** `h23 h45 h56 h78 h89 v14 v47 v25` · **Sealed:** `h12 v58 v36 v69`
+- **Open edges:** `h23 h45 v36 h78 h89 v14 v47 v25` · **Sealed:** `h12 v58 h56 v69`
 
 | Step | Room | Edge | Gate tiles |
 | :-- | --: | :-- | :-- |
@@ -190,7 +190,7 @@ Level 5 has **no down-stair**. `(20,20)` in room 5 is the Summit: defeating the 
 | Silver holder | **7** | — | — |
 | **Silver gate** | — | `v47` (4↔7) | (5,27) (6,27) |
 | Gold holder | **5** | — | — |
-| **Gold gate** | — | `h56` (5↔6) | (26,19) (26,20) |
+| **Gold gate** | — | `v36` (3↔6) | (33,12) |
 | Stair | **6** | — | — |
 
 ### Level 3 — The Ember Gallery
@@ -439,9 +439,9 @@ E1 builds these catalog shapes from this spec; the values are already fully dete
       "keyRooms": { "copper": 1, "silver": 4, "gold": 6 },
       "roomTiers": { "1":0,"2":0,"3":0,"4":1,"5":2,"6":2,"7":1,"8":2,"9":3 } },
     { "level": 2, "tierId": "catacombs",      "entryRoom": 9, "stairRoom": 6,
-      "openEdges": ["h23","h45","h56","h78","h89","v14","v47","v25"],
-      "sealedEdges": ["h12","v58","v36","v69"],
-      "gates": { "copper": "h78", "silver": "v47", "gold": "h56" },
+      "openEdges": ["h23","h45","v36","h78","h89","v14","v47","v25"],
+      "sealedEdges": ["h12","v58","h56","v69"],
+      "gates": { "copper": "h78", "silver": "v47", "gold": "v36" },
       "keyRooms": { "copper": 8, "silver": 7, "gold": 5 },
       "roomTiers": { "1":2,"2":2,"3":2,"4":2,"5":2,"6":3,"7":1,"8":0,"9":0 } },
     { "level": 3, "tierId": "shadow_vaults",  "entryRoom": 6, "stairRoom": 3,

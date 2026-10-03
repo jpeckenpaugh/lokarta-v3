@@ -330,6 +330,20 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(TILE_THEMES_CATALOG.floor);
     assert.ok(TILE_THEMES_CATALOG.stairs);
     assert.ok(TILE_THEMES_CATALOG.door);
+
+    // LIV-21: walls carry a subtle per-tile shade palette (base fill included).
+    const hex = /^#[0-9a-f]{6}$/i;
+    const checkWall = (wall, label) => {
+      assert.ok(Array.isArray(wall.shades), `${label}: wall.shades must be an array`);
+      assert.ok(wall.shades.length >= 3, `${label}: wall.shades needs >= 3 entries`);
+      assert.equal(new Set(wall.shades).size, wall.shades.length, `${label}: shades must be distinct`);
+      assert.ok(wall.shades.includes(wall.fill), `${label}: shades must include the base fill`);
+      for (const shade of wall.shades) assert.match(shade, hex, `${label}: invalid shade ${shade}`);
+    };
+    checkWall(TILE_THEMES_CATALOG.wall, 'root');
+    for (const [n, theme] of Object.entries(TILE_THEMES_CATALOG.levels)) {
+      checkWall(theme.wall, `level ${n}`);
+    }
   });
 
   await t.test('loads and validates keybindings.json catalog', () => {

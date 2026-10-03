@@ -76,6 +76,23 @@ export function wallFeatureFor(x, y, theme, hasFloorBelow, adjacentFloor, nearDo
   return null;
 }
 
+/**
+ * Deterministic per-tile wall shade from the data-driven `wall.shades` palette.
+ * Falls back to the flat `wall.fill` when no palette is authored. Integer
+ * coordinate hash only; no transient allocation on the render path.
+ *
+ * @param {object} theme - resolved floor theme
+ * @param {number} x @param {number} y
+ * @returns {string|undefined}
+ */
+export function wallShadeFor(theme, x, y) {
+  const wall = theme && theme.wall;
+  if (!wall) return undefined;
+  const shades = wall.shades;
+  if (shades && shades.length) return shades[tileHash(x, y) % shades.length];
+  return wall.fill;
+}
+
 function fillNative(ctx, screenX, screenY, u, x, y, w, h, color) {
   ctx.fillStyle = color;
   ctx.fillRect(
@@ -148,7 +165,10 @@ const TILE_RENDERERS = {
   [TILE_TYPES.WALL]: (ctx, screenX, screenY, size, theme, opts = {}) => {
     const u = size / 32;
 
-    ctx.fillStyle = theme.wall.fill;
+    // Slight per-tile shade variation (data-driven `wall.shades`) so a wall run
+    // of otherwise identical tiles reads with texture. Deterministic by tile
+    // coordinate; falls back to the flat `fill`.
+    ctx.fillStyle = wallShadeFor(theme, opts.x || 0, opts.y || 0) || theme.wall.fill;
     ctx.fillRect(screenX, screenY, size, size);
 
     ctx.fillStyle = theme.wall.topHighlight;

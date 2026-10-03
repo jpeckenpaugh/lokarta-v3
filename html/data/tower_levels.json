@@ -22,9 +22,9 @@
       "entryRoom": 9,
       "stairRoom": 6,
       "isFinal": false,
-      "openEdges": ["h23", "h45", "h56", "h78", "h89", "v14", "v47", "v25"],
-      "sealedEdges": ["h12", "v58", "v36", "v69"],
-      "gates": { "copper": "h78", "silver": "v47", "gold": "h56" },
+      "openEdges": ["h23", "h45", "v36", "h78", "h89", "v14", "v47", "v25"],
+      "sealedEdges": ["h12", "v58", "h56", "v69"],
+      "gates": { "copper": "h78", "silver": "v47", "gold": "v36" },
       "keyRooms": { "copper": 8, "silver": 7, "gold": 5 },
       "roomTiers": { "1": 2, "2": 2, "3": 2, "4": 2, "5": 2, "6": 3, "7": 1, "8": 0, "9": 0 }
     },

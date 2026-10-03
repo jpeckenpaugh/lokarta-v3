@@ -4,7 +4,8 @@
     "fill": "#2a2f3b",
     "topHighlight": "#444d61",
     "gridLine": "#1a1d24",
-    "border": "#0d0f14"
+    "border": "#0d0f14",
+    "shades": ["#2a2f3b", "#2c3140", "#282d38", "#2b303d"]
   },
   "floor": {
     "fill": "#1a1c23",
@@ -61,7 +62,8 @@
         "fill": "#38332b",
         "topHighlight": "#524a3d",
         "gridLine": "#131210",
-        "border": "#0b0a08"
+        "border": "#0b0a08",
+        "shades": ["#38332b", "#3b362d", "#352f28", "#39342c"]
       },
       "floor": {
         "fill": "#1c1a17",
@@ -108,7 +110,8 @@
         "fill": "#43342b",
         "topHighlight": "#5e493b",
         "gridLine": "#17110e",
-        "border": "#0d0906"
+        "border": "#0d0906",
+        "shades": ["#43342b", "#46362d", "#403128", "#44362c"]
       },
       "floor": {
         "fill": "#201a17",
@@ -155,7 +158,8 @@
         "fill": "#333d4a",
         "topHighlight": "#4c5a6b",
         "gridLine": "#0f1216",
-        "border": "#080a0d"
+        "border": "#080a0d",
+        "shades": ["#333d4a", "#36414f", "#303944", "#35404d"]
       },
       "floor": {
         "fill": "#171a20",
@@ -202,7 +206,8 @@
         "fill": "#3d2f4a",
         "topHighlight": "#57436b",
         "gridLine": "#120e16",
-        "border": "#0a070d"
+        "border": "#0a070d",
+        "shades": ["#3d2f4a", "#40324e", "#3a2d46", "#3e314c"]
       },
       "floor": {
         "fill": "#1b1620",
@@ -249,7 +254,8 @@
         "fill": "#3a2f22",
         "topHighlight": "#5a4a34",
         "gridLine": "#100c08",
-        "border": "#080604"
+        "border": "#080604",
+        "shades": ["#3a2f22", "#3d3224", "#372c20", "#3b3023"]
       },
       "floor": {
         "fill": "#1a1410",
