@@ -150,28 +150,41 @@ describe('LIV-16 #2 stair descent lands at the lower level exit', () => {
 });
 
 describe('LIV-16 #3/#4 per-level keys, doors open by walking onto them', () => {
-  it('a key grant does not open the door; walking onto the shut door opens it', () => {
+  /** Builds an app shell with the generated floor's gates tagged, as App does. */
+  function appWithFloor(level) {
     const app = Object.create(LokartaApp.prototype);
-    const floor = generateFloor(1);
-    const tier = 'copper';
-    const gateTile = floor.gates[tier].tiles[0];
-
+    const floor = generateFloor(level);
     app.player = createPlayer('fighter');
-    app.player.current_floor = 1;
+    app.player.current_floor = level;
     app.gridMap = new GridMap();
     app.gridMap.loadFromMatrix(floor.tiles);
-    for (const [t, gate] of Object.entries(floor.gates)) {
-      for (const t2 of gate.tiles) {
-        const tile = app.gridMap.getTile(t2.x, t2.y);
-        tile.gateTier = t;
-        tile.gateOpen = false;
-      }
-    }
+    app.chests = (floor.chests || []).map(c => ({ ...c }));
+    app.monsters = [];
+    app.ambientLights = [];
+    app.keysDown = new Set();
+    app.stairHint = null;
     app.logCombat = () => {};
     app.addFloatingText = () => {};
     app.updateHUD = () => {};
     app.persistSave = () => {};
+    app.persistChests = async () => {};
+    app.handlePickUp = () => {};
+    app.handleOpenChest = async () => false;
+    app.openDoorUnderPlayer = LokartaApp.prototype.openDoorUnderPlayer.bind(app);
+    for (const [tier, gate] of Object.entries(floor.gates)) {
+      for (const t of gate.tiles) {
+        const tile = app.gridMap.getTile(t.x, t.y);
+        tile.gateTier = tier;
+        tile.gateOpen = false;
+      }
+    }
+    return { app, floor };
+  }
 
+  it('a key grant does not open the door; walking INTO the shut door opens it', () => {
+    const { app, floor } = appWithFloor(1);
+    const tier = 'copper';
+    const gateTile = floor.gates[tier].tiles[0];
     const tile = app.gridMap.getTile(gateTile.x, gateTile.y);
     assert.equal(tile.gateOpen, false, 'gate starts shut');
     assert.equal(app.gridMap.isWalkable(gateTile.x, gateTile.y), false, 'shut gate blocks');
@@ -180,38 +193,53 @@ describe('LIV-16 #3/#4 per-level keys, doors open by walking onto them', () => {
     DoorSystem.grantKey(app.player, 1, tier);
     assert.equal(tile.gateOpen, false, 'key grant alone must not open the door');
 
-    // Stand on the shut door and walk onto it -> opens using the earned key.
-    app.player.x = gateTile.x;
+    // The trigger is walking into the closed door from an adjacent tile.
+    app.player.x = gateTile.x - 1;
     app.player.y = gateTile.y;
-    const opened = app.openDoorUnderPlayer();
-    assert.equal(opened, true, 'walking onto the shut door with the key opens it');
+    const opened = app.openDoorUnderPlayer(gateTile.x, gateTile.y);
+    assert.equal(opened, true, 'colliding into the shut door with the key opens it');
     assert.equal(tile.gateOpen, true, 'gate now open');
     assert.equal(app.gridMap.isWalkable(gateTile.x, gateTile.y), true, 'open gate is walkable');
   });
 
-  it('standing on a shut door without the level key does not open it', () => {
-    const app = Object.create(LokartaApp.prototype);
-    const floor = generateFloor(3);
+  it('colliding into a shut door without the level key does not open it', () => {
+    const { app, floor } = appWithFloor(3);
     const tier = 'gold';
     const gateTile = floor.gates[tier].tiles[0];
-    app.player = createPlayer('magician');
-    app.player.current_floor = 3;
-    app.gridMap = new GridMap();
-    app.gridMap.loadFromMatrix(floor.tiles);
-    for (const t of floor.gates[tier].tiles) {
-      const tile = app.gridMap.getTile(t.x, t.y);
-      tile.gateTier = tier;
-      tile.gateOpen = false;
-    }
-    app.logCombat = () => {};
-    app.addFloatingText = () => {};
-    app.updateHUD = () => {};
-    app.persistSave = () => {};
-    app.player.x = gateTile.x;
+    app.player.x = gateTile.x - 1;
     app.player.y = gateTile.y;
 
-    assert.equal(app.openDoorUnderPlayer(), false, 'no key -> door stays shut');
+    assert.equal(app.openDoorUnderPlayer(gateTile.x, gateTile.y), false, 'no key -> door stays shut');
     assert.equal(app.gridMap.getTile(gateTile.x, gateTile.y).gateOpen, false);
+  });
+
+  it('processMovementInput: colliding into a keyed door opens it and steps through in one input', () => {
+    const { app, floor } = appWithFloor(1);
+    const tier = 'copper';
+    const gateTile = floor.gates[tier].tiles[0];
+
+    // Find a walkable tile orthogonally adjacent to the gate so we can walk into it.
+    const dirs = [
+      { dx: 1, dy: 0, key: 'ArrowRight' },
+      { dx: -1, dy: 0, key: 'ArrowLeft' },
+      { dx: 0, dy: 1, key: 'ArrowDown' },
+      { dx: 0, dy: -1, key: 'ArrowUp' },
+    ];
+    const approach = dirs
+      .map(d => ({ ...d, x: gateTile.x - d.dx, y: gateTile.y - d.dy }))
+      .find(p => app.gridMap.isWalkable(p.x, p.y));
+    assert.ok(approach, 'gate must have a walkable approach tile');
+
+    DoorSystem.grantKey(app.player, 1, tier);
+    app.player.x = approach.x;
+    app.player.y = approach.y;
+    app.player.facing = 'down';
+    app.keysDown = new Set([approach.key]);
+
+    app.processMovementInput();
+
+    assert.equal(app.gridMap.getTile(gateTile.x, gateTile.y).gateOpen, true, 'collision open fired');
+    assert.deepEqual([app.player.x, app.player.y], [gateTile.x, gateTile.y], 'stepped through in the same input');
   });
 
   it('keys earned on one level do not unlock gates on another level', () => {

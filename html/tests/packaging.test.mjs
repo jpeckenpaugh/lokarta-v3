@@ -421,6 +421,31 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
     assert.ok(existsSync(resolve(process.cwd(), 'html', 'assets', 'openmoji', '2699.svg')), '2699.svg (OPTIONS gear) present');
   });
 
+  await t.test('every svgCode referenced by data catalogs and the emoji map exists (LIV-16)', () => {
+    const openmojiDir = resolve(process.cwd(), 'html', 'assets', 'openmoji');
+    const dataDir = resolve(process.cwd(), 'html', 'data');
+    const referenced = new Map();
+    for (const file of readdirSync(dataDir).filter((f) => f.endsWith('.json'))) {
+      const src = readFileSync(resolve(dataDir, file), 'utf8');
+      for (const match of src.matchAll(/"svgCode"\s*:\s*"([0-9A-Fa-f]+)"/g)) {
+        referenced.set(match[1], `${file}: svgCode ${match[1]}`);
+      }
+    }
+    const hud = readFileSync(resolve(process.cwd(), 'html', 'app', 'hud-manager.js'), 'utf8');
+    for (const match of hud.matchAll(/'([0-9A-Fa-f]{3,})'\s*:\s*'[0-9A-Fa-f]{3,}'/g)) {
+      referenced.set(match[1], `hud-manager.js EMOJI_TO_SVG_MAP ${match[1]}`);
+    }
+    const missing = [];
+    for (const [code, origin] of referenced) {
+      if (!existsSync(resolve(openmojiDir, `${code}.svg`))) missing.push(`${origin} -> ${code}.svg`);
+    }
+    assert.deepEqual(missing, [], `missing OpenMoji assets: ${missing.join(', ')}`);
+    // The per-level gate keys must resolve to real icons (LIV-16 regression).
+    for (const code of ['1F511', '1F5DD']) {
+      assert.ok(existsSync(resolve(openmojiDir, `${code}.svg`)), `key icon ${code}.svg present`);
+    }
+  });
+
   await t.test('pause modal keeps at most one window Escape handler (D1)', () => {
     const listeners = new Set();
     const fakeWindow = {

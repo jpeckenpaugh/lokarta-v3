@@ -1231,6 +1231,15 @@ export class LokartaApp {
       const targetX = this.player.x + dx;
       const targetY = this.player.y + dy;
 
+      // Walking into a shut gated door is the open trigger (LIV-16): the closed
+      // gate is not walkable, so collision — not standing on it — must spend the
+      // earned key. If it opens, step through in the same input.
+      const targetTile = this.gridMap.getTile(targetX, targetY);
+      const isShutGate = targetTile && targetTile.type === TILE_TYPES.GATED_DOOR && !targetTile.gateOpen;
+      if (isShutGate && this.openDoorUnderPlayer(targetX, targetY)) {
+        // Door just opened — allow the step-through this turn.
+      }
+
       if (this.gridMap.isWalkable(targetX, targetY)) {
         const monsterAtTarget = this.monsters.find(m => m.x === targetX && m.y === targetY && m.hp > 0);
         if (monsterAtTarget) {
@@ -1253,10 +1262,6 @@ export class LokartaApp {
           if (ChestSystem.findChestAt(this.chests, this.player.x, this.player.y)) {
             this.handleOpenChest(this.player.x, this.player.y);
           }
-
-          // Walk-on keyed door (LIV-16): standing on a shut gate with its earned
-          // key opens it.
-          this.openDoorUnderPlayer();
         }
       }
     } else if (this.player) {
@@ -1636,21 +1641,31 @@ export class LokartaApp {
   }
 
   /**
-   * Opens the shut gated door under the player by spending the per-level key
-   * earned for its tier (LIV-16). Walking on top of a shut door is the action
-   * that opens it; a door without its key stays shut. No-op off a gated door.
+   * Opens a shut gated door by spending the per-level key earned for its tier
+   * (LIV-16). The trigger is walking *into* the closed door (collision), which
+   * is the only way to reach a gate — a closed gate is not walkable, so the
+   * player can never stand on it before it opens.
+   *
+   * @param {number} [targetX=this.player?.x] - the tile the player is walking into
+   * @param {number} [targetY=this.player?.y]
    * @returns {boolean} true when a door was opened
    */
-  openDoorUnderPlayer() {
-    const x = this.player?.x;
-    const y = this.player?.y;
+  openDoorUnderPlayer(targetX = this.player?.x, targetY = this.player?.y) {
+    const x = targetX;
+    const y = targetY;
     const tile = this.gridMap?.getTile?.(x, y);
     if (!tile || tile.type !== TILE_TYPES.GATED_DOOR || tile.gateOpen) return false;
 
     const tier = tile.gateTier;
     if (!tier) return false;
     if (!DoorSystem.hasKey(this.player, tier, this.player?.current_floor)) {
-      this.logCombat(`The ${tier} door is shut — its key is still missing.`, 'warning');
+      // Only nag once per attempt while blocked at the door.
+      const hint = `door:${x},${y}`;
+      if (this.stairHint !== hint) {
+        this.stairHint = hint;
+        this.logCombat(`The ${tier} door is shut — its key is still missing.`, 'warning');
+        this.addFloatingText(`${tier.toUpperCase()} LOCKED`, x, y, '#ef4444');
+      }
       return false;
     }
 
@@ -1660,6 +1675,7 @@ export class LokartaApp {
       soundFX.play('equip');
       this.logCombat(`You turn the ${tier} key — the door swings open!`, 'system');
       this.addFloatingText(`${tier.toUpperCase()} DOOR OPEN`, x, y, '#facc15');
+      this.stairHint = null;
       this.updateHUD();
       this.persistSave(true);
       return true;
