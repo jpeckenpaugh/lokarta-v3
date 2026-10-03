@@ -139,6 +139,9 @@ function buildArchetype(vocKey) {
       relic: null,
     },
     backpack: [null, null, null, null, null, null],
+    // Per-level earned keys: { "1": { copper: true, ... }, ... }. Keys are tracked
+    // on the character (not inventory) and persist across floor transitions.
+    levelKeys: {},
     // LOK-12 gear-stat tracking: applied hpBonus/manaBonus totals across the
     // paperdoll. Fresh characters start at 0 so the first equip applies the
     // full bonus; legacy saves without these keys are treated as already baked.

@@ -33,7 +33,7 @@ import {
   OPTION_DEFAULTS,
   SAVE_SLOT_COUNT,
 } from '../services/save-slots.js';
-import { generateFloor, FLOOR_TEMPLATE_VERSION } from '../services/floor-generator.js';
+import { generateFloor, resolveArrivalCoords, FLOOR_TEMPLATE_VERSION } from '../services/floor-generator.js';
 import { createPlayer } from '../engine/index.js';
 
 const OPTIONS_KEY = 'options';
@@ -466,9 +466,13 @@ async function handleAdvanceFloor(payload = {}) {
 
   player.current_floor = nextFloor;
   player.saveVersion = SAVE_FORMAT_VERSION;
-  if (floor.spawn_coords) {
-    player.x = floor.spawn_coords.x;
-    player.y = floor.spawn_coords.y;
+  // Land on the target level's connecting stair (the "exit" seen from the level
+  // left behind), not its entrance: from a lower level arrive at the up-stair,
+  // from a higher level arrive at the down-stair (D2 §3).
+  const arrival = resolveArrivalCoords(floor, currentFloor);
+  if (arrival) {
+    player.x = arrival.x;
+    player.y = arrival.y;
   }
   player.floorEntry = snapshotFloorEntry(player);
   const timestamp = now();

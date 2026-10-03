@@ -80,10 +80,17 @@ export class CanvasRenderer {
     ctx.fillStyle = '#050608';
     ctx.fillRect(0, 0, width, height);
 
-    const startTileX = Math.max(0, Math.floor(this.cameraX / CONFIG.GRID_SIZE));
-    const endTileX = Math.min(gridMap.width - 1, Math.ceil((this.cameraX + width) / CONFIG.GRID_SIZE));
-    const startTileY = Math.max(0, Math.floor(this.cameraY / CONFIG.GRID_SIZE));
-    const endTileY = Math.min(gridMap.height - 1, Math.ceil((this.cameraY + height) / CONFIG.GRID_SIZE));
+    // Tile layer scans one tile beyond the viewport so the nature backdrop can be
+    // drawn outside the tower footprint (negative / past-edge coordinates).
+    const startTileX = Math.floor(this.cameraX / CONFIG.GRID_SIZE);
+    const endTileX = Math.ceil((this.cameraX + width) / CONFIG.GRID_SIZE);
+    const startTileY = Math.floor(this.cameraY / CONFIG.GRID_SIZE);
+    const endTileY = Math.ceil((this.cameraY + height) / CONFIG.GRID_SIZE);
+    // In-bounds bounds for entity layers (items/chests) that index the tile grid.
+    const clampStartX = Math.max(0, startTileX);
+    const clampEndX = Math.min(gridMap.width - 1, endTileX);
+    const clampStartY = Math.max(0, startTileY);
+    const clampEndY = Math.min(gridMap.height - 1, endTileY);
 
     // Resolve the tower floor theme once; per-level variation is data-driven.
     const theme = themeForFloor(player.current_floor || 1);
@@ -103,10 +110,17 @@ export class CanvasRenderer {
     // 1. Tiles Layer
     for (let y = startTileY; y <= endTileY; y++) {
       for (let x = startTileX; x <= endTileX; x++) {
-        const tile = gridMap.tiles[y][x];
-        if (!tile.isLit) continue;
         const screenX = x * CONFIG.GRID_SIZE - this.cameraX;
         const screenY = y * CONFIG.GRID_SIZE - this.cameraY;
+
+        // Outside the tower footprint: draw the nature backdrop.
+        if (!gridMap.isInBounds(x, y)) {
+          SpriteRenderer.drawOutside(ctx, screenX, screenY, CONFIG.GRID_SIZE, x, y, theme);
+          continue;
+        }
+
+        const tile = gridMap.tiles[y][x];
+        if (!tile.isLit) continue;
 
         tileOpts.x = x;
         tileOpts.y = y;
@@ -126,8 +140,8 @@ export class CanvasRenderer {
     }
 
     // 2. Ground Items Layer
-    for (let y = startTileY; y <= endTileY; y++) {
-      for (let x = startTileX; x <= endTileX; x++) {
+    for (let y = clampStartY; y <= clampEndY; y++) {
+      for (let x = clampStartX; x <= clampEndX; x++) {
         const tile = gridMap.tiles[y][x];
         if (!tile.isLit || tile.items.length === 0) continue;
         const screenX = x * CONFIG.GRID_SIZE - this.cameraX;
@@ -141,7 +155,7 @@ export class CanvasRenderer {
     //     unlit (chests are world entities, not tile items).
     for (const chest of chests) {
       if (!chest) continue;
-      if (chest.x < startTileX || chest.x > endTileX || chest.y < startTileY || chest.y > endTileY) continue;
+      if (chest.x < clampStartX || chest.x > clampEndX || chest.y < clampStartY || chest.y > clampEndY) continue;
       const tile = gridMap.tiles[chest.y]?.[chest.x];
       if (!tile || !tile.isLit) continue;
       SpriteRenderer.drawChest(

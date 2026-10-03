@@ -220,15 +220,19 @@ describe('E2 Floor Generator — 5-level tower', () => {
     }
   });
 
-  it('spawns exactly one group of the authored size per room with a key holder in each key room', () => {
+  it('spawns a group per room with a key holder in each key room, but none in the entrance room', () => {
     for (const level of LEVELS) {
       const spec = getLevelSpec(level);
       const floor = generateFloor(level);
       const groupSize = TOWER_LEVELS_CATALOG.monsterGroups.groupSize[String(level)];
+      // No authored key room is the entrance room, so the entrance-room rule
+      // (LIV-16) never removes a key holder.
+      assert.ok(!Object.values(spec.keyRooms).includes(spec.entryRoom), `L${level} key room must not be the entrance`);
 
       for (let room = 1; room <= 9; room++) {
         const inRoom = floor.monsters.filter(m => m.room === room && !m.isBoss && !m.isGuard);
-        assert.equal(inRoom.length, groupSize, `L${level} room ${room} group size`);
+        const expected = room === spec.entryRoom ? 0 : groupSize;
+        assert.equal(inRoom.length, expected, `L${level} room ${room} group size`);
       }
 
       const holderTiers = floor.monsters.filter(m => m.holdsKey).map(m => m.holdsKey).sort();
@@ -237,6 +241,28 @@ describe('E2 Floor Generator — 5-level tower', () => {
         const holder = floor.monsters.find(m => m.holdsKey === tier);
         assert.equal(holder.room, room, `L${level} ${tier} holder room`);
         assert.ok(holder.hp > 0 && holder.attack > 0);
+      }
+    }
+  });
+
+  it('authors runtime arrival tiles: beside the up-stair from below, beside the down-stair from above', () => {
+    for (const level of LEVELS) {
+      const floor = generateFloor(level);
+      if (level > 1) {
+        const up = floor.stair_up_coords;
+        assert.ok(floor.arrival_from_lower_coords, `L${level} missing arrival from below`);
+        const manhattan = Math.abs(floor.arrival_from_lower_coords.x - up.x) + Math.abs(floor.arrival_from_lower_coords.y - up.y);
+        assert.equal(manhattan, 1, `L${level} arrival-from-below must be one tile off the up-stair`);
+      } else {
+        assert.equal(floor.arrival_from_lower_coords, null, 'L1 is entered through the doorway, not from below');
+      }
+      if (level < TOWER_LEVEL_COUNT) {
+        const down = floor.stair_down_coords;
+        assert.ok(floor.arrival_from_upper_coords, `L${level} missing arrival from above`);
+        const manhattan = Math.abs(floor.arrival_from_upper_coords.x - down.x) + Math.abs(floor.arrival_from_upper_coords.y - down.y);
+        assert.equal(manhattan, 1, `L${level} arrival-from-above must be one tile off the down-stair (the exit)`);
+      } else {
+        assert.equal(floor.arrival_from_upper_coords, null, 'L5 has no level above');
       }
     }
   });

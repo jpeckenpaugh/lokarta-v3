@@ -239,17 +239,20 @@ describe('Floor Generator (1-20)', () => {
     assert.equal(boss.isBoss, true);
   });
 
-  it('spawns a 3–4 monster group in every room from the tower level pool', () => {
+  it('spawns a 3–4 monster group in every non-entrance room from the tower level pool', () => {
     for (const level of [1, 2, 3, 4, 5]) {
       const floor = generateFloor(level);
+      const entryRoom = floor.entry_room;
       const nonBoss = floor.monsters.filter(m => !m.isBoss);
       const expectedSize = level <= 2 ? 3 : 4;
       const byRoom = {};
       for (const m of nonBoss) byRoom[m.room] = (byRoom[m.room] || 0) + 1;
-      // All 9 rooms carry a group. Level 5's Summit (room 5) adds two guards.
-      const expectedBase = 9 * expectedSize + (level === 5 ? 2 : 0);
-      assert.equal(nonBoss.length, expectedBase, `level ${level} must spawn groups in every room`);
-      assert.equal(Object.keys(byRoom).length, 9, `level ${level} groups must cover all 9 rooms`);
+      // The entrance room is empty by rule (LIV-16); the other 8 rooms carry a
+      // group. Level 5's Summit (room 5) adds two guards.
+      const expectedBase = 8 * expectedSize + (level === 5 ? 2 : 0);
+      assert.equal(nonBoss.length, expectedBase, `level ${level} must spawn groups in every non-entrance room`);
+      assert.equal(byRoom[entryRoom], undefined, `level ${level} entrance room ${entryRoom} must be empty`);
+      assert.equal(Object.keys(byRoom).length, 8, `level ${level} groups must cover the 8 non-entrance rooms`);
     }
   });
 

@@ -310,10 +310,10 @@ test('JSON Data Catalogs', async (t) => {
     }
   });
 
-  await t.test('loads and validates dungeons.json catalog (v3 edges layout)', () => {
+  await t.test('loads and validates dungeons.json catalog (v4 edges layout)', () => {
     const spec = DUNGEONS_CATALOG.standard_40x40;
     assert.ok(spec);
-    assert.equal(spec.templateVersion, 3);
+    assert.equal(spec.templateVersion, 4);
     assert.equal(spec.width, 40);
     assert.equal(spec.height, 40);
     assert.equal(spec.rooms.length, 9);

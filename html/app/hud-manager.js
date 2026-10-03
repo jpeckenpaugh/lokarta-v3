@@ -2,9 +2,9 @@
  * Lokarta: Come Into The Light - HUD & Interface Manager
  */
 
-import { GestureEngine, InventorySystem, LightingSystem } from '../engine/index.js';
+import { GestureEngine, InventorySystem, LightingSystem, DoorSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
-import { ITEMS_CATALOG } from '../data/index.js';
+import { ITEMS_CATALOG, DOORS_CATALOG } from '../data/index.js';
 
 const EMOJI_TO_SVG_MAP = {
   '🧪': '1F9EA',
@@ -144,6 +144,8 @@ export class HUDManager {
           <div class="floor-tag"><span class="label">Floor:</span> <strong class="val">${player.current_floor || 1} · ${currentFloorName}</strong></div>
         </div>
 
+        ${HUDManager.renderKeyIndicators(player)}
+
         <div class="meter-container hp-meter">
           <div class="meter-info">
             <span class="meter-label">HEALTH (HP)</span>
@@ -192,6 +194,42 @@ export class HUDManager {
               </div>`
             : ''
         }
+      </div>
+    `;
+  }
+
+  /**
+   * Renders the three per-level key indicators for the current floor: one icon
+   * per authored gate tier, greyed-out until the player earns that level's key
+   * (then colored-in). Keys are per-level and come from `player.levelKeys`, not
+   * the inventory (LIV-16).
+   * @param {object} player
+   * @returns {string} HTML for the key row
+   */
+  static renderKeyIndicators(player) {
+    const floor = player?.current_floor || 1;
+    const tiers = DoorSystem.tiers();
+    if (tiers.length === 0) return '';
+
+    const icons = tiers.map(tier => {
+      const earned = DoorSystem.hasKey(player, tier, floor);
+      // Prefer an authored key item icon; fall back to the door accent glyph.
+      const keyItemId = DoorSystem.keyItemForTier(tier);
+      const catalogItem = keyItemId ? ITEMS_CATALOG[keyItemId] : null;
+      const accent = DOORS_CATALOG?.[tier]?.accent || '#94a3b8';
+      const icon = catalogItem
+        ? HUDManager.renderItemIcon({ item_id: keyItemId, name: catalogItem.name || `${tier} key`, svgCode: catalogItem.svgCode })
+        : '<span class="key-glyph">🔑</span>';
+      const label = catalogItem?.name || `${tier} key`;
+      const state = earned ? 'active' : 'locked';
+      const tip = earned ? `${label} earned on Floor ${floor}` : `${label} — not yet earned on Floor ${floor}`;
+      return `<span class="level-key ${state}" data-tier="${tier}" style="--key-accent: ${accent};" title="${tip}">${icon}</span>`;
+    }).join('');
+
+    return `
+      <div class="level-keys-row" aria-label="Keys earned on this floor">
+        <span class="level-keys-label">KEYS</span>
+        <span class="level-keys-icons">${icons}</span>
       </div>
     `;
   }

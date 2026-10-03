@@ -9,7 +9,17 @@
   "floor": {
     "fill": "#1a1c23",
     "gridLine": "#12141a",
-    "accentSquare": "#222530"
+    "accentSquare": "#222530",
+    "shades": ["#1a1c23", "#1c1e26", "#181a20", "#1b1d25"]
+  },
+  "outside": {
+    "grass": ["#1b2e1c", "#1f3420", "#172817", "#1d311e"],
+    "grassBlade": "#243d24",
+    "bush": "#2c4a2c",
+    "bushLight": "#3a5f3a",
+    "treeTrunk": "#33261a",
+    "treeCanopy": "#1f3a22",
+    "treeCanopyLight": "#2c5230"
   },
   "stairs": {
     "bg": "#152b3c",
@@ -56,7 +66,8 @@
       "floor": {
         "fill": "#1c1a17",
         "gridLine": "#131210",
-        "accentSquare": "#2a2620"
+        "accentSquare": "#2a2620",
+        "shades": ["#1c1a17", "#1e1c19", "#1a1815", "#1d1b18"]
       },
       "stairs": {
         "bg": "#2b2418",
@@ -94,7 +105,8 @@
       "floor": {
         "fill": "#201a17",
         "gridLine": "#17110e",
-        "accentSquare": "#2e2420"
+        "accentSquare": "#2e2420",
+        "shades": ["#201a17", "#221c19", "#1e1815", "#211b18"]
       },
       "stairs": {
         "bg": "#33241a",
@@ -132,7 +144,8 @@
       "floor": {
         "fill": "#171a20",
         "gridLine": "#0f1216",
-        "accentSquare": "#232a34"
+        "accentSquare": "#232a34",
+        "shades": ["#171a20", "#191c22", "#15181e", "#181b21"]
       },
       "stairs": {
         "bg": "#14283a",
@@ -170,7 +183,8 @@
       "floor": {
         "fill": "#1b1620",
         "gridLine": "#120e16",
-        "accentSquare": "#28202f"
+        "accentSquare": "#28202f",
+        "shades": ["#1b1620", "#1d1822", "#19141e", "#1c1721"]
       },
       "stairs": {
         "bg": "#2a183a",
@@ -208,7 +222,8 @@
       "floor": {
         "fill": "#1a1410",
         "gridLine": "#100c08",
-        "accentSquare": "#2a2018"
+        "accentSquare": "#2a2018",
+        "shades": ["#1a1410", "#1c1612", "#18120e", "#1b1511"]
       },
       "stairs": {
         "bg": "#2e1a12",

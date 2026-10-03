@@ -11,7 +11,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { GridMap, DoorSystem, InventorySystem, TILE_TYPES, createPlayer } from '../engine/index.js';
+import { GridMap, DoorSystem, TILE_TYPES, createPlayer } from '../engine/index.js';
 import { generateFloor } from '../services/floor-generator.js';
 import { DOORS_CATALOG } from '../data/index.js';
 
@@ -87,28 +87,55 @@ describe('E3: key holders, key grants, and gated doors', () => {
     assert.equal(DoorSystem.openTierGates(grid, 'copper'), 0);
   });
 
-  it('grants keys into the inventory and tracks possession by tier', () => {
+  it('grants keys per level on the character, never into the inventory', () => {
     const player = createPlayer('fighter');
     const drop = DoorSystem.keyDropForMonster({ holdsKey: 'silver' });
 
-    assert.equal(DoorSystem.hasKey(player, 'silver'), false);
-    const res = InventorySystem.addItem(player, drop);
-    assert.equal(res.success, true);
-    assert.equal(DoorSystem.hasKey(player, 'silver'), true);
-    assert.equal(DoorSystem.hasKey(player, 'copper'), false);
-    assert.deepEqual(DoorSystem.unlockedTiers(player), ['silver']);
+    assert.equal(DoorSystem.hasKey(player, 'silver', 3), false);
+    assert.equal(DoorSystem.grantKey(player, 3, 'silver'), true);
+    assert.equal(DoorSystem.hasKey(player, 'silver', 3), true);
+    assert.equal(DoorSystem.hasKey(player, 'copper', 3), false);
+    assert.deepEqual(DoorSystem.unlockedTiers(player, 3), ['silver']);
+    // Idempotent: re-granting reports no new key.
+    assert.equal(DoorSystem.grantKey(player, 3, 'silver'), false);
+
+    // Keys are per-level: level 4 does not inherit level 3's key.
+    assert.equal(DoorSystem.hasKey(player, 'silver', 4), false);
+    assert.deepEqual(DoorSystem.unlockedTiers(player, 4), []);
+
+    // The grant is a character field, not an inventory stack.
+    assert.ok(!player.action_bar.some(s => s && s.item_id === drop.item_id));
+    assert.ok(!player.backpack.some(s => s && s.item_id === drop.item_id));
   });
 
-  it('syncPlayerGates reopens gates for keys already held (no soft-lock on re-entry)', () => {
+  it('persists per-level keys across a floor round-trip (serialize/restore)', () => {
+    const player = createPlayer('archer');
+    DoorSystem.grantKey(player, 1, 'copper');
+    DoorSystem.grantKey(player, 1, 'silver');
+    DoorSystem.grantKey(player, 2, 'copper');
+
+    // A save/load is a JSON round-trip of the player object.
+    const restored = JSON.parse(JSON.stringify(player));
+    assert.equal(DoorSystem.hasKey(restored, 'copper', 1), true);
+    assert.equal(DoorSystem.hasKey(restored, 'silver', 1), true);
+    assert.equal(DoorSystem.hasKey(restored, 'gold', 1), false);
+    assert.equal(DoorSystem.hasKey(restored, 'copper', 2), true);
+    assert.equal(DoorSystem.hasKey(restored, 'silver', 2), false);
+  });
+
+  it('syncPlayerGates reopens gates for keys already earned on that level (no soft-lock on re-entry)', () => {
     const player = createPlayer('magician');
-    InventorySystem.addItem(player, DoorSystem.keyDropForMonster({ holdsKey: 'gold' }));
+    DoorSystem.grantKey(player, 2, 'gold');
 
     const grid = new GridMap(4, 1);
     grid.loadFromMatrix([[TILE_TYPES.FLOOR, TILE_TYPES.GATED_DOOR, TILE_TYPES.FLOOR, TILE_TYPES.FLOOR]]);
     grid.getTile(1, 0).gateTier = 'gold';
 
+    // A key earned on another level does not open this level's gate.
+    assert.equal(DoorSystem.syncPlayerGates(grid, player, 3), 0);
     assert.equal(grid.isWalkable(1, 0), false);
-    assert.equal(DoorSystem.syncPlayerGates(grid, player), 1);
+
+    assert.equal(DoorSystem.syncPlayerGates(grid, player, 2), 1);
     assert.equal(grid.isWalkable(1, 0), true);
   });
 

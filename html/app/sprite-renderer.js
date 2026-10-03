@@ -238,10 +238,17 @@ const TILE_RENDERERS = {
     ctx.arc(screenX + size * 0.5, screenY + size * 0.5, 3 * u, 0, Math.PI * 2);
     ctx.stroke();
   },
-  default: (ctx, screenX, screenY, size, theme) => {
+  default: (ctx, screenX, screenY, size, theme, opts = {}) => {
     const u = size / 32;
 
-    ctx.fillStyle = theme.floor.fill;
+    // Slight per-tile shade variation (data-driven `floor.shades`) so a floor of
+    // otherwise identical tiles still reads as motion. Deterministic by tile
+    // coordinate; falls back to the flat `fill`.
+    const shades = theme.floor && theme.floor.shades;
+    const fill = shades && shades.length
+      ? shades[tileHash(opts.x || 0, opts.y || 0) % shades.length]
+      : theme.floor.fill;
+    ctx.fillStyle = fill;
     ctx.fillRect(screenX, screenY, size, size);
 
     ctx.strokeStyle = theme.floor.gridLine;
@@ -252,6 +259,17 @@ const TILE_RENDERERS = {
     ctx.fillRect(screenX + 4 * u, screenY + 4 * u, 6 * u, 6 * u);
     ctx.fillRect(screenX + size - 10 * u, screenY + size - 10 * u, 6 * u, 6 * u);
   },
+};
+
+/** Fallback nature palette when a theme omits `outside` (data-driven default). */
+const DEFAULT_OUTSIDE = {
+  grass: ['#1b2e1c', '#1f3420', '#172817', '#1d311e'],
+  grassBlade: '#243d24',
+  bush: '#2c4a2c',
+  bushLight: '#3a5f3a',
+  treeTrunk: '#33261a',
+  treeCanopy: '#1f3a22',
+  treeCanopyLight: '#2c5230',
 };
 
 const WEAPON_RENDERERS = {
@@ -615,6 +633,44 @@ export class SpriteRenderer {
     const theme = opts.theme || TILE_THEMES_CATALOG;
     const renderer = TILE_RENDERERS[type] || TILE_RENDERERS.default;
     renderer(ctx, screenX, screenY, size, theme, opts);
+  }
+
+  /**
+   * Draws the nature backdrop that sits outside the tower footprint. Tiles are
+   * resolved deterministically from their coordinates: a grass base with a
+   * sparse, hash-placed bush or tree. Data-driven via `theme.outside`.
+   * @param {number} x @param {number} y - world tile coordinates (may be negative)
+   */
+  static drawOutside(ctx, screenX, screenY, size = CONFIG.GRID_SIZE, x = 0, y = 0, theme = {}) {
+    const o = (theme && theme.outside) || DEFAULT_OUTSIDE;
+    const u = size / 32;
+    const h = tileHash(x, y);
+    const grass = o.grass && o.grass.length ? o.grass[h % o.grass.length] : DEFAULT_OUTSIDE.grass[0];
+
+    ctx.fillStyle = grass;
+    ctx.fillRect(screenX, screenY, size, size);
+
+    // Sparse grass blades for texture.
+    ctx.fillStyle = o.grassBlade || DEFAULT_OUTSIDE.grassBlade;
+    ctx.fillRect(screenX + 8 * u, screenY + 18 * u, 2 * u, 6 * u);
+    ctx.fillRect(screenX + 22 * u, screenY + 10 * u, 2 * u, 7 * u);
+
+    const roll = h % 100;
+    if (roll < 5) {
+      // Tree: trunk + layered canopy.
+      ctx.fillStyle = o.treeTrunk || DEFAULT_OUTSIDE.treeTrunk;
+      ctx.fillRect(screenX + 14 * u, screenY + 18 * u, 4 * u, 10 * u);
+      ctx.fillStyle = o.treeCanopy || DEFAULT_OUTSIDE.treeCanopy;
+      ctx.fillRect(screenX + 7 * u, screenY + 6 * u, 18 * u, 14 * u);
+      ctx.fillStyle = o.treeCanopyLight || DEFAULT_OUTSIDE.treeCanopyLight;
+      ctx.fillRect(screenX + 10 * u, screenY + 8 * u, 8 * u, 7 * u);
+    } else if (roll < 16) {
+      // Bush: two rounded leafy blocks.
+      ctx.fillStyle = o.bush || DEFAULT_OUTSIDE.bush;
+      ctx.fillRect(screenX + 8 * u, screenY + 16 * u, 16 * u, 10 * u);
+      ctx.fillStyle = o.bushLight || DEFAULT_OUTSIDE.bushLight;
+      ctx.fillRect(screenX + 11 * u, screenY + 18 * u, 7 * u, 6 * u);
+    }
   }
 
   static drawItem(ctx, item, screenX, screenY, size = CONFIG.GRID_SIZE, opts = {}) {

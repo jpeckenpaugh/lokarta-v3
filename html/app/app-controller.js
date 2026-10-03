@@ -5,6 +5,7 @@
 import { GameClient } from '../worker/game-client.js';
 import {
   CONFIG,
+  TILE_TYPES,
   GridMap,
   LightingSystem,
   ProgressionSystem,
@@ -571,9 +572,9 @@ export class LokartaApp {
       }
     }
 
-    // E3: reopen any gate whose key the player already carries, so re-entering
-    // a cleared level can never soft-lock behind an earned key.
-    DoorSystem.syncPlayerGates(this.gridMap, this.player);
+    // E3: reopen any gate whose key the player already earned on this level, so
+    // re-entering a cleared level can never soft-lock behind an earned key.
+    DoorSystem.syncPlayerGates(this.gridMap, this.player, this.player?.current_floor);
 
     for (const item of floorData.items || []) {
       this.gridMap.addItem(item.x, item.y, item);
@@ -1248,9 +1249,14 @@ export class LokartaApp {
           }
 
           // Walk-on chest open (E4): chests are world entities, not tile items.
+          // Opening also collects the contents in the same turn (LIV-16).
           if (ChestSystem.findChestAt(this.chests, this.player.x, this.player.y)) {
             this.handleOpenChest(this.player.x, this.player.y);
           }
+
+          // Walk-on keyed door (LIV-16): standing on a shut gate with its earned
+          // key opens it.
+          this.openDoorUnderPlayer();
         }
       }
     } else if (this.player) {
@@ -1545,25 +1551,19 @@ export class LokartaApp {
           this.selectedMonsterId = null;
         }
 
-        // E3: defeating a key holder grants its key and unlocks the matching
-        // gated door, advancing the level's copper -> silver -> gold progression.
+        // E3: defeating a key holder grants its per-level key. The grant does
+        // NOT open the gate; the player must walk onto the closed door to spend
+        // the key (LIV-16). Advancing copper -> silver -> gold.
         if (deadMonster.holdsKey) {
           const keyDrop = DoorSystem.keyDropForMonster(deadMonster);
-          if (keyDrop) {
-            const addRes = InventorySystem.addItem(this.player, keyDrop);
-            if (addRes.success) {
-              this.logCombat(`${deadMonster.name} dropped the ${keyDrop.name}!`, 'loot');
-              this.addFloatingText(`+${keyDrop.name}`, deadMonster.x, deadMonster.y, '#facc15');
-            } else {
-              this.logCombat(`${keyDrop.name} could not be carried: ${addRes.message}`, 'warning');
-            }
-          }
-          const opened = DoorSystem.openTierGates(this.gridMap, deadMonster.holdsKey);
-          if (opened > 0) {
-            this.logCombat(`The ${deadMonster.holdsKey} gate unlocks!`, 'system');
+          const level = this.player?.current_floor || 1;
+          const newlyEarned = DoorSystem.grantKey(this.player, level, deadMonster.holdsKey);
+          if (keyDrop && newlyEarned) {
+            this.logCombat(`${deadMonster.name} yielded the ${keyDrop.name}! Walk onto the ${deadMonster.holdsKey} door to open it.`, 'loot');
+            this.addFloatingText(`+${keyDrop.name}`, deadMonster.x, deadMonster.y, '#facc15');
           }
           this.updateHUD();
-          this.persistSave();
+          this.persistSave(true);
         }
 
         // E8: the catalog-driven final floor (not the retired 20-floor cave)
@@ -1591,9 +1591,10 @@ export class LokartaApp {
   }
 
   /**
-   * Opens the chest under the player (walk-on) or at an explicit tile. Rolls
-   * tiered loot for the player's vocation, drops it on the chest tile for the
-   * existing walkover pickup to collect, and persists the opened state.
+   * Opens the chest under the player (walk-on) or at an explicit tile and picks
+   * up its contents in the same turn (LIV-16): the chest is opened, its loot
+   * goes straight into the inventory, and nothing is left on the ground to
+   * require a second walk-over. Persists the opened state.
    * @returns {Promise<boolean>} true when a chest was opened
    */
   async handleOpenChest(gridX = this.player?.x, gridY = this.player?.y) {
@@ -1607,20 +1608,63 @@ export class LokartaApp {
       return false;
     }
 
-    soundFX.play('itemPickup');
-    for (const stack of res.loot) {
-      this.gridMap.addItem(chest.x, chest.y, { ...stack, x: chest.x, y: chest.y });
-    }
     this.logCombat(res.message, 'loot');
     this.addFloatingText(`OPENED ${chest.tier.toUpperCase()} CHEST`, chest.x, chest.y, '#ffd700');
 
-    if (this.player.x === chest.x && this.player.y === chest.y && res.loot.length > 0) {
-      await this.handlePickUp();
-    } else {
-      this.updateHUD();
+    // Single-turn open + collect: grant the rolled loot directly to the player.
+    let picked = 0;
+    const pickedNames = [];
+    for (const stack of res.loot) {
+      const addRes = InventorySystem.addItem(this.player, { ...stack });
+      if (addRes.success) {
+        picked += 1;
+        pickedNames.push(stack.name);
+      } else {
+        // No room: leave the item on the tile so it is not lost.
+        this.gridMap.addItem(chest.x, chest.y, { ...stack, x: chest.x, y: chest.y });
+        this.logCombat(`${stack.name} does not fit — left on the ground.`, 'warning');
+      }
     }
+
+    if (picked > 0) {
+      soundFX.play('itemPickup');
+      this.addFloatingText(`+${pickedNames.join(', ')}`, chest.x, chest.y, '#22c55e');
+    }
+    this.updateHUD();
     await this.persistChests();
     return true;
+  }
+
+  /**
+   * Opens the shut gated door under the player by spending the per-level key
+   * earned for its tier (LIV-16). Walking on top of a shut door is the action
+   * that opens it; a door without its key stays shut. No-op off a gated door.
+   * @returns {boolean} true when a door was opened
+   */
+  openDoorUnderPlayer() {
+    const x = this.player?.x;
+    const y = this.player?.y;
+    const tile = this.gridMap?.getTile?.(x, y);
+    if (!tile || tile.type !== TILE_TYPES.GATED_DOOR || tile.gateOpen) return false;
+
+    const tier = tile.gateTier;
+    if (!tier) return false;
+    if (!DoorSystem.hasKey(this.player, tier, this.player?.current_floor)) {
+      this.logCombat(`The ${tier} door is shut — its key is still missing.`, 'warning');
+      return false;
+    }
+
+    const opened = DoorSystem.openTierGates(this.gridMap, tier);
+    if (opened > 0) {
+      soundFX.init();
+      soundFX.play('equip');
+      this.logCombat(`You turn the ${tier} key — the door swings open!`, 'system');
+      this.addFloatingText(`${tier.toUpperCase()} DOOR OPEN`, x, y, '#facc15');
+      this.updateHUD();
+      this.persistSave(true);
+      return true;
+    }
+    return false;
   }
 
   /** Persists only the durable chest opened-state for the current floor. */

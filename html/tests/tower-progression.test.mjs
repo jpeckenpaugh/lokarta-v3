@@ -227,11 +227,12 @@ describe('E7 Tower Progression — full ascent integration', () => {
       for (const seed of [1, 1337, 999999]) {
         const floor = generateFloor(level, seed);
         for (let room = 1; room <= 9; room++) {
+          const isEntry = room === spec.entryRoom;
           const holderTier = TIERS.find(t => spec.keyRooms[t] === room) || null;
           const members = floor.monsters
             .filter(m => m.room === room && !m.isBoss && !m.isGuard && !m.holdsKey)
             .sort((a, b) => monsterIdNum(a) - monsterIdNum(b));
-          const regular = holderTier ? groupSize - 1 : groupSize;
+          const regular = isEntry ? 0 : (holderTier ? groupSize - 1 : groupSize);
           assert.equal(members.length, regular, `L${level}/${seed} room ${room} member count`);
 
           const expected = [];
@@ -252,7 +253,7 @@ describe('E7 Tower Progression — full ascent integration', () => {
           const inRoom = floor.monsters.filter(
             m => m.room === room && !m.isBoss && !m.isGuard
           );
-          assert.equal(inRoom.length, groupSize, `L${level} room ${room} group size`);
+          assert.equal(inRoom.length, isEntry ? 0 : groupSize, `L${level} room ${room} group size`);
         }
       }
     }
@@ -281,18 +282,20 @@ describe('E7 Tower Progression — full ascent integration', () => {
     }
   });
 
-  it('never ambushes the player: the entry-room group is non-aggro and holds no key', () => {
+  it('never ambushes the player: the entry room holds no monsters at all', () => {
     for (const level of LEVELS) {
       const spec = getLevelSpec(level);
       const floor = generateFloor(level);
       const entry = floor.monsters.filter(
         m => m.room === spec.entryRoom && !m.isBoss && !m.isGuard
       );
-      assert.ok(entry.length > 0, `L${level} entry room group missing`);
-      for (const monster of entry) {
-        assert.equal(monster.isAggroed, false, `L${level} entry monster must not start aggroed`);
-      }
-      assert.ok(!entry.some(m => m.holdsKey), `L${level} entry room must not gate progression`);
+      // Entrance rooms are empty by rule (LIV-16), so entering a level never
+      // drops the player into a chase. No key holder sits there either.
+      assert.equal(entry.length, 0, `L${level} entry room ${spec.entryRoom} must be empty`);
+      assert.ok(!floor.monsters.some(m => m.room === spec.entryRoom && m.holdsKey), `L${level} entry room must not gate progression`);
+
+      const spawnRoom = floor.monsters.filter(m => m.x === floor.spawn_coords.x && m.y === floor.spawn_coords.y);
+      assert.equal(spawnRoom.length, 0, `L${level} nothing may spawn on the entry tile`);
     }
   });
 });

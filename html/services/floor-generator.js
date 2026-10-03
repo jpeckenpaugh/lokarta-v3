@@ -507,6 +507,19 @@ export function generateFloor(floorNumber = 1, seed = null) {
 
   let spawnCoords;
   let entryCoords;
+  // Picks a walkable neighbour of a stair tile, preferring the one nearest the
+  // room center. Used to land the player beside (never on) a connecting stair.
+  const stairNeighbor = (stairTile, center) => {
+    if (!stairTile) return null;
+    const candidates = neighbors(stairTile.x, stairTile.y)
+      .map(n => ({ ...n, d: Math.abs(n.x - center[0]) + Math.abs(n.y - center[1]) }))
+      .sort((a, b) => a.d - b.d);
+    const free = candidates.find(
+      n => matrix[n.y] && matrix[n.y][n.x] !== TILE_TYPES.WALL
+    );
+    return free ? { x: free.x, y: free.y } : { x: stairTile.x, y: stairTile.y };
+  };
+
   if (levelId === 1) {
     const entry = tower.entry;
     entryCoords = { x: entry.doorTile[0], y: entry.doorTile[1] };
@@ -514,16 +527,17 @@ export function generateFloor(floorNumber = 1, seed = null) {
     matrix[entryCoords.y][entryCoords.x] = TILE_TYPES.DOOR;
   } else {
     entryCoords = { ...upTile };
-    const center = roomCenters[String(levelSpec.entryRoom)];
     // Spawn one tile away from the arrival stair so it never auto-retriggers.
-    const candidates = neighbors(upTile.x, upTile.y)
-      .map(n => ({ ...n, d: Math.abs(n.x - center[0]) + Math.abs(n.y - center[1]) }))
-      .sort((a, b) => a.d - b.d);
-    const free = candidates.find(
-      n => matrix[n.y] && matrix[n.y][n.x] !== TILE_TYPES.WALL
-    );
-    spawnCoords = free ? { x: free.x, y: free.y } : { x: center[0], y: center[1] };
+    spawnCoords = stairNeighbor(upTile, roomCenters[String(levelSpec.entryRoom)]);
   }
+
+  // Runtime arrival landings: entering from a lower level lands beside this
+  // level's up-stair; entering from an upper level lands beside this level's
+  // down-stair (the "exit"), never back at the entrance (D2 §3).
+  const arrivalFromLower = levelId > 1 ? { ...spawnCoords } : null;
+  const arrivalFromUpper = levelId < TOWER_LEVEL_COUNT
+    ? stairNeighbor(downTile, roomCenters[String(downRoom)])
+    : null;
 
   // 6. Stairs. Up-stair on levels 2-5; down-stair on levels 1-4; the level-5
   //    summit tile stands in for the final objective.
@@ -565,6 +579,8 @@ export function generateFloor(floorNumber = 1, seed = null) {
   for (const s of stairs) occupied.add(`${s.x},${s.y}`);
   occupied.add(`${spawnCoords.x},${spawnCoords.y}`);
   if (levelId === 1) occupied.add(`${entryCoords.x},${entryCoords.y}`);
+  if (arrivalFromLower) occupied.add(`${arrivalFromLower.x},${arrivalFromLower.y}`);
+  if (arrivalFromUpper) occupied.add(`${arrivalFromUpper.x},${arrivalFromUpper.y}`);
 
   const blocked = new Set(occupied);
   const roles = tower.placement.roles;
@@ -643,6 +659,10 @@ export function generateFloor(floorNumber = 1, seed = null) {
     const holderTier = isKeyRoom ? keyRoomTier(room) : null;
     const isEntryRoom = room === levelSpec.entryRoom;
 
+    // Entrance rooms stay empty by default so first entering a level never
+    // drops the player into a chase. No authored key room is an entrance room.
+    if (isEntryRoom) continue;
+
     // A key room replaces its last group slot with the tier's key holder, so it
     // still spawns exactly `groupSize` monsters.
     let regularSlots = groupSize;
@@ -662,13 +682,6 @@ export function generateFloor(floorNumber = 1, seed = null) {
       const memberType = pool[(room - 1 + slot) % pool.length];
       const monster = Object.assign(buildMonster(memberType, room, null, false), tile);
       monsters.push(monster);
-    }
-
-    // Entry-room group is placed farthest from the spawn and never ambushes.
-    if (isEntryRoom) {
-      for (const monster of monsters.filter(m => m.room === room)) {
-        monster.isAggroed = false;
-      }
     }
   }
 
@@ -796,6 +809,8 @@ export function generateFloor(floorNumber = 1, seed = null) {
     stair_down_coords: toCoords(stairDown),
     stairs_down_coords: exitCoords,
     exit: exitCoords,
+    arrival_from_lower_coords: arrivalFromLower,
+    arrival_from_upper_coords: arrivalFromUpper,
     open_edges: [...(levelSpec.openEdges || [])],
     sealed_edges: [...(levelSpec.sealedEdges || [])],
     gates,
@@ -809,4 +824,28 @@ export function generateFloor(floorNumber = 1, seed = null) {
     initial_loot: items,
     ambient_lights: ambientLights,
   };
+}
+
+/**
+ * Resolves where the player should land after traversing from `fromFloor` into
+ * `floor`. Arriving from a lower level lands beside the target's up-stair;
+ * arriving from a higher level lands beside the target's down-stair (the "exit"),
+ * never back at the level entrance. Falls back to the spawn for same-level or
+ * legacy floors that predate the arrival metadata.
+ *
+ * @param {object} floor - generated floor payload
+ * @param {number} [fromFloor] - the floor the player came from
+ * @returns {{ x: number, y: number }|null}
+ */
+export function resolveArrivalCoords(floor, fromFloor) {
+  if (!floor) return null;
+  const to = clampLevel(floor.floor_number ?? floor.level ?? floor.id ?? 1);
+  const from = clampLevel(fromFloor ?? to);
+  if (from < to) {
+    return floor.arrival_from_lower_coords || floor.spawn_coords || floor.entrance || null;
+  }
+  if (from > to) {
+    return floor.arrival_from_upper_coords || floor.spawn_coords || floor.entrance || null;
+  }
+  return floor.spawn_coords || floor.entrance || null;
 }
