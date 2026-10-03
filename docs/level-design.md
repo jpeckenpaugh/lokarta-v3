@@ -153,7 +153,7 @@ Level 5 has **no down-stair**. `(20,20)` in room 5 is the Summit: defeating the 
 
 | Level | tier 0 rooms | tier 1 rooms | tier 2 rooms | tier 3 (stair) |
 | --: | :-- | :-- | :-- | :-- |
-| 1 | 1, 2, 3 | 4, 7 | 5, 6, 8 | 9 |
+| 1 | 1, 2, 3 | 4, 7, 8 | 5, 6 | 9 |
 | 2 | 8, 9 | 7 | 1, 2, 3, 4, 5 | 6 |
 | 3 | 5, 6, 9 | 8 | 1, 2, 4, 7 | 3 |
 | 4 | 2, 3 | 5, 6, 9 | 1, 4, 7 | 8 |
@@ -167,16 +167,16 @@ Level 5 has **no down-stair**. `(20,20)` in room 5 is the Summit: defeating the 
 
 ### Level 1 — The Gatehouse
 - **Entry** room 2 · **Stair** room 9 (down)
-- **Open edges:** `h12 h23 h45 h56 v14 v47 v58 v69` · **Sealed:** `h78 h89 v25 v36`
+- **Open edges:** `h12 h23 h45 h56 v14 v47 h78 h89` · **Sealed:** `v25 v36 v58 v69`
 
-| Step | Room | Edge | Gate tiles |
+| Step | Room | Edge | Gate tile |
 | :-- | --: | :-- | :-- |
 | Copper holder | **1** | — | — |
-| **Copper gate** | — | `v14` (1↔4) | (5,12) (6,12) |
+| **Copper gate** | — | `v14` (1↔4) | (6,12) |
 | Silver holder | **4** | — | — |
-| **Silver gate** | — | `h45` (4↔5) | (12,19) (12,20) |
+| **Silver gate** | — | `h45` (4↔5) | (12,19) |
 | Gold holder | **6** | — | — |
-| **Gold gate** | — | `v69` (6↔9) | (32,27) (33,27) |
+| **Gold gate** | — | `h89` (8↔9) | (26,34) |
 | Stair | **9** | — | — |
 
 ### Level 2 — The Hall of Banners

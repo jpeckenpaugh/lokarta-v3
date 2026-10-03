@@ -300,4 +300,25 @@ describe('E2 Floor Generator — 5-level tower', () => {
       assert.deepEqual(ids, ['health_potion', 'torch']);
     }
   });
+
+  it('LIV-16 level 1 topology: gold gate sits between rooms 8/9, and 7/8 is the doorway', () => {
+    const spec = getLevelSpec(1);
+    // Requested layout: gold gate moved from 6/9 to 8/9; the 5/8 doorway moved to 7/8.
+    assert.equal(spec.gates.gold, 'h89', 'gold gate must be between rooms 8 and 9');
+    assert.equal(spec.gates.copper, 'v14');
+    assert.equal(spec.gates.silver, 'h45');
+    assert.ok(spec.sealedEdges.includes('v69'), 'the old 6/9 gold gate must now be a wall');
+    assert.ok(spec.sealedEdges.includes('v58'), 'the old 5/8 doorway must now be a wall');
+    assert.ok(spec.openEdges.includes('h78'), 'the 7/8 doorway must be open');
+
+    // Progression order is preserved, and the stair room is only reachable through
+    // the gold gate between rooms 8 and 9.
+    const r = validateFloorSoftlock(spec);
+    assert.equal(r.ok, true, r.failures.join('; '));
+    assert.deepEqual(r.stages.entry, [1, 2, 3]);
+    assert.deepEqual(r.stages.copper, [1, 2, 3, 4, 7, 8]);
+    assert.deepEqual(r.stages.silver, [1, 2, 3, 4, 5, 6, 7, 8]);
+    assert.deepEqual(r.stages.gold, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    assert.ok(!r.stages.silver.includes(9), 'stair room 9 must not be reachable before the gold gate');
+  });
 });
