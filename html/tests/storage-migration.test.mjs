@@ -14,6 +14,13 @@ import {
   migrateTowerSave,
 } from '../services/storage.js';
 
+import {
+  clampTowerFloor,
+  migratePlayerToTower,
+  normalizeSlotToTower,
+  TOWER_LEVEL_COUNT as TOWER_FLOOR_COUNT,
+} from '../services/save-slots.js';
+
 /**
  * Minimal in-memory IndexedDB shim, just large enough to exercise
  * `html/services/storage.js`. It enforces the same in-line keyPath contract as
@@ -349,4 +356,44 @@ test('LIV-13 E6: tower migration clamps old saves and drops stale floors', async
     const after = await read(STORES.CHARACTERS, 'c');
     assert.equal(after.current_floor, before.current_floor);
   });
+});
+
+test('E7: pure tower clamp/migration helpers handle legacy edge cases', () => {
+  assert.ok(Number.isInteger(TOWER_FLOOR_COUNT) && TOWER_FLOOR_COUNT === 5);
+
+  assert.equal(clampTowerFloor(undefined), 1);
+  assert.equal(clampTowerFloor(null), 1);
+  assert.equal(clampTowerFloor('not-a-number'), 1);
+  assert.equal(clampTowerFloor(NaN), 1);
+  assert.equal(clampTowerFloor(-4), 1);
+  assert.equal(clampTowerFloor(0), 1);
+  assert.equal(clampTowerFloor(3.9), 3);
+  assert.equal(clampTowerFloor(17), TOWER_FLOOR_COUNT);
+  assert.equal(clampTowerFloor(99), TOWER_FLOOR_COUNT);
+
+  assert.equal(migratePlayerToTower(null), null);
+
+  const inRange = { current_floor: 3, floorEntry: { current_floor: 3 } };
+  assert.equal(migratePlayerToTower(inRange), inRange, 'in-range save is a reference no-op');
+
+  const legacy = { current_floor: 17, floorEntry: { current_floor: 17 }, level: 6, xp: 120 };
+  const fixed = migratePlayerToTower(legacy);
+  assert.notEqual(fixed, legacy, 'out-of-range save is copied');
+  assert.equal(fixed.current_floor, TOWER_FLOOR_COUNT);
+  assert.equal(fixed.floorEntry.current_floor, TOWER_FLOOR_COUNT);
+  assert.equal(fixed.level, 6, 'progress preserved');
+  assert.equal(fixed.xp, 120, 'progress preserved');
+  assert.equal(legacy.current_floor, 17, 'input is not mutated');
+
+  const weird = migratePlayerToTower({ current_floor: 'x', floorEntry: { current_floor: -9 } });
+  assert.equal(weird.current_floor, 1);
+  assert.equal(weird.floorEntry.current_floor, 1);
+
+  assert.equal(normalizeSlotToTower(null), null);
+  const slotInRange = { currentFloor: 2, floorEntry: { current_floor: 2 } };
+  assert.equal(normalizeSlotToTower(slotInRange), slotInRange, 'in-range slot is a reference no-op');
+
+  const slot = normalizeSlotToTower({ currentFloor: 12, floorEntry: { current_floor: 12 } });
+  assert.equal(slot.currentFloor, TOWER_FLOOR_COUNT);
+  assert.equal(slot.floorEntry.current_floor, TOWER_FLOOR_COUNT);
 });

@@ -253,6 +253,25 @@ describe('E4 Chests — placement, tiered loot, interaction, persistence', () =>
     }
   });
 
+  it('keeps tier richness non-decreasing and applies gold display names', () => {
+    const { copper, silver, gold } = CHESTS_CATALOG.chests;
+    assert.ok(gold.rolls >= silver.rolls, 'gold must not roll fewer entries than silver');
+    assert.ok(silver.rolls >= copper.rolls, 'silver must not roll fewer entries than copper');
+    for (const [tier, table] of Object.entries(CHESTS_CATALOG.chests)) {
+      assert.ok(table.rolls <= table.entries.length, `${tier} rolls exceed its entry pool`);
+    }
+
+    let renamed = null;
+    for (let i = 0; i < 100 && !renamed; i++) {
+      const loot = rollChestLoot('gold', { vocation: 'paladin', rng: createPRNG(`e7_gold_name_${i}`) });
+      renamed =
+        loot.find(s => s.item_id === 'health_potion' && s.name === 'Greater Health Potion') ||
+        loot.find(s => s.item_id === 'mana_potion' && s.name === 'Greater Mana Potion') ||
+        null;
+    }
+    assert.ok(renamed, 'gold chest must relabel its greater potions');
+  });
+
   it('covers every level/seed combination without throwing', () => {
     assert.equal(TOWER_LEVEL_COUNT, 5);
     for (const level of LEVELS) {
