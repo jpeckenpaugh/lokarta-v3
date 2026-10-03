@@ -4,6 +4,7 @@
 
 import { CARDS_CATALOG, ITEMS_CATALOG } from '../data/index.js';
 import { InventorySystem } from './inventory-system.js';
+import { applyItemRankUp } from './item-progression.js';
 
 export class FateGrantSystem {
   static CARD_DATABASE = CARDS_CATALOG;
@@ -179,100 +180,16 @@ export class FateGrantSystem {
       if (existingSlot || card.isUpgrade) {
         const item = existingSlot ? existingSlot.it : null;
         if (item) {
-          item.itemLevel = Math.min(5, (item.itemLevel || 1) + 1);
-          const spec = catalogEntry.upgradeSpec || {};
-          const rank = item.itemLevel;
-          const notes = [];
-
-          // --- Offense escalations (weapons / staff / wand) ---
-          if (spec.randomDamageInc) {
-            const dmgInc = card.upgradeDmgInc || (Math.floor(Math.random() * (spec.randomDamageInc[1] - spec.randomDamageInc[0] + 1)) + spec.randomDamageInc[0]);
-            if (dmgInc) item.damage = (item.damage || catalogEntry.damageMin || 12) + dmgInc;
-            notes.push(`+${dmgInc || 0} Dmg`);
+          const upgrade = applyItemRankUp(player, item, {
+            source: 'fate_grant',
+            upgradeDmgInc: card.upgradeDmgInc,
+          });
+          if (upgrade) {
+            result.addedToHotbar.push(
+              `${item.name} Upgraded to Rank ${upgrade.rank}${upgrade.notes.length ? ` (${upgrade.notes.join(', ')})` : ''}`
+            );
+            continue;
           }
-          if (spec.rangeInc) {
-            item.range = (item.range || catalogEntry.range || 5) + spec.rangeInc;
-            notes.push('+1 Range');
-          }
-          if (spec.manaCostInc) {
-            item.manaCost = (item.manaCost || catalogEntry.manaCost || 1) + spec.manaCostInc;
-            notes.push(`+${spec.manaCostInc} MP`);
-          }
-          if (spec.stepDamageInc) {
-            item.stepDamageBonus = (item.stepDamageBonus || 0) + spec.stepDamageInc;
-            notes.push(`+${spec.stepDamageInc} Wave Dmg`);
-          }
-
-          // --- Stat escalations (equivalent on any slot) ---
-          if (spec.maxHpInc) {
-            player.max_hp = (player.max_hp || 100) + spec.maxHpInc;
-            player.hp = Math.min(player.max_hp, (player.hp || 100) + spec.maxHpInc);
-            notes.push(`+${spec.maxHpInc} Max HP`);
-          }
-          if (spec.maxMpInc) {
-            player.max_mana = (player.max_mana || 100) + spec.maxMpInc;
-            player.mana = Math.min(player.max_mana, (player.mana || 100) + spec.maxMpInc);
-            notes.push(`+${spec.maxMpInc} Max MP`);
-          }
-          if (spec.mpPulseInc) {
-            const pulseSec = Math.max(12, 22 - 2 * rank);
-            notes.push(`Pulse +${rank} MP / ${pulseSec}s`);
-          }
-
-          // --- LOK-12 Golden spec keys ---
-          if (spec.arrowCapacityInc) {
-            item.arrowCapacity = (item.arrowCapacity || 25) + spec.arrowCapacityInc;
-            notes.push(`+${spec.arrowCapacityInc} Cap`);
-          }
-          if (spec.ammoRegenSecReduction) {
-            item.ammoRegenSec = Math.max(2.5, (item.ammoRegenSec || 5) - spec.ammoRegenSecReduction);
-            notes.push(`Regen ${item.ammoRegenSec.toFixed(1)}s`);
-          }
-          if (spec.dodgePctInc) {
-            item.dodgePct = (item.dodgePct || 0) + spec.dodgePctInc;
-            notes.push(`+${spec.dodgePctInc}% Dodge`);
-          }
-          if (spec.critChanceInc) {
-            item.critChance = (item.critChance || 0) + spec.critChanceInc;
-            notes.push(`+${spec.critChanceInc}% Crit`);
-          }
-          if (spec.critMultInc) {
-            item.critMult = (item.critMult || 0) + spec.critMultInc;
-            notes.push(`+${spec.critMultInc.toFixed(2)} Crit Mult`);
-          }
-          if (spec.mitigationPctInc) {
-            item.mitigationPct = (item.mitigationPct || 0) + spec.mitigationPctInc;
-            notes.push(`+${spec.mitigationPctInc}% Mitig`);
-          }
-          if (spec.healPowerPctInc) {
-            item.healPowerPct = (item.healPowerPct || 0) + spec.healPowerPctInc;
-            notes.push(`+${spec.healPowerPctInc}% Heal`);
-          }
-          if (spec.stunInc) {
-            item.stunSec = (item.stunSec || 0) + spec.stunInc;
-            notes.push(`+${spec.stunInc.toFixed(1)}s Stun`);
-          }
-          if (spec.shieldAbsorbInc) {
-            item.shieldAbsorb = (item.shieldAbsorb || 0) + spec.shieldAbsorbInc;
-            notes.push(`+${spec.shieldAbsorbInc} Absorb`);
-          }
-          if (spec.shieldDurationInc) {
-            item.shieldDuration = (item.shieldDuration || 0) + spec.shieldDurationInc;
-            notes.push(`+${spec.shieldDurationInc}s Bubble`);
-          }
-          // Functional at use time (CombatSystem.getEffectiveManaCost /
-          // getEffectiveCooldown); the item rank already drives the reduction.
-          if (spec.shieldManaCostReduction) {
-            notes.push(`-${spec.shieldManaCostReduction} MP`);
-          }
-          if (spec.cooldownReductionSec) {
-            notes.push(`-${spec.cooldownReductionSec}s CD`);
-          }
-
-          result.addedToHotbar.push(
-            `${item.name} Upgraded to Rank ${rank}${notes.length ? ` (${notes.join(', ')})` : ''}`
-          );
-          continue;
         }
       }
 

@@ -4,6 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { ITEMS_CATALOG } from '../data/index.js';
+import { findOwnedItem, applyItemRankUp, formatRankUpMessage } from './item-progression.js';
 
 export class InventorySystem {
   static getMaxStack(itemId) {
@@ -142,6 +143,35 @@ export class InventorySystem {
   static addItem(player, item) {
     if (!player || !item || !item.item_id) {
       return { success: false, message: 'Nothing to add.', item: null };
+    }
+
+    // Duplicate unique gear levels up the owned copy instead of stacking a
+    // second one (LIV-18): chest/draft/reward duplicates route through the
+    // shared rank-up helper so an item never exists twice in the inventory.
+    const maxStackForDup = InventorySystem.getMaxStack(item.item_id);
+    if (maxStackForDup <= 1) {
+      const owned = findOwnedItem(player, item);
+      if (owned) {
+        const upgrade = applyItemRankUp(player, owned, { source: 'duplicate' });
+        if (upgrade) {
+          return {
+            success: true,
+            message: formatRankUpMessage(upgrade),
+            item: upgrade.item,
+            upgraded: true,
+            rank: upgrade.rank,
+          };
+        }
+        // Owned but at the rank cap (or unupgradable): turn the duplicate into
+        // nothing rather than a duplicate stack.
+        return {
+          success: true,
+          message: `${owned.name || owned.item_id} is already at max rank.`,
+          item: owned,
+          upgraded: false,
+          duplicateIgnored: true,
+        };
+      }
     }
 
     // Auto-equip gear into its empty paperdoll slot on grant (LIV-16): chest

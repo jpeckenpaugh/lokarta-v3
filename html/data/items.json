@@ -628,6 +628,7 @@
     "vocationAffinity": "neutral",
     "icon": "🔑",
     "svgCode": "1F511",
+    "svgCodeActive": "1F511-copper",
     "maxStack": 1,
     "droppable": false
   },
@@ -639,6 +640,7 @@
     "vocationAffinity": "neutral",
     "icon": "🗝️",
     "svgCode": "1F5DD",
+    "svgCodeActive": "1F5DD-silver",
     "maxStack": 1,
     "droppable": false
   },
@@ -649,7 +651,8 @@
     "keyTier": "gold",
     "vocationAffinity": "neutral",
     "icon": "🗝️",
-    "svgCode": "1F5DD",
+    "svgCode": "1F511",
+    "svgCodeActive": "1F511-gold",
     "maxStack": 1,
     "droppable": false
   }

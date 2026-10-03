@@ -436,6 +436,62 @@ function takeCandidate(room, blocked, anchor, occupied) {
   return null;
 }
 
+/**
+ * True when a tile is orthogonally adjacent to a WALL/boundary, i.e. it sits
+ * against a room wall rather than floating in the middle of the room.
+ * Walkable floor tiles only.
+ */
+function isWallAdjacent(matrix, x, y) {
+  if (!matrix[y] || matrix[y][x] === undefined || matrix[y][x] === TILE_TYPES.WALL) return false;
+  for (const n of neighbors(x, y)) {
+    if (!matrix[n.y] || matrix[n.y][n.x] === undefined) return true;
+    if (matrix[n.y][n.x] === TILE_TYPES.WALL) return true;
+  }
+  return false;
+}
+
+/**
+ * Every floor tile of a room (its full carved bounds), excluding blocked
+ * tiles. Unlike `orderedCandidates` this includes the room's perimeter ring,
+ * which is where wall-adjacent placement lives.
+ */
+function roomFloorTiles(room, blocked) {
+  const [x1, y1, x2, y2] = room;
+  const tiles = [];
+  for (let y = y1; y <= y2; y++) {
+    for (let x = x1; x <= x2; x++) {
+      if (blocked.has(`${x},${y}`)) continue;
+      tiles.push({ x, y });
+    }
+  }
+  return tiles;
+}
+
+/**
+ * Ordered free tiles in a room that sit against a wall, rotated so `anchor` is
+ * scanned first. Falls back to any free tile inside the room when a room has no
+ * wall-adjacent free tile (so a chest is never dropped).
+ */
+function orderedWallCandidates(room, blocked, anchor, matrix) {
+  const all = roomFloorTiles(room, blocked);
+  const wallAdjacent = all.filter(tile => isWallAdjacent(matrix, tile.x, tile.y));
+  const pool = wallAdjacent.length > 0 ? wallAdjacent : all;
+  if (!anchor) return pool;
+  const idx = pool.findIndex(t => t.x === anchor.x && t.y === anchor.y);
+  if (idx > 0) return pool.slice(idx).concat(pool.slice(0, idx));
+  return pool;
+}
+
+/** Takes the first free wall-adjacent tile from an anchor-rotated list. */
+function takeWallCandidate(room, blocked, anchor, occupied, matrix) {
+  for (const tile of orderedWallCandidates(room, blocked, anchor, matrix)) {
+    if (occupied.has(`${tile.x},${tile.y}`)) continue;
+    occupied.add(`${tile.x},${tile.y}`);
+    return tile;
+  }
+  return null;
+}
+
 function round(n) {
   return Math.round(n);
 }
@@ -600,14 +656,16 @@ export function generateFloor(floorNumber = 1, seed = null) {
   };
 
   // 8a. Chests: exactly one per room at its D2 §7.2 tier, placed deterministically
-  //     at the room chest anchor (roles.chest) scanning free tiles. Chests claim
-  //     their tile before monsters so the two never overlap (D2 §9.2 order).
+  //     against a room wall (LIV-18) rather than floating mid-room. The wall-adjacent
+  //     anchor scan keeps chests reachable: the player only ever needs to step onto
+  //     the walkable tile from the room side. Chests claim their tile before monsters
+  //     so the two never overlap (D2 §9.2 order).
   const chests = [];
   let chestId = 1;
   for (let room = 1; room <= 9; room++) {
     const bounds = rooms[room - 1];
     const anchor = absAnchor(room, roles.chest);
-    const tile = takeCandidate(bounds, blocked, anchor, occupied);
+    const tile = takeWallCandidate(bounds, blocked, anchor, occupied, matrix);
     if (!tile) continue;
     chests.push({
       id: `f${levelId}_chest_${chestId++}`,

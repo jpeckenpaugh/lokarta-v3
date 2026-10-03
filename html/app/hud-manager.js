@@ -217,10 +217,12 @@ export class HUDManager {
       const keyItemId = DoorSystem.keyItemForTier(tier);
       const catalogItem = keyItemId ? ITEMS_CATALOG[keyItemId] : null;
       const accent = DOORS_CATALOG?.[tier]?.accent || '#94a3b8';
-      const icon = catalogItem
-        ? HUDManager.renderItemIcon({ item_id: keyItemId, name: catalogItem.name || `${tier} key`, svgCode: catalogItem.svgCode })
-        : '<span class="key-glyph">🔑</span>';
       const label = catalogItem?.name || `${tier} key`;
+      const icon = HUDManager.renderItemIcon({
+        item_id: keyItemId,
+        name: label,
+        svgCode: earned && catalogItem?.svgCodeActive ? catalogItem.svgCodeActive : catalogItem?.svgCode,
+      });
       const state = earned ? 'active' : 'locked';
       const tip = earned ? `${label} earned on Floor ${floor}` : `${label} — not yet earned on Floor ${floor}`;
       return `<span class="level-key ${state}" data-tier="${tier}" style="--key-accent: ${accent};" title="${tip}">${icon}</span>`;

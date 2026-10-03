@@ -18,6 +18,11 @@ import {
   GestureEngine,
   createPlayer,
 } from '../engine/index.js';
+import {
+  firstMonsterOnSegment,
+  monstersCaughtByBeam,
+  wouldSwapPlaces,
+} from '../engine/projectile-collision.js';
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG, ABILITIES_CATALOG, KEYBINDINGS_CATALOG, VOCATIONS_CATALOG, UI_CATALOG } from '../data/index.js';
 import { CanvasRenderer } from './canvas-renderer.js';
@@ -979,23 +984,29 @@ export class LokartaApp {
           const fX = p.fX || 0;
           const fY = p.fY || 0;
 
-          // 1. Catch new monsters standing on current wave tiles FIRST
+          // 1. Catch new monsters standing on the current wave front OR that
+          //    walked back into an already-swept tile behind the front. The
+          //    swept check prevents a monster from phasing through the beam by
+          //    moving opposite the wave: it is always caught instead.
           for (const tile of wave.tiles) {
-            const pxX = tile.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
-            const pxY = tile.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
-
             if (tile.isWall) {
+              const pxX = tile.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
+              const pxY = tile.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2;
               this.triggerImpactBurst(pxX, pxY, p.visual, p.color);
-            } else {
-              const hitMonsters = this.monsters.filter(m => m.hp > 0 && m.x === tile.x && m.y === tile.y);
-              for (const hitMonster of hitMonsters) {
-                if (!p.carriedMonsters.some(c => c.monster.id === hitMonster.id)) {
-                  // Newly caught monster! Mark caughtStepIdx and stun monster while in wave
-                  hitMonster.stunTimer = 10.0; // Stunned while riding wave
-                  p.carriedMonsters.push({ monster: hitMonster, wallStopped: false, caughtStepIdx: stepIdx });
-                }
-              }
             }
+          }
+
+          const carriedIds = p.carriedMonsters.map(c => c.monster.id);
+          const caughtThisStep = monstersCaughtByBeam(
+            this.monsters,
+            wave.tiles,
+            { originX: p.sourceX, originY: p.sourceY, fX, fY, frontIndex: stepIdx },
+            carriedIds
+          );
+          for (const hitMonster of caughtThisStep) {
+            // Stunned while riding the wave; marked so it rides this tile.
+            hitMonster.stunTimer = 10.0;
+            p.carriedMonsters.push({ monster: hitMonster, wallStopped: false, caughtStepIdx: stepIdx });
           }
 
           // 2. Advance ALREADY CARRIED monsters (caught in prior steps) forward along the wave direction (if not wall-stopped)
@@ -1104,6 +1115,8 @@ export class LokartaApp {
       }
 
       // Real-time continuous projectile physics (e.g. Wand Spark)
+      const prevPxX = p.currentPxX;
+      const prevPxY = p.currentPxY;
       p.currentPxX += p.dirX * p.speedPxPerSec * dtSec;
       p.currentPxY += p.dirY * p.speedPxPerSec * dtSec;
 
@@ -1118,23 +1131,38 @@ export class LokartaApp {
         continue;
       }
 
-      // 2. Wall Collision check
-      if (this.gridMap.isWall(tileX, tileY)) {
+      // 2. Swept collision across the whole tile span since the last frame, so
+      //    a fast spark cannot skip over (phase through) a monster that moved
+      //    into the corridor between the previous and current position. The
+      //    wall check below is folded into the sweep: a wall stops the attack
+      //    before anything behind it is considered.
+      const startGX = Math.floor(prevPxX / CONFIG.GRID_SIZE);
+      const startGY = Math.floor(prevPxY / CONFIG.GRID_SIZE);
+      const sweep = firstMonsterOnSegment(
+        this.monsters,
+        startGX,
+        startGY,
+        tileX,
+        tileY,
+        (x, y) => this.gridMap.isWall(x, y)
+      );
+
+      if (sweep && sweep.stoppedByWall) {
         this.triggerImpactBurst(p.currentPxX, p.currentPxY, p.visual, p.color);
-        soundFX.playAt('wandSpark', tileX, tileY, this.player.x, this.player.y);
+        soundFX.playAt('wandSpark', sweep.tile.x, sweep.tile.y, this.player.x, this.player.y);
         this.projectiles.splice(i, 1);
         continue;
       }
 
-      // 3. Living Monster Collision check
-      const hitMonster = this.monsters.find(m => m.hp > 0 && m.x === tileX && m.y === tileY);
-      if (hitMonster) {
+      if (sweep && sweep.monster) {
+        const hitMonster = sweep.monster;
+        const hitTile = sweep.tile;
         const payload = p.damagePayload || {};
         const dmg = payload.damage || 10;
         hitMonster.hp -= dmg;
         setAnimState(hitMonster, 'hit', this.nowMs());
 
-        soundFX.playAt('wandSpark', tileX, tileY, this.player.x, this.player.y);
+        soundFX.playAt('wandSpark', hitTile.x, hitTile.y, this.player.x, this.player.y);
         this.triggerImpactBurst(p.currentPxX, p.currentPxY, p.visual, p.color);
 
         let combatMsg = `Wand Spark struck ${hitMonster.name} for ${dmg} magic damage!`;
@@ -1145,11 +1173,19 @@ export class LokartaApp {
             success: true,
             defeatedMonsterId: hitMonster.id,
             droppedLoot: loot,
-          }, tileX, tileY);
+          }, hitTile.x, hitTile.y);
         }
 
         this.logCombat(combatMsg, 'combat');
-        this.addFloatingText(`-${dmg}`, tileX, tileY, '#38bdf8');
+        this.addFloatingText(`-${dmg}`, hitTile.x, hitTile.y, '#38bdf8');
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // 3. Wall collision at the current tile (no monster in the span).
+      if (this.gridMap.isWall(tileX, tileY)) {
+        this.triggerImpactBurst(p.currentPxX, p.currentPxY, p.visual, p.color);
+        soundFX.playAt('wandSpark', tileX, tileY, this.player.x, this.player.y);
         this.projectiles.splice(i, 1);
       }
     }
@@ -1388,7 +1424,7 @@ export class LokartaApp {
       },
       power_shot: () => {
         const bow = this.player.paperdoll?.main_hand;
-        const maxRange = (bow && typeof bow.range === 'number') ? bow.range : CONFIG.ARCHER_POWER_SHOT_RANGE;
+        const maxRange = CombatSystem.itemRange(bow) || CONFIG.ARCHER_POWER_SHOT_RANGE;
         const target = this.getTargetMonster(maxRange);
         if (!target) return this.logCombat('No enemy in range for Power Shot.', 'warning');
         soundFX.play('powerShot');
@@ -1397,7 +1433,7 @@ export class LokartaApp {
       },
       bow_shot: () => {
         const bow = this.player.paperdoll?.main_hand;
-        const maxRange = (bow && typeof bow.range === 'number') ? bow.range : CONFIG.ARCHER_BOW_RANGE;
+        const maxRange = CombatSystem.itemRange(bow) || CONFIG.ARCHER_BOW_RANGE;
         const target = this.getTargetMonster(maxRange);
         if (!target) return this.logCombat('No enemy in range for Bow Shot.', 'warning');
         soundFX.play('bowShot');

@@ -5,6 +5,7 @@
 import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
 import { ABILITIES_CATALOG, MONSTERS_CATALOG } from '../data/index.js';
+import { getEffectiveDamage, getEffectiveRange, getEffectiveManaCost } from './item-stats.js';
 
 export class CombatSystem {
   static decrementCooldowns(player, deltaSec) {
@@ -56,6 +57,21 @@ export class CombatSystem {
     const rank = item.itemLevel || 1;
     const perRank = item.upgradeSpec?.cooldownReductionSec || 0;
     return Math.max(1, item.cooldown - perRank * (rank - 1));
+  }
+
+  /** Public alias so app code shares the engine's rank-scaled projection. */
+  static itemDamage(item) {
+    return getEffectiveDamage(item);
+  }
+
+  /** Public alias for the rank-scaled range projection. */
+  static itemRange(item) {
+    return getEffectiveRange(item);
+  }
+
+  /** Public alias for the rank-scaled mana-cost projection. */
+  static itemManaCost(item) {
+    return getEffectiveManaCost(item);
   }
 
   /**
@@ -230,7 +246,7 @@ export class CombatSystem {
       return { success: false, message: 'Spark Wand is on cooldown.' };
     }
 
-    const manaCost = (item && typeof item.manaCost === 'number') ? item.manaCost : CONFIG.MAGICIAN_SPARK_MANA_COST;
+    const manaCost = getEffectiveManaCost(item) || CONFIG.MAGICIAN_SPARK_MANA_COST;
 
     if (player.mana < manaCost) {
       return { success: false, message: 'Not enough Mana to use Spark Wand.' };
@@ -266,7 +282,7 @@ export class CombatSystem {
     player.cooldowns.wand_spark = CONFIG.MAGICIAN_SPARK_COOLDOWN_SEC;
 
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
-    const baseDmg = (item && typeof item.damage === 'number') ? item.damage : CombatSystem.randomBetween(CONFIG.MAGICIAN_SPARK_DAMAGE_MIN, CONFIG.MAGICIAN_SPARK_DAMAGE_MAX);
+    const baseDmg = getEffectiveDamage(item) || CombatSystem.randomBetween(CONFIG.MAGICIAN_SPARK_DAMAGE_MIN, CONFIG.MAGICIAN_SPARK_DAMAGE_MAX);
     const damage = Math.round(baseDmg * mult);
 
     const abilitySpec = ABILITIES_CATALOG.magician_spark;
@@ -336,8 +352,8 @@ export class CombatSystem {
       return { success: false, message: 'Beam Staff is on cooldown.' };
     }
 
-    const manaCost = (item && typeof item.manaCost === 'number') ? item.manaCost : CONFIG.MAGICIAN_BEAM_MANA_COST;
-    const maxSteps = (item && typeof item.range === 'number') ? item.range : 4;
+    const manaCost = getEffectiveManaCost(item) || CONFIG.MAGICIAN_BEAM_MANA_COST;
+    const maxSteps = getEffectiveRange(item) || 4;
 
     if (player.mana < manaCost) {
       return { success: false, message: 'Not enough Mana to cast Beam Staff.' };
@@ -407,6 +423,14 @@ export class CombatSystem {
     const rawStepDamage = abilitySpec?.visual?.stepDamage || [20, 15, 10, 5];
     const bonusDmg = item?.stepDamageBonus || 0;
 
+    // Rank scaling: a ranked Beam Staff's `damage` baseline carries the
+    // per-rank `stepDamageInc`, so scale each wave step relative to the rank-1
+    // baseline instead of a flat stick. Unranked casts use scale 1.
+    const effectiveDamage = getEffectiveDamage(item);
+    const rankOneWaveDamage = (rawStepDamage[0] || 20) + bonusDmg;
+    const damageScale =
+      item && effectiveDamage > rankOneWaveDamage ? effectiveDamage / rankOneWaveDamage : 1;
+
     // Build step damage array for maxSteps
     const baseStepDamage = [];
     for (let s = 0; s < maxSteps; s++) {
@@ -420,8 +444,8 @@ export class CombatSystem {
       stepVolumes.push(vol);
     }
 
-    // Compute step damage list scaled by vocation mastery
-    const stepDamage = baseStepDamage.map(base => Math.round(base * mult));
+    // Compute step damage list scaled by vocation mastery and weapon rank.
+    const stepDamage = baseStepDamage.map(base => Math.round(base * mult * damageScale));
 
     const projectile = {
       id: `proj_beam_${Date.now()}_${Math.random()}`,

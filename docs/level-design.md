@@ -373,6 +373,24 @@ Replace the 5 fixed floor drops + milestone drop with **one starter cache per le
 
 All other rewards come from chests.
 
+### 7.6 Duplicate loot & wall placement (LIV-18)
+
+Two player-facing rules added after user testing:
+
+- **Duplicate unique gear levels up the owned item.** When a chest (or any
+  reward channel) grants a unique (`maxStack === 1`) item the player already
+  owns, the owned instance is ranked up instead of a second copy being added —
+  inventory never holds two stacks of the same unique item. The rank-up reuses
+  the same `upgradeSpec` progression as Fate LEVEL UP cards (single helper:
+  `html/engine/item-progression.js`), capped at Rank 5. Stackable consumables
+  (`health_potion`, `mana_potion`, `arrows`, `torch`) are unaffected and keep
+  stacking.
+- **Chests sit against a room wall.** Each room's chest is placed on a
+  wall-adjacent walkable tile (the room's perimeter ring) rather than floating
+  mid-room, preserving reachability/openability and the §10 soft-lock
+  guarantee. Placement is still deterministic (§9) and chests still claim
+  their tile before monsters.
+
 ---
 
 ## 8. Catalogs contract (for E1)
