@@ -613,55 +613,166 @@ export class ModalManager {
     this._setKeyHandler(modalOverlayEl, keyHandler);
   }
 
-  /**
-   * The Town hub (LIV-22 item 5): the pre-tower screen where the player starts,
-   * shops, heals at the temple, and enters the tower.
-   */
-  static showTownScreen(modalOverlayEl, app, callbacks = {}) {
-    const town = app?.townConfig || { title: 'Havenreach', subtitle: '', shopName: "Merchant's Stall", templeName: 'Temple of the Dawn', enterTowerLabel: 'Enter the Tower' };
+  /** Hero vitals strip shared by the Town hub and subpanels (D1 §4.1). */
+  static _townVitalsHtml(app) {
     const player = app?.player || {};
     const gold = Number(player.gold) || 0;
-    const hpPct = player.max_hp ? Math.max(0, Math.min(100, (player.hp / player.max_hp) * 100)) : 0;
-    const mpPct = player.max_mana ? Math.max(0, Math.min(100, (player.mana / player.max_mana) * 100)) : 0;
+    const voc = player.vocation || 'magician';
+    const vocLabel = voc.charAt(0).toUpperCase() + voc.slice(1);
+    return `
+      <div class="town-hero-summary">
+        <span class="town-vocation">${vocLabel} · Lv ${player.level || 1}</span>
+        <span class="town-hp">HP ${player.hp}/${player.max_hp}</span>
+        <span class="town-mp">MP ${player.mana}/${player.max_mana}</span>
+        <span class="town-gold"><img class="openmoji-icon" src="./assets/openmoji/2697.svg" alt="Gold" /> <strong>${gold}</strong> gold</span>
+      </div>`;
+  }
 
-    this._reset(modalOverlayEl);
-    modalOverlayEl.classList.remove('title-active');
-    modalOverlayEl.innerHTML = `
+  /**
+   * Persistent Town hub (LIV-25 / D1 §0.4): rendered into the always-present
+   * `#town-screen` sibling of `#modal-overlay`, never a dismissible modal.
+   */
+  static renderTownHub(townEl, app, callbacks = {}) {
+    if (!townEl) return;
+    const town = app?.townConfig || { title: 'Havenreach', subtitle: '', shopName: "Merchant's Stall", templeName: 'Temple of the Dawn', enterTowerLabel: 'Enter the Tower' };
+    const player = app?.player || {};
+    const floor = player.current_floor || 1;
+
+    townEl.hidden = false;
+    townEl.onkeydown = null;
+    townEl.innerHTML = `
       <div class="town-modal">
         <div class="modal-header">
-          <h2><img class="openmoji-icon title-icon" src="./assets/openmoji/1F56F.svg" alt="Candle" /> ${town.title}</h2>
+          <h2 id="town-title"><img class="openmoji-icon title-icon" src="./assets/openmoji/1F56F.svg" alt="Candle" /> ${town.title}</h2>
           <div class="subtitle">${town.subtitle || ''}</div>
         </div>
-        <div class="town-vitals">
-          <span class="town-gold"><img class="openmoji-icon" src="./assets/openmoji/2697.svg" alt="Gold" /> <strong id="town-gold-val">${gold}</strong> gold</span>
-          <span class="town-hp">HP ${player.hp}/${player.max_hp}</span>
-          <span class="town-mp">MP ${player.mana}/${player.max_mana}</span>
+        <div class="town-actions town-venues">
+          <button class="action-btn town-venue" id="town-shop">
+            <img class="openmoji-icon" src="./assets/openmoji/2699.svg" alt="Shop" />
+            <strong>${town.shopName || 'Shop'}</strong>
+            <span>Buy items &amp; upgrade gear</span>
+          </button>
+          <button class="action-btn town-venue" id="town-temple">
+            <img class="openmoji-icon" src="./assets/openmoji/1F496.svg" alt="Temple" />
+            <strong>${town.templeName || 'Temple'}</strong>
+            <span>Heal &amp; revive</span>
+          </button>
+          <button class="action-btn town-venue town-enter-btn" id="town-tower">
+            <img class="openmoji-icon" src="./assets/openmoji/1F5DD.svg" alt="Tower Gate" />
+            <strong>${town.enterTowerLabel || 'Enter the Tower'}</strong>
+            <span>Resume at Floor ${floor}</span>
+          </button>
         </div>
-        <div class="town-actions">
-          <button class="action-btn town-enter-btn" id="town-enter">${town.enterTowerLabel}</button>
-          <button class="action-btn town-shop-btn" id="town-shop">${town.shopName}</button>
-          <button class="action-btn town-temple-btn" id="town-temple">${town.templeName}</button>
-          <button class="action-btn town-pause-btn" id="town-options">Options</button>
+        ${ModalManager._townVitalsHtml(app)}
+        <div class="modal-actions">
+          <button class="action-btn" id="town-options">Options</button>
         </div>
       </div>
     `;
 
-    modalOverlayEl.querySelector('#town-enter')?.addEventListener('click', () => {
-      soundFX.play('click');
-      callbacks.onEnterTower?.();
+    townEl.querySelector('#town-shop')?.addEventListener('click', () => { soundFX.play('click'); callbacks.onShop?.(); });
+    townEl.querySelector('#town-temple')?.addEventListener('click', () => { soundFX.play('click'); callbacks.onTemple?.(); });
+    townEl.querySelector('#town-tower')?.addEventListener('click', () => { soundFX.play('click'); callbacks.onEnterTower?.(); });
+    townEl.querySelector('#town-options')?.addEventListener('click', () => { soundFX.play('click'); callbacks.onOptions?.(); });
+    townEl.querySelector('.town-venue')?.focus();
+  }
+
+  /** Shop subpanel inside the persistent Town screen (D1 §4.3). */
+  static renderTownShop(townEl, app, callbacks = {}) {
+    if (!townEl) return;
+    const stock = app?.shopStock || [];
+    const gold = Number(app?.player?.gold) || 0;
+    const upgradeList = app?.ownedUpgradableItems || [];
+    townEl.hidden = false;
+    townEl.innerHTML = `
+      <div class="town-modal">
+        <div class="modal-header">
+          <h2 id="town-title"><img class="openmoji-icon title-icon" src="./assets/openmoji/2699.svg" alt="Shop" /> ${app?.townConfig?.shopName || 'Shop'}</h2>
+          <div class="subtitle">Gold: <strong>${gold}</strong></div>
+        </div>
+        <div class="shop-section-title">For sale</div>
+        <div class="shop-stock-grid" id="shop-stock">
+          ${stock.map(entry => {
+            const icon = HUDManager.renderItemIcon({ item_id: entry.itemId, name: entry.name });
+            return `
+              <button class="shop-entry" data-item-id="${entry.itemId}" ${gold < entry.price ? 'disabled' : ''}>
+                <span class="shop-icon">${icon}</span>
+                <span class="shop-name">${entry.name}${entry.quantity > 1 ? ` x${entry.quantity}` : ''}</span>
+                <span class="shop-price">${entry.price}g</span>
+              </button>`;
+          }).join('')}
+        </div>
+        <div class="shop-section-title">Upgrade owned gear</div>
+        <div class="shop-upgrades" id="shop-upgrades">
+          ${upgradeList.length === 0
+            ? '<div class="shop-empty">No upgradable gear in your pack.</div>'
+            : upgradeList.map(entry => {
+                const icon = HUDManager.renderItemIcon(entry.item);
+                return `
+                  <button class="shop-entry upgrade-entry" data-upgrade-slot="${entry.source}:${entry.index}" ${gold < entry.cost ? 'disabled' : ''}>
+                    <span class="shop-icon">${icon}</span>
+                    <span class="shop-name">${entry.item.name} <em>Rank ${entry.rank}</em></span>
+                    <span class="shop-price">${entry.cost}g</span>
+                  </button>`;
+              }).join('')}
+        </div>
+        <div class="modal-actions">
+          <button class="action-btn" id="shop-back">Back to Town</button>
+        </div>
+      </div>
+    `;
+    townEl.querySelectorAll('.shop-entry[data-item-id]').forEach(btn => {
+      btn.addEventListener('click', () => callbacks.onBuy?.(btn.getAttribute('data-item-id')));
     });
-    modalOverlayEl.querySelector('#town-shop')?.addEventListener('click', () => {
-      soundFX.play('click');
-      callbacks.onShop?.();
+    townEl.querySelectorAll('.shop-entry[data-upgrade-slot]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const [source, index] = btn.getAttribute('data-upgrade-slot').split(':');
+        callbacks.onUpgrade?.(source, Number(index));
+      });
     });
-    modalOverlayEl.querySelector('#town-temple')?.addEventListener('click', () => {
-      soundFX.play('click');
-      callbacks.onTemple?.();
-    });
-    modalOverlayEl.querySelector('#town-options')?.addEventListener('click', () => {
-      soundFX.play('click');
-      callbacks.onOptions?.();
-    });
+    townEl.querySelector('#shop-back')?.addEventListener('click', () => { soundFX.play('uiBack'); callbacks.onBack?.(); });
+    townEl.onkeydown = e => {
+      if (e.key === 'Escape') { e.preventDefault(); soundFX.play('uiBack'); callbacks.onBack?.(); }
+    };
+  }
+
+  /** Temple subpanel inside the persistent Town screen (D1 §4.4). */
+  static renderTownTemple(townEl, app, callbacks = {}) {
+    if (!townEl) return;
+    const player = app?.player || {};
+    const cost = app?.templeCost ?? 0;
+    const gold = Number(player.gold) || 0;
+    const free = cost === 0;
+    townEl.hidden = false;
+    townEl.innerHTML = `
+      <div class="town-modal">
+        <div class="modal-header">
+          <h2 id="town-title"><img class="openmoji-icon title-icon" src="./assets/openmoji/1F496.svg" alt="Temple" /> ${app?.townConfig?.templeName || 'Temple'}</h2>
+          <div class="subtitle">Restore health and mana to full.</div>
+        </div>
+        <div class="temple-body">
+          <p>HP ${player.hp}/${player.max_hp} · MP ${player.mana}/${player.max_mana}</p>
+          <p class="temple-cost">${free ? 'The temple offers its blessing freely.' : `Offering: <strong>${cost}</strong> gold`}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="action-btn" id="temple-back">Back to Town</button>
+          <button class="action-btn temple-heal-btn" id="temple-heal" ${!free && gold < cost ? 'disabled' : ''}>${free ? 'Receive Blessing' : `Heal (${cost}g)`}</button>
+        </div>
+      </div>
+    `;
+    townEl.querySelector('#temple-heal')?.addEventListener('click', () => callbacks.onHeal?.());
+    townEl.querySelector('#temple-back')?.addEventListener('click', () => { soundFX.play('uiBack'); callbacks.onBack?.(); });
+    townEl.onkeydown = e => {
+      if (e.key === 'Escape') { e.preventDefault(); soundFX.play('uiBack'); callbacks.onBack?.(); }
+    };
+  }
+
+  /** Hides the persistent Town screen and clears its subpanel DOM. */
+  static hideTownScreen(townEl) {
+    if (!townEl) return;
+    townEl.hidden = true;
+    townEl.onkeydown = null;
+    townEl.innerHTML = '';
   }
 
   /** The Town shop (LIV-22 item 5/6): buy items and upgrade owned gear. */

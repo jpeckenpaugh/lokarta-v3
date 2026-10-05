@@ -94,10 +94,12 @@ export class LokartaApp {
     this.renderer = new CanvasRenderer(this.canvas);
 
     this.statusBarsEl = document.getElementById('status-bars-container');
-    this.paperdollEl = document.getElementById('paperdoll-container');
+    this.sidebarEl = document.getElementById('sidebar-hud');
+    this.loadoutEl = document.getElementById('loadout-container');
     this.backpackEl = document.getElementById('backpack-container');
     this.combatLogScrollEl = document.getElementById('log-entries-container');
     this.modalOverlayEl = document.getElementById('modal-overlay');
+    this.townEl = document.getElementById('town-screen');
     this.splashOverlayEl = document.getElementById('splash-overlay');
     this.titleAmbientCanvas = document.getElementById('title-ambient-canvas');
     this.transitionOverlayEl = document.getElementById('screen-transition');
@@ -319,6 +321,7 @@ export class LokartaApp {
     this.isInGameplay = false;
     this.isPaused = false;
     this.transition.forceRelease();
+    ModalManager.hideTownScreen(this.townEl);
 
     ModalManager.showTitleScreen(this.modalOverlayEl, {
       slots: this.slots,
@@ -560,7 +563,10 @@ export class LokartaApp {
   showTown() {
     this.location = 'town';
     this.isPaused = true;
-    ModalManager.showTownScreen(this.modalOverlayEl, this, {
+    // Clear any modal (pause/defeat) so the persistent Town screen is the only
+    // surface; the canvas keeps rendering the current floor behind it.
+    this.closeModal();
+    ModalManager.renderTownHub(this.townEl, this, {
       onEnterTower: () => this.enterTower(),
       onShop: () => this.openShop(),
       onTemple: () => this.openTemple(),
@@ -572,6 +578,7 @@ export class LokartaApp {
   enterTower() {
     this.location = 'tower';
     this.player.location = 'tower';
+    ModalManager.hideTownScreen(this.townEl);
     this.closeModal();
     this.isPaused = false;
     this.logCombat('You step through the tower gate. The ascent begins.', 'system');
@@ -617,7 +624,7 @@ export class LokartaApp {
 
   openShop() {
     const state = this.buildShopState();
-    ModalManager.showShopModal(this.modalOverlayEl, { ...this, ...state }, {
+    ModalManager.renderTownShop(this.townEl, { ...this, ...state }, {
       onBuy: itemId => this.buyShopItem(itemId),
       onUpgrade: (source, index) => this.upgradeShopItem(source, index),
       onBack: () => this.showTown(),
@@ -677,7 +684,7 @@ export class LokartaApp {
   }
 
   openTemple() {
-    ModalManager.showTempleModal(this.modalOverlayEl, { ...this, templeCost: EconomySystem.templeHealCost(this.player) }, {
+    ModalManager.renderTownTemple(this.townEl, { ...this, templeCost: EconomySystem.templeHealCost(this.player) }, {
       onHeal: () => this.templeHeal(),
       onBack: () => this.showTown(),
     });
@@ -1463,6 +1470,12 @@ export class LokartaApp {
           if (this.gridMap.isSpring(this.player.x, this.player.y)) {
             this.handleSpring(this.player.x, this.player.y);
           }
+
+          // Walk-on Tower Gate (LIV-25 / D1 §0.4): step back to the Town.
+          if (this.gridMap.isTownGate(this.player.x, this.player.y)) {
+            this.handleTownGate(this.player.x, this.player.y);
+            return;
+          }
         }
       }
     } else if (this.player) {
@@ -1471,7 +1484,7 @@ export class LokartaApp {
   }
 
   handleChargeUpdate(slotIndex, ratio) {
-    const slotEl = document.querySelector(`.action-slot-btn[data-slot-index="${slotIndex}"] .charge-fill`);
+    const slotEl = document.querySelector(`.loadout-slot.active-slot[data-index="${slotIndex}"] .charge-fill`);
     if (slotEl) {
       slotEl.style.width = `${Math.round(ratio * 100)}%`;
     }
@@ -1481,7 +1494,7 @@ export class LokartaApp {
     const { slotIndex, gesture } = event;
     const item = this.player.action_bar?.[slotIndex];
     if (!item) {
-      this.logCombat(`Action Slot ${slotIndex + 1} is empty.`, 'warning');
+      this.logCombat(`Active Slot ${slotIndex + 1} is empty.`, 'warning');
       return;
     }
 
@@ -1877,6 +1890,19 @@ export class LokartaApp {
   }
 
   /**
+   * Walk-on Tower Gate (LIV-25 / D1 §0.4): returns the player to the Town hub
+   * from the floor's arrival room. `current_floor`, gold, and inventory persist.
+   */
+  handleTownGate(gridX, gridY) {
+    if (this.location === 'town') return;
+    soundFX.init();
+    soundFX.play('uiBack');
+    this.logCombat('The Tower Gate hums — you return to the Town of Lokarta.', 'system');
+    this.addFloatingText('TOWN', gridX, gridY, '#e5b95c');
+    this.leaveTower();
+  }
+
+  /**
    * Opens a shut gated door by spending the per-level key earned for its tier
    * (LIV-16). The trigger is walking *into* the closed door (collision), which
    * is the only way to reach a gate — a closed gate is not walkable, so the
@@ -2101,7 +2127,8 @@ export class LokartaApp {
     HUDManager.updateHUD(
       {
         statusBarsEl: this.statusBarsEl,
-        paperdollEl: this.paperdollEl,
+        sidebarEl: this.sidebarEl,
+        loadoutEl: this.loadoutEl,
         backpackEl: this.backpackEl,
       },
       this

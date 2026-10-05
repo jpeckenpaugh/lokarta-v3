@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Engine Configuration & Constants
  */
 
-import { VOCATIONS_CATALOG, MONSTERS_CATALOG, ABILITIES_CATALOG, UI_CATALOG, ECONOMY_CATALOG } from '../data/index.js';
+import { VOCATIONS_CATALOG, MONSTERS_CATALOG, ABILITIES_CATALOG, UI_CATALOG, ECONOMY_CATALOG, KEYBINDINGS_CATALOG } from '../data/index.js';
 
 export const TILE_TYPES = {
   FLOOR: 0,
@@ -11,28 +11,38 @@ export const TILE_TYPES = {
   DOOR: 3,
   GATED_DOOR: 4,
   SPRING: 5,
+  TOWN_GATE: 6,
 };
+
+const LOADOUT_KEYS = UI_CATALOG?.hud?.loadout || {};
+const BACKPACK_LAYOUT = UI_CATALOG?.inventory?.backpack || {};
 
 /** Catalog-driven inventory layout (no hardcoded slot counts). */
 export const INVENTORY_CONFIG = {
-  ACTIVE_SLOTS: Number(UI_CATALOG?.inventory?.activeSlots) || 4,
-  EQUIPMENT_SLOTS: Number(UI_CATALOG?.inventory?.equipmentSlots) || 4,
-  BACKPACK_SLOTS: Number(UI_CATALOG?.inventory?.backpackSlots) || 36,
-  BACKPACK_COLUMNS: Number(UI_CATALOG?.inventory?.backpackColumns) || 6,
-  BACKPACK_ROWS: Number(UI_CATALOG?.inventory?.backpackRows) || 6,
+  ACTIVE_SLOTS: Number(LOADOUT_KEYS.activeKeys?.length) || Number(UI_CATALOG?.inventory?.activeSlots) || 4,
+  EQUIPMENT_SLOTS: Number(LOADOUT_KEYS.equipmentKeys?.length) || Number(UI_CATALOG?.inventory?.equipmentSlots) || 4,
+  BACKPACK_SLOTS: Number(BACKPACK_LAYOUT.defaultSlots) || 36,
+  BACKPACK_COLUMNS: Number(BACKPACK_LAYOUT.columns) || 6,
+  BACKPACK_ROWS: Number(BACKPACK_LAYOUT.rows) || 6,
   STARTING_GOLD: Number(ECONOMY_CATALOG?.gold?.starting) || 0,
   GOLD_CAP: Number(ECONOMY_CATALOG?.gold?.cap) || 999999,
 };
 
-/** Ordered equipment slots (q/w/e/r) resolved from the keybinding catalog. */
-export const EQUIPMENT_SLOT_KEYS = Object.values(
-  (UI_CATALOG && UI_CATALOG.inventory && UI_CATALOG.inventory.equipmentSlotOrder) || {
-    0: 'main_hand',
-    1: 'off_hand',
-    2: 'armor',
-    3: 'relic',
-  }
-);
+/** Ordered active-slot key labels (`["1","2","3","4"]`) from the catalog. */
+export const ACTIVE_SLOT_KEYS = Array.isArray(LOADOUT_KEYS.activeKeys) && LOADOUT_KEYS.activeKeys.length
+  ? LOADOUT_KEYS.activeKeys.map(String)
+  : ['1', '2', '3', '4'];
+
+/** `{ q: "main_hand", ... }` equipment-key map from `keybindings.json.keySlots`. */
+export const EQUIPMENT_KEY_MAP = KEYBINDINGS_CATALOG?.keySlots?.equipment || {
+  q: 'main_hand',
+  w: 'off_hand',
+  e: 'armor',
+  r: 'relic',
+};
+
+/** Ordered equipment slots (`main_hand`/`off_hand`/`armor`/`relic`). */
+export const EQUIPMENT_SLOT_KEYS = Object.values(EQUIPMENT_KEY_MAP);
 
 export const CONFIG = {
   GRID_SIZE: 64, // pixels per tile
@@ -40,8 +50,9 @@ export const CONFIG = {
   MAP_HEIGHT: 40,
   TICK_INTERVAL_MS: 100, // 10 Hz fixed simulation tick
 
-  // Inventory & Slots (catalog-driven; see INVENTORY_CONFIG)
-  ACTION_BAR_SLOTS: INVENTORY_CONFIG.ACTIVE_SLOTS,
+  // Inventory & Slots (catalog-driven; see INVENTORY_CONFIG / D1 §2.6)
+  ACTIVE_SLOT_COUNT: INVENTORY_CONFIG.ACTIVE_SLOTS,
+  EQUIPMENT_SLOT_COUNT: INVENTORY_CONFIG.EQUIPMENT_SLOTS,
   BACKPACK_SLOTS: INVENTORY_CONFIG.BACKPACK_SLOTS,
 
   // Gesture Timings (ms)

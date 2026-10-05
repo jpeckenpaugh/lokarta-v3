@@ -19,6 +19,31 @@
   --mp-blue-glow: rgba(59, 130, 246, 0.4);
   --xp-gold: #f59e0b;
   --xp-gold-glow: rgba(245, 158, 11, 0.4);
+  /* D1 §1.2 slot tokens */
+  --slot-bg: #0b0c12;
+  --slot-bg-hover: #161926;
+  --slot-border: var(--border-color);
+  --slot-border-hover: var(--border-highlight);
+  --slot-drop-valid: var(--gold-accent);
+  --slot-drop-invalid: var(--hp-red);
+  --slot-key-badge: var(--gold-accent);
+  --slot-empty-border: #23273e;
+  --slot-radius: 4px;
+  --gold-accent-soft: rgba(229, 185, 92, 0.25);
+  /* D1 §1.2 / §6.4 class colorways (mirror vocations.json renderTheme) */
+  --class-fighter: #475569;
+  --class-fighter-accent: #94a3b8;
+  --class-paladin: #0284c7;
+  --class-paladin-accent: #f59e0b;
+  --class-magician: #5c2d91;
+  --class-magician-accent: #ffd700;
+  --class-archer: #15803d;
+  --class-archer-accent: #854d0e;
+  --class-neutral: #64748b;
+  /* D1 §1.2 town + springs */
+  --town-panel-bg: #0e1017;
+  --spring-water: #7cc9ee;
+  --spring-water-glow: rgba(124, 201, 238, 0.35);
   --ui-scale: 1;
   --font-display: 'Cinzel', 'Trajan Pro', 'Palatino', Georgia, serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;

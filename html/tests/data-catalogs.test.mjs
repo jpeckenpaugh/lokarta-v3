@@ -350,10 +350,17 @@ test('JSON Data Catalogs', async (t) => {
   await t.test('loads and validates keybindings.json catalog', () => {
     assert.ok(KEYBINDINGS_CATALOG.movement);
     assert.ok(Array.isArray(KEYBINDINGS_CATALOG.movement.up));
-    // LIV-22 inventory overhaul: 4 active digits (1-4) + 4 equipment keys (q/w/e/r).
-    assert.equal(KEYBINDINGS_CATALOG.actionBar.length, 4);
-    assert.equal(KEYBINDINGS_CATALOG.equipmentBar.length, 4);
-    assert.deepEqual(Object.keys(KEYBINDINGS_CATALOG.equipmentSlots).sort(), ['KeyE', 'KeyQ', 'KeyR', 'KeyW']);
+    // LIV-25 / D1 §2.7: `keySlots` replaces the retired `actionBar`/`equipmentBar`.
+    assert.deepEqual(KEYBINDINGS_CATALOG.keySlots.equipment, {
+      q: 'main_hand',
+      w: 'off_hand',
+      e: 'armor',
+      r: 'relic',
+    });
+    assert.equal(KEYBINDINGS_CATALOG.keySlots.active.length, 4);
+    assert.deepEqual(KEYBINDINGS_CATALOG.keySlots.active, ['Digit1', 'Digit2', 'Digit3', 'Digit4']);
+    assert.equal(KEYBINDINGS_CATALOG.actionBar, undefined, 'retired actionBar must be gone');
+    assert.equal(KEYBINDINGS_CATALOG.equipmentBar, undefined, 'retired equipmentBar must be gone');
     assert.ok(KEYBINDINGS_CATALOG.gestureTimings.tapMaxMs > 0);
   });
 
@@ -383,14 +390,29 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(UI_CATALOG.saveSlots.count, 5);
     assert.equal(UI_CATALOG.options.defaults.sfxVolume, 70);
     assert.equal(UI_CATALOG.options.ranges.pixelScale['3x'], 96);
-    // LIV-22: catalog-driven inventory + town presentation tokens.
-    assert.equal(UI_CATALOG.inventory.backpackSlots, 36);
-    assert.equal(UI_CATALOG.inventory.backpackColumns, 6);
-    assert.equal(UI_CATALOG.inventory.backpackRows, 6);
+    // LIV-25 / D1 §2.7 + §3.2: catalog field names.
+    assert.equal(UI_CATALOG.inventory.backpack.defaultSlots, 36);
+    assert.equal(UI_CATALOG.inventory.backpack.columns, 6);
+    assert.equal(UI_CATALOG.inventory.backpack.rows, 6);
     assert.equal(UI_CATALOG.inventory.activeSlots, 4);
     assert.equal(UI_CATALOG.inventory.equipmentSlots, 4);
-    assert.ok(UI_CATALOG.hud.barWidthPx > 0);
+    assert.equal(UI_CATALOG.hud.loadout.activeKeys.length, 4);
+    assert.equal(UI_CATALOG.hud.loadout.equipmentKeys.length, 4);
+    assert.ok(UI_CATALOG.entityBars.widthPx > 0);
+    assert.ok(UI_CATALOG.entityBars.heightPx > 0);
+    assert.ok(UI_CATALOG.entityBars.offsetAboveSpritePx > 0);
+    assert.ok(UI_CATALOG.entityBars.hpFill);
+    assert.equal(UI_CATALOG.entityBars.enemyShowWhen, 'damaged');
     assert.ok(UI_CATALOG.town.title);
+  });
+
+  await t.test('every item declares a D1 slotRole', () => {
+    for (const [id, item] of Object.entries(ITEMS_CATALOG)) {
+      assert.ok(
+        ['active', 'equipment', 'bank'].includes(item.slotRole),
+        `${id} must declare slotRole (active|equipment|bank)`
+      );
+    }
   });
 
   await t.test('consolidates exactly one solid item per class per equipment slot', () => {

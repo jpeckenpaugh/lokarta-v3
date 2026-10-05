@@ -13,16 +13,39 @@
  * `keybindings.json`); there are no hardcoded constants here.
  */
 
-import { CONFIG, INVENTORY_CONFIG } from './config.js';
+import { CONFIG, INVENTORY_CONFIG, EQUIPMENT_KEY_MAP, EQUIPMENT_SLOT_KEYS } from './config.js';
 import { ITEMS_CATALOG } from '../data/index.js';
 import { findOwnedItem, applyItemRankUp, formatRankUpMessage } from './item-progression.js';
 
-const EQUIP_SLOT_ORDER = ['main_hand', 'off_hand', 'armor', 'relic'];
+const EQUIP_SLOT_ORDER = EQUIPMENT_SLOT_KEYS;
 
-/** Item types that occupy an equipment slot. */
+/** Item types that occupy an equipment slot (fallback when `slotRole` is absent). */
 const EQUIPPABLE_TYPES = new Set(['weapon', 'offhand', 'armor', 'relic']);
 
+/** Slot-role dispatch (D1 §0.3): catalog-declared, never a string heuristic. */
+const ITEM_SLOT_ROLE = {
+  active: 'active',
+  equipment: 'equipment',
+  bank: 'bank',
+};
+
 export class InventorySystem {
+  /**
+   * Resolves an item's D1 `slotRole` from the instance or its catalog entry.
+   * @returns {'active'|'equipment'|'bank'|null}
+   */
+  static slotRole(item) {
+    if (!item) return null;
+    const catalogItem = ITEMS_CATALOG[item.item_id] || {};
+    const role = item.slotRole || catalogItem.slotRole || null;
+    if (role && ITEM_SLOT_ROLE[role]) return role;
+    // Legacy fallback for saves/items authored before `slotRole` existed.
+    const type = item.type || catalogItem.type;
+    if (type === 'consumable' || type === 'item') return 'active';
+    if (EQUIPPABLE_TYPES.has(type)) return 'equipment';
+    return 'bank';
+  }
+
   static getMaxStack(itemId) {
     if (ITEMS_CATALOG[itemId] && typeof ITEMS_CATALOG[itemId].maxStack === 'number') {
       return ITEMS_CATALOG[itemId].maxStack;
@@ -45,15 +68,33 @@ export class InventorySystem {
   }
 
   static isEquippable(item) {
-    const type = item?.type || ITEMS_CATALOG[item?.item_id]?.type;
-    return EQUIPPABLE_TYPES.has(type) || item?.item_id === 'torch';
+    return InventorySystem.slotRole(item) === 'equipment';
   }
 
-  /** True when the item is a consumable/usable that belongs in 1-4. */
+  /** True when the item belongs in an active slot (1-4), per its `slotRole`. */
   static isActiveItem(item) {
-    if (!item) return false;
-    const type = item.type || ITEMS_CATALOG[item.item_id]?.type;
-    return type === 'consumable';
+    return InventorySystem.slotRole(item) === 'active';
+  }
+
+  /**
+   * Vocation-affinity check shared by equip/swap. Returns `null` when allowed,
+   * or a human-readable denial reason (D1 §2.5).
+   */
+  static affinityDenial(player, item) {
+    const affinity = item?.vocationAffinity || ITEMS_CATALOG[item?.item_id]?.vocationAffinity;
+    if (!affinity || affinity === 'neutral' || !player?.vocation) return null;
+    const matches = Array.isArray(affinity) ? affinity.includes(player.vocation) : affinity === player.vocation;
+    if (matches) return null;
+    const label = Array.isArray(affinity)
+      ? affinity.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join('/')
+      : (affinity.charAt(0).toUpperCase() + affinity.slice(1));
+    return `Only a ${label} can use ${item.name}.`;
+  }
+
+  /** Slot label for invalid-drop copy, e.g. `main_hand` -> `Main hand`. */
+  static slotLabel(slotName) {
+    const map = { main_hand: 'Main hand', off_hand: 'Off hand', armor: 'Armor', relic: 'Relic' };
+    return map[slotName] || String(slotName || '').replace('_', ' ');
   }
 
   static ensureContainers(player) {
@@ -91,10 +132,11 @@ export class InventorySystem {
   static resolveKeyedSlot(player, key) {
     if (!player || key === undefined || key === null) return null;
     const k = String(key);
-    const equipMap = { KeyQ: 'main_hand', KeyW: 'off_hand', KeyE: 'armor', KeyR: 'relic' };
-    const slotName = equipMap[k] || (EQUIP_SLOT_ORDER.includes(k) ? k : null);
+    // Equipment accepted as a key code (`KeyQ`), a letter (`q`), or a slot name.
+    const letter = k.length === 1 ? k.toLowerCase() : (k.startsWith('Key') ? k.slice(3).toLowerCase() : null);
+    const slotName = (letter && EQUIPMENT_KEY_MAP[letter]) || (EQUIP_SLOT_ORDER.includes(k) ? k : null);
     if (slotName) return { kind: 'equipment', slot: slotName, list: null, index: -1 };
-    const activeMatch = /^(Digit|active:)?([1-4])$/.exec(k);
+    const activeMatch = /^(Digit|active:)?([1-9])$/.exec(k);
     if (activeMatch) {
       const idx = Number(activeMatch[2]) - 1;
       if (idx >= 0 && idx < INVENTORY_CONFIG.ACTIVE_SLOTS) {
@@ -360,16 +402,8 @@ export class InventorySystem {
     const targetSlot = InventorySystem.equipSlotFor(item);
     if (!targetSlot) return { success: false, message: `${item.name} cannot be equipped.` };
 
-    const affinity = item.vocationAffinity || ITEMS_CATALOG[item.item_id]?.vocationAffinity;
-    if (affinity && affinity !== 'neutral' && player?.vocation) {
-      const vocationMatches = Array.isArray(affinity) ? affinity.includes(player.vocation) : affinity === player.vocation;
-      if (!vocationMatches) {
-        const label = Array.isArray(affinity)
-          ? affinity.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join('/')
-          : (affinity.charAt(0).toUpperCase() + affinity.slice(1));
-        return { success: false, message: `Only a ${label} can equip ${item.name}!` };
-      }
-    }
+    const denial = InventorySystem.affinityDenial(player, item);
+    if (denial) return { success: false, message: denial };
 
     const currentlyEquipped = player.paperdoll[targetSlot];
 
@@ -431,11 +465,68 @@ export class InventorySystem {
     return { success: false, message: `Cannot use ${item.name}.` };
   }
 
+  static _readRef(player, ref) {
+    return ref.kind === 'equipment' ? player.paperdoll[ref.slot] : ref.list[ref.index];
+  }
+
+  static _writeRef(player, ref, value) {
+    if (ref.kind === 'equipment') player.paperdoll[ref.slot] = value;
+    else ref.list[ref.index] = value;
+  }
+
   /**
-   * Swaps a banked item (action bar or backpack) into any of the 8 keyed slots
-   * (`KeyQ`..`KeyR`, `Digit1`..`Digit4`). Equipment destinations swap with the
-   * paperdoll; active destinations swap with the action bar. A keyed-slot
-   * source can also be moved to the backpack.
+   * Strict destination validation (D1 §0.3): a moved item must match the target
+   * row by `slotRole`, and (for equipment) by its natural slot key + affinity.
+   * @returns {{ valid: boolean, message: string }}
+   */
+  static validateDestination(player, item, dst) {
+    if (!item || !dst) return { valid: true, message: '' };
+    if (dst.kind === 'equipment') {
+      if (InventorySystem.slotRole(item) !== 'equipment') {
+        return { valid: false, message: `The ${InventorySystem.slotLabel(dst.slot)} slot accepts equipment only.` };
+      }
+      const natural = InventorySystem.equipSlotFor(item);
+      if (natural !== dst.slot) {
+        return { valid: false, message: `${item.name} belongs in the ${InventorySystem.slotLabel(natural)} slot.` };
+      }
+      const denial = InventorySystem.affinityDenial(player, item);
+      if (denial) return { valid: false, message: denial };
+    }
+    if (dst.kind === 'active' && InventorySystem.slotRole(item) !== 'active') {
+      return { valid: false, message: `${item.name} is not an active item.` };
+    }
+    return { valid: true, message: '' };
+  }
+
+  /**
+   * Read-only validity check for a drag/click move, used by the HUD to paint
+   * `.drop-valid` / `.drop-invalid` before committing (D1 §2.4).
+   * @returns {{ valid: boolean, message: string }}
+   */
+  static validateMove(player, from, to) {
+    InventorySystem.ensureContainers(player);
+    const src = InventorySystem.resolveKeyedSlot(player, from);
+    const dst = InventorySystem.resolveKeyedSlot(player, to);
+    if (!src || !dst) return { valid: false, message: 'Invalid swap target.' };
+    const a = InventorySystem._readRef(player, src);
+    const b = InventorySystem._readRef(player, dst);
+    if (!a) return { valid: false, message: 'Slot is empty.' };
+    const forward = InventorySystem.validateDestination(player, a, dst);
+    if (!forward.valid) return forward;
+    // A swap also moves the destination item into the source: both directions
+    // must satisfy the strict slot-type rule.
+    if (b) {
+      const reverse = InventorySystem.validateDestination(player, b, src);
+      if (!reverse.valid) return reverse;
+    }
+    return { valid: true, message: '' };
+  }
+
+  /**
+   * Swaps a banked item (action bar or backpack) into a keyed slot
+   * (`KeyQ`..`KeyR`, `Digit1`..`Digit4`) or back to the backpack. Equipment
+   * destinations swap with the paperdoll; active destinations swap with the
+   * action bar. Strict D1 §0.3 typing is enforced by `validateDestination`.
    *
    * @returns {{ success: boolean, message: string }}
    */
@@ -445,30 +536,18 @@ export class InventorySystem {
     const dst = InventorySystem.resolveKeyedSlot(player, to);
     if (!src || !dst) return { success: false, message: 'Invalid swap target.' };
 
-    const read = ref => (ref.kind === 'equipment' ? player.paperdoll[ref.slot] : ref.list[ref.index]);
-    const write = (ref, value) => {
-      if (ref.kind === 'equipment') player.paperdoll[ref.slot] = value;
-      else ref.list[ref.index] = value;
-    };
+    const a = InventorySystem._readRef(player, src);
+    const b = InventorySystem._readRef(player, dst);
 
-    const a = read(src);
-    const b = read(dst);
-
-    // Validate the mover against the destination.
-    if (dst.kind === 'equipment' && a) {
-      const targetSlot = InventorySystem.equipSlotFor(a);
-      // Equipment slots accept any equippable item; the swap places it in the
-      // requested slot regardless of its natural slot (player intent wins).
-      if (!targetSlot && !InventorySystem.isEquippable(a)) {
-        return { success: false, message: `${a.name} cannot be equipped.` };
-      }
-    }
-    if (dst.kind === 'active' && a && !InventorySystem.isActiveItem(a)) {
-      return { success: false, message: `${a.name} is not an active item.` };
+    const check = InventorySystem.validateDestination(player, a, dst);
+    if (!check.valid) return { success: false, message: check.message };
+    if (b) {
+      const reverse = InventorySystem.validateDestination(player, b, src);
+      if (!reverse.valid) return { success: false, message: reverse.message };
     }
 
-    write(src, b || null);
-    write(dst, a || null);
+    InventorySystem._writeRef(player, src, b || null);
+    InventorySystem._writeRef(player, dst, a || null);
     InventorySystem.recomputeGearBonuses(player);
 
     const aName = a ? a.name : 'Empty';

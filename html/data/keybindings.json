@@ -5,29 +5,14 @@
     "down": ["ArrowDown"],
     "right": ["ArrowRight"]
   },
-  "actionBar": [
-    "Digit1",
-    "Digit2",
-    "Digit3",
-    "Digit4"
-  ],
-  "equipmentBar": [
-    "KeyQ",
-    "KeyW",
-    "KeyE",
-    "KeyR"
-  ],
-  "equipmentSlots": {
-    "KeyQ": "main_hand",
-    "KeyW": "off_hand",
-    "KeyE": "armor",
-    "KeyR": "relic"
-  },
-  "activeSlots": {
-    "Digit1": 0,
-    "Digit2": 1,
-    "Digit3": 2,
-    "Digit4": 3
+  "keySlots": {
+    "equipment": {
+      "q": "main_hand",
+      "w": "off_hand",
+      "e": "armor",
+      "r": "relic"
+    },
+    "active": ["Digit1", "Digit2", "Digit3", "Digit4"]
   },
   "gestureTimings": {
     "tapMaxMs": 250,

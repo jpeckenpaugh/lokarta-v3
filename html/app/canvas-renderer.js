@@ -6,20 +6,25 @@ import { CONFIG, LightingSystem, TILE_TYPES } from '../engine/index.js';
 import { SpriteRenderer, themeForFloor } from './sprite-renderer.js';
 import { UI_CATALOG } from '../data/index.js';
 
-/** Static HUD-bar token cache (no per-frame allocation). */
-const ACTOR_BAR = (() => {
-  const h = UI_CATALOG?.hud || {};
+/** Static entity-bar token cache from `ui.json.entityBars` (D1 §3.2). */
+const OUTLINE_COLOR = '#0b0d12';
+const ENTITY_BARS = (() => {
+  const b = UI_CATALOG?.entityBars || {};
+  const lowPct = Number(b.lowHpPct);
   return {
-    width: Number(h.barWidthPx) || 26,
-    height: Number(h.barHeightPx) || 4,
-    offset: Number(h.barOffsetPx) || 6,
-    border: Number(h.barBorderPx) || 1,
-    hp: h.hpColor || '#22c55e',
-    hpLow: h.hpLowColor || '#ef4444',
-    hpLowPct: Number(h.hpLowPct) || 0.3,
-    hpBack: h.hpBackColor || 'rgba(5,6,8,0.85)',
-    mp: h.mpColor || '#3b82f6',
-    mpBack: h.mpBackColor || 'rgba(5,6,8,0.85)',
+    width: Number(b.widthPx) || 24,
+    bossWidth: Number(b.bossWidthPx) || 32,
+    height: Number(b.heightPx) || 3,
+    gap: Number(b.gapPx) || 1,
+    outline: Number(b.outlinePx) || 1,
+    offset: Number(b.offsetAboveSpritePx) || 6,
+    track: b.track || '#1e293b',
+    hp: b.hpFill || '#ef4444',
+    hpLow: b.hpFillLow || '#dc2626',
+    mp: b.mpFill || '#3b82f6',
+    lowHpPct: Number.isFinite(lowPct) && lowPct > 0 ? lowPct / 100 : 0.3,
+    playerShowWhen: b.playerShowWhen || 'always',
+    enemyShowWhen: b.enemyShowWhen || 'damaged',
   };
 })();
 
@@ -156,6 +161,23 @@ export class CanvasRenderer {
         }
         SpriteRenderer.drawTile(ctx, tile.type, screenX, screenY, CONFIG.GRID_SIZE, tileOpts);
 
+        // Tower Gate (LIV-25 / D1 §0.4): a gold arch marker on the arrival-room
+        // tile that returns the player to Town when stepped on.
+        if (tile.type === TILE_TYPES.TOWN_GATE) {
+          const gx = screenX + CONFIG.GRID_SIZE / 2;
+          const gy = screenY + CONFIG.GRID_SIZE / 2;
+          ctx.fillStyle = 'rgba(229, 185, 92, 0.28)';
+          ctx.fillRect(screenX + 4, screenY + 4, CONFIG.GRID_SIZE - 8, CONFIG.GRID_SIZE - 8);
+          ctx.strokeStyle = '#e5b95c';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(screenX + 6, screenY + 6, CONFIG.GRID_SIZE - 12, CONFIG.GRID_SIZE - 12);
+          ctx.beginPath();
+          ctx.arc(gx, screenY + CONFIG.GRID_SIZE * 0.6, CONFIG.GRID_SIZE * 0.22, Math.PI, 0);
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(229, 185, 92, 0.9)';
+          ctx.fillRect(gx - 2, gy - 4, 4, CONFIG.GRID_SIZE * 0.34);
+        }
+
         // Healing spring (LIV-22 item 7): a small cyan pool marker.
         if (tile.type === TILE_TYPES.SPRING) {
           const cx = screenX + CONFIG.GRID_SIZE / 2;
@@ -232,7 +254,12 @@ export class CanvasRenderer {
         monster._dim = isBoss ? 1 : Math.max(0.65, Math.min(1, 1 - 0.35 * d));
         SpriteRenderer.drawMonster(ctx, monster, screenX, screenY);
 
-        this.drawActorBars(ctx, monster, screenX, screenY, false);
+        // Enemy HP bar only when damaged, selected, or a boss (D1 §3.1).
+        const damaged = monster.hp < monster.max_hp;
+        const selected = selectedMonsterId === monster.id;
+        if (isBoss || damaged || selected) {
+          this.drawActorBars(ctx, monster, screenX, screenY, false, isBoss ? ENTITY_BARS.bossWidth : ENTITY_BARS.width);
+        }
 
         if (selectedMonsterId === monster.id) {
           ctx.strokeStyle = '#ef4444';
@@ -280,29 +307,35 @@ export class CanvasRenderer {
    * @param {number} screenX @param {number} screenY
    * @param {boolean} withMana - draw the mana bar too (player only)
    */
-  drawActorBars(ctx, actor, screenX, screenY, withMana) {
+  drawActorBars(ctx, actor, screenX, screenY, withMana, barWidth = ENTITY_BARS.width) {
     if (!actor || !Number.isFinite(actor.max_hp) || actor.max_hp <= 0) return;
     const size = CONFIG.GRID_SIZE;
-    const w = ACTOR_BAR.width;
-    const h = ACTOR_BAR.height;
-    const gap = 1;
+    const w = barWidth;
+    const h = ENTITY_BARS.height;
+    const outline = ENTITY_BARS.outline;
+    const gap = ENTITY_BARS.gap;
     const x = Math.round(screenX + (size - w) / 2);
-    let y = Math.round(screenY - ACTOR_BAR.offset);
+    let y = Math.round(screenY - ENTITY_BARS.offset);
 
     const hpPct = Math.max(0, Math.min(1, actor.hp / actor.max_hp));
-    const hpColor = hpPct <= ACTOR_BAR.hpLowPct ? ACTOR_BAR.hpLow : ACTOR_BAR.hp;
+    const hpColor = hpPct <= ENTITY_BARS.lowHpPct ? ENTITY_BARS.hpLow : ENTITY_BARS.hp;
 
-    ctx.fillStyle = ACTOR_BAR.hpBack;
-    ctx.fillRect(x - ACTOR_BAR.border, y - ACTOR_BAR.border, w + ACTOR_BAR.border * 2, h + ACTOR_BAR.border * 2);
+    // 1px frame for legibility on light floors, then track, then fill.
+    ctx.fillStyle = OUTLINE_COLOR;
+    ctx.fillRect(x - outline, y - outline, w + outline * 2, h + outline * 2);
+    ctx.fillStyle = ENTITY_BARS.track;
+    ctx.fillRect(x, y, w, h);
     ctx.fillStyle = hpColor;
     ctx.fillRect(x, y, Math.max(0, Math.round(w * hpPct)), h);
 
     if (withMana && Number.isFinite(actor.max_mana) && actor.max_mana > 0) {
       y += h + gap;
       const mpPct = Math.max(0, Math.min(1, actor.mana / actor.max_mana));
-      ctx.fillStyle = ACTOR_BAR.mpBack;
-      ctx.fillRect(x - ACTOR_BAR.border, y - ACTOR_BAR.border, w + ACTOR_BAR.border * 2, h + ACTOR_BAR.border * 2);
-      ctx.fillStyle = ACTOR_BAR.mp;
+      ctx.fillStyle = OUTLINE_COLOR;
+      ctx.fillRect(x - outline, y - outline, w + outline * 2, h + outline * 2);
+      ctx.fillStyle = ENTITY_BARS.track;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = ENTITY_BARS.mp;
       ctx.fillRect(x, y, Math.max(0, Math.round(w * mpPct)), h);
     }
   }

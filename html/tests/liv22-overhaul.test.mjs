@@ -28,7 +28,7 @@ const LEVELS = [1, 2, 3, 4, 5];
 describe('LIV-22 #1 inventory/hotbar cleanup', () => {
   it('creates 4 active slots and a 36-slot backpack on every vocation', () => {
     const layout = UI_CATALOG.inventory;
-    assert.equal(layout.backpackSlots, 36);
+    assert.equal(layout.backpack.defaultSlots, 36);
     for (const voc of ['magician', 'archer', 'fighter', 'paladin']) {
       const p = createPlayer(voc);
       assert.equal(p.action_bar.length, 4);
@@ -49,30 +49,43 @@ describe('LIV-22 #1 inventory/hotbar cleanup', () => {
     assert.equal(gear.backpack[0].item_id, 'some_weapon', 'unequipped gear banks to backpack');
   });
 
-  it('swaps a banked item into any of the 8 keyed slots and back', () => {
+  it('swaps a banked item into its matching keyed slot and back (D1 §0.3)', () => {
     const player = createPlayer('magician');
     player.backpack[3] = { ...ITEMS_CATALOG.astral_scepter, item_id: 'astral_scepter', quantity: 1 };
 
     InventorySystem.swapKeyedItem(player, 'backpack:3', 'KeyQ');
     assert.equal(player.paperdoll.main_hand.item_id, 'astral_scepter');
 
-    // Move it to a different keyed slot (armor) — keyed <-> keyed swap.
-    InventorySystem.swapKeyedItem(player, 'KeyQ', 'KeyE');
-    assert.equal(player.paperdoll.main_hand, null);
-    assert.equal(player.paperdoll.armor.item_id, 'astral_scepter');
-
     // And back to the backpack.
-    InventorySystem.swapKeyedItem(player, 'KeyE', 'backpack:0');
-    assert.equal(player.paperdoll.armor, null);
+    InventorySystem.swapKeyedItem(player, 'KeyQ', 'backpack:0');
+    assert.equal(player.paperdoll.main_hand, null);
     assert.ok(player.backpack.some(s => s && s.item_id === 'astral_scepter'));
+  });
+
+  it('rejects moving equipment into a mismatched equipment key (strict typing)', () => {
+    const player = createPlayer('magician');
+    player.backpack[0] = { ...ITEMS_CATALOG.astral_scepter, item_id: 'astral_scepter', quantity: 1 };
+    // Beam Staff is a main_hand item: the armor key (E) must refuse it.
+    const res = InventorySystem.swapKeyedItem(player, 'backpack:0', 'KeyE');
+    assert.equal(res.success, false);
+    assert.equal(player.paperdoll.armor, null, 'mismatched equipment slot stays empty');
+    assert.equal(player.backpack[0].item_id, 'astral_scepter', 'item returns to origin');
   });
 
   it('refuses to place a non-consumable into an active slot', () => {
     const player = createPlayer('magician');
-    player.backpack[0] = { ...ITEMS_CATALOG.astral_scepter, item_id: 'astral_scepter', type: 'weapon', slot: 'main_hand' };
+    player.backpack[0] = { ...ITEMS_CATALOG.astral_scepter, item_id: 'astral_scepter', type: 'weapon', slot: 'main_hand', slotRole: 'equipment' };
     const res = InventorySystem.swapKeyedItem(player, 'backpack:0', 'Digit1');
     assert.equal(res.success, false);
     assert.equal(player.action_bar[0], null, 'active slot stays empty');
+  });
+
+  it('routes an active-role item (torch) into an active slot', () => {
+    const player = createPlayer('fighter');
+    player.backpack[0] = { ...ITEMS_CATALOG.torch, item_id: 'torch', quantity: 1 };
+    const res = InventorySystem.swapKeyedItem(player, 'backpack:0', 'Digit1');
+    assert.equal(res.success, true);
+    assert.equal(player.action_bar[0].item_id, 'torch');
   });
 });
 
@@ -222,10 +235,11 @@ describe('LIV-22 #7 healing springs', () => {
 });
 
 describe('LIV-22 #2 HP/MP bars', () => {
-  it('exposes allocation-free bar tokens in ui.json', () => {
-    assert.ok(UI_CATALOG.hud.barWidthPx > 0);
-    assert.ok(UI_CATALOG.hud.barHeightPx > 0);
-    assert.ok(UI_CATALOG.hud.hpColor);
-    assert.ok(UI_CATALOG.hud.mpColor);
+  it('exposes allocation-free bar tokens in ui.json.entityBars', () => {
+    assert.ok(UI_CATALOG.entityBars.widthPx > 0);
+    assert.ok(UI_CATALOG.entityBars.heightPx > 0);
+    assert.ok(UI_CATALOG.entityBars.hpFill);
+    assert.ok(UI_CATALOG.entityBars.mpFill);
+    assert.equal(UI_CATALOG.entityBars.enemyShowWhen, 'damaged');
   });
 });

@@ -21,7 +21,9 @@
     "renderTheme": {
       "primary": "#5c2d91",
       "accent": "#ffd700",
-      "secondary": "#7a3cb8"
+      "secondary": "#7a3cb8",
+      "classLabel": "M",
+      "classGlyphSvgCode": "1F9D9"
     },
     "solidEquipment": {
       "main_hand": "astral_scepter",
@@ -53,7 +55,9 @@
     "renderTheme": {
       "primary": "#15803d",
       "accent": "#854d0e",
-      "secondary": "#166534"
+      "secondary": "#166534",
+      "classLabel": "A",
+      "classGlyphSvgCode": "1F3F9"
     },
     "solidEquipment": {
       "main_hand": "composite_bow",
@@ -85,7 +89,9 @@
     "renderTheme": {
       "primary": "#475569",
       "accent": "#94a3b8",
-      "secondary": "#334155"
+      "secondary": "#334155",
+      "classLabel": "F",
+      "classGlyphSvgCode": "2694"
     },
     "solidEquipment": {
       "main_hand": "tempered_broadsword",
@@ -117,7 +123,9 @@
     "renderTheme": {
       "primary": "#0284c7",
       "accent": "#f59e0b",
-      "secondary": "#0369a1"
+      "secondary": "#0369a1",
+      "classLabel": "P",
+      "classGlyphSvgCode": "1F6E1"
     },
     "solidEquipment": {
       "main_hand": "consecrated_warhammer",

@@ -758,3 +758,197 @@
   height: 2.5rem;
   filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.8));
 }
+
+/* ==========================================================================
+   D1 §2 Loadout + Backpack presentation (LIV-25)
+   ========================================================================== */
+
+.loadout-grid {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+}
+
+.loadout-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 6px 3px 3px;
+  background-color: var(--slot-bg);
+  border: 1px solid var(--slot-border);
+  border-radius: var(--slot-radius);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.loadout-slot:hover,
+.loadout-slot:focus-visible {
+  border-color: var(--slot-border-hover);
+  background-color: var(--slot-bg-hover);
+}
+
+.loadout-slot.slot-empty {
+  border-style: dashed;
+  border-color: var(--slot-empty-border);
+}
+
+.loadout-slot.slot-empty .key-badge {
+  opacity: 0.4;
+}
+
+.loadout-slot .key-badge {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--slot-key-badge);
+  z-index: 2;
+}
+
+.loadout-slot .slot-class-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.loadout-slot .slot-class-badge.visible {
+  opacity: 0.9;
+}
+
+.loadout-slot .slot-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  font-size: 20px;
+  margin-top: 6px;
+}
+
+.loadout-slot .slot-content .openmoji-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.loadout-slot .slot-name {
+  max-width: 100%;
+  font-size: 0.62rem;
+  text-align: center;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loadout-slot .item-qty {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--blue-accent);
+}
+
+/* Named slot states (D1 §2.3) */
+.loadout-slot.slot-dragging,
+.backpack-slot.slot-dragging {
+  opacity: 0.35;
+}
+
+.loadout-slot.drop-valid,
+.backpack-slot.drop-valid {
+  border-color: var(--slot-drop-valid);
+  background-color: #1b1e2c;
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.loadout-slot.drop-invalid,
+.backpack-slot.drop-invalid {
+  border-color: var(--slot-drop-invalid);
+  cursor: no-drop;
+}
+
+.loadout-slot.slot-selected,
+.backpack-slot.slot-selected {
+  border-color: var(--gold-accent);
+  box-shadow: 0 0 0 2px var(--gold-accent-soft);
+}
+
+.loadout-slot.slot-shake,
+.backpack-slot.slot-shake {
+  animation: slot-shake 0.2s;
+}
+
+@keyframes slot-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* Class colorways (D1 §6.4): never color alone — the class glyph badge carries it too */
+.loadout-slot.voc-fighter, .backpack-slot.voc-fighter { border-left: 3px solid var(--class-fighter); }
+.loadout-slot.voc-paladin, .backpack-slot.voc-paladin { border-left: 3px solid var(--class-paladin); }
+.loadout-slot.voc-magician, .backpack-slot.voc-magician { border-left: 3px solid var(--class-magician); }
+.loadout-slot.voc-archer, .backpack-slot.voc-archer { border-left: 3px solid var(--class-archer); }
+.loadout-slot.voc-neutral, .backpack-slot.voc-neutral { border-left: 3px solid var(--class-neutral); }
+
+/* One reusable drag ghost (D1 §2.4) */
+.slot-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.85;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  display: none;
+}
+
+.slot-drag-ghost .openmoji-icon {
+  width: 40px;
+  height: 40px;
+}
+
+/* Compact 6x6 bank per D1 §2.2 */
+.backpack-slot {
+  min-height: 48px;
+  padding: 3px 2px;
+}
+
+.backpack-slot .slot-content {
+  height: 24px;
+  margin-top: 2px;
+}
+
+.backpack-slot .slot-content .openmoji-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.backpack-slot .slot-class-badge {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.backpack-slot .slot-class-badge.visible {
+  opacity: 0.85;
+}

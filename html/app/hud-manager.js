@@ -1,10 +1,16 @@
 /**
  * Lokarta: Come Into The Light - HUD & Interface Manager
+ *
+ * D1 §2 presentation: one Loadout panel (`#loadout-container`) with a 4+4 keyed
+ * grid (active `1-4` above equipment `q w e r`) and one 6x6 Backpack grid.
+ * Skeleton is built once, then diffed; a single delegated pointer listener on
+ * `#sidebar-hud` drives both drag and click-to-swap.
  */
 
-import { GestureEngine, InventorySystem, LightingSystem, DoorSystem } from '../engine/index.js';
+import { InventorySystem, LightingSystem, DoorSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
-import { ITEMS_CATALOG, DOORS_CATALOG } from '../data/index.js';
+import { ITEMS_CATALOG, DOORS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
+import { EQUIPMENT_KEY_MAP, ACTIVE_SLOT_KEYS, INVENTORY_CONFIG } from '../engine/config.js';
 
 const EMOJI_TO_SVG_MAP = {
   '🧪': '1F9EA',
@@ -40,82 +46,195 @@ const EMOJI_TO_SVG_MAP = {
   '⭐': '2B50',
 };
 
+const CLASS_TINT_CLASSES = ['voc-fighter', 'voc-paladin', 'voc-magician', 'voc-archer', 'voc-neutral'];
+const NEUTRAL_CLASS = { classLabel: 'N', classGlyphSvgCode: '1F4E6' };
+
 export class HUDManager {
+  /**
+   * Binds one delegated pointer listener on the sidebar root for every slot
+   * interaction (D1 §2.1). Safe to call repeatedly.
+   */
   static bindHUDEvents(elements, app) {
     if (!elements) return;
-    const { paperdollEl, backpackEl } = elements;
+    const root = elements.sidebarEl || elements.loadoutEl || elements.backpackEl;
+    if (!root || root._boundSlotPointer) return;
+    root._boundSlotPointer = true;
+    root.addEventListener('pointerdown', e => HUDManager._onPointerDown(app, e));
+    root.addEventListener('pointermove', e => HUDManager._onPointerMove(app, e));
+    root.addEventListener('pointerup', e => HUDManager._onPointerUp(app, e));
+    root.addEventListener('dblclick', e => HUDManager._onDoubleClick(app, e));
+    root.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const slot = e.target.closest('.loadout-slot, .backpack-slot');
+      if (!slot) return;
+      e.preventDefault();
+      const ctx = HUDManager._slotContext(slot);
+      if (!ctx) return;
+      HUDManager._handleSlotActivate(app, ctx, e.target);
+    });
+  }
 
-    // Keyed slots (8): click to select/swap with a previously selected slot.
-    if (paperdollEl && !paperdollEl._boundKeyed) {
-      paperdollEl._boundKeyed = true;
-      paperdollEl.addEventListener('click', e => {
-        const slot = e.target.closest('.keyed-slot');
-        if (!slot) return;
-        const keyed = slot.getAttribute('data-keyed');
-        HUDManager.handleSlotSelect(app, { source: 'keyed', keyed });
-      });
+  // ---- Slot descriptors & item lookup -------------------------------------
+
+  static _slotContext(el) {
+    if (!el) return null;
+    if (el.classList.contains('loadout-slot')) return { source: 'loadout', ref: el.getAttribute('data-ref'), el };
+    if (el.classList.contains('backpack-slot')) return { source: 'backpack', ref: el.getAttribute('data-ref'), el };
+    return null;
+  }
+
+  static _itemAt(app, ref) {
+    const info = InventorySystem.resolveKeyedSlot(app.player, ref);
+    return info ? InventorySystem._readRef(app.player, info) : null;
+  }
+
+  // ---- Pointer drag + click-to-swap (D1 §2.4) -----------------------------
+
+  static _ghost() {
+    let ghost = document.getElementById('slot-drag-ghost');
+    if (!ghost) {
+      ghost = document.createElement('div');
+      ghost.id = 'slot-drag-ghost';
+      ghost.className = 'slot-drag-ghost';
+      (document.getElementById('app') || document.body).appendChild(ghost);
     }
+    return ghost;
+  }
 
-    // Backpack (36 slots): click to select/swap; double-click to use/equip.
-    if (backpackEl && !backpackEl._boundBackpack) {
-      backpackEl._boundBackpack = true;
-      backpackEl.addEventListener('click', e => {
-        const slot = e.target.closest('.backpack-slot');
-        if (!slot) return;
-        const index = parseInt(slot.getAttribute('data-index') || '-1', 10);
-        if (index < 0) return;
-        HUDManager.handleSlotSelect(app, { source: 'backpack', index });
-      });
-      backpackEl.addEventListener('dblclick', e => {
-        const slot = e.target.closest('.backpack-slot');
-        if (!slot) return;
-        const index = parseInt(slot.getAttribute('data-index') || '-1', 10);
-        if (index < 0) return;
-        const res = InventorySystem.useBackpackItem(app.player, index);
-        if (res.success) {
-          soundFX.play('equip');
-          app.logCombat(res.message, 'loot');
-          app.updateHUD();
-          app.persistSave();
-        } else {
-          app.logCombat(res.message, 'warning');
-        }
-      });
+  static _moveGhost(clientX, clientY) {
+    const ghost = HUDManager._ghost();
+    ghost.style.left = `${clientX}px`;
+    ghost.style.top = `${clientY}px`;
+  }
+
+  static _clearDropHints() {
+    document.querySelectorAll('.drop-valid, .drop-invalid').forEach(el => {
+      el.classList.remove('drop-valid', 'drop-invalid');
+    });
+  }
+
+  static _clearSelection(app) {
+    app._selectedSlot = null;
+    document.querySelectorAll('.slot-selected').forEach(el => el.classList.remove('slot-selected'));
+  }
+
+  static _highlightSelection(app, ref) {
+    document.querySelectorAll('.slot-selected').forEach(el => el.classList.remove('slot-selected'));
+    document.querySelector(`.loadout-slot[data-ref="${ref}"], .backpack-slot[data-ref="${ref}"]`)?.classList.add('slot-selected');
+  }
+
+  static _onPointerDown(app, e) {
+    if (app.isPaused || !app.isInGameplay) return;
+    const slot = e.target.closest('.loadout-slot, .backpack-slot');
+    if (!slot) return;
+    const ctx = HUDManager._slotContext(slot);
+    if (!ctx) return;
+    const item = HUDManager._itemAt(app, ctx.ref);
+    app._drag = {
+      ref: ctx.ref,
+      el: slot,
+      item,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+      pointerId: e.pointerId,
+    };
+    if (item) {
+      slot.classList.add('slot-dragging');
+      const ghost = HUDManager._ghost();
+      ghost.innerHTML = HUDManager.renderItemIcon(item);
+      ghost.style.display = 'block';
+      HUDManager._moveGhost(e.clientX, e.clientY);
     }
   }
 
-  /**
-   * Click-to-swap selection flow. A first click selects a source slot and
-   * highlights it; a second click on a different slot requests a swap (banked
-   * item -> any of the 8 keyed slots, or a keyed item -> backpack).
-   */
-  static handleSlotSelect(app, target) {
-    if (!app) return;
-    const current = app._selectedSlot || null;
+  static _onPointerMove(app, e) {
+    const drag = app._drag;
+    if (!drag) return;
+    if (!drag.moved && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 5) {
+      drag.moved = true;
+    }
+    if (!drag.moved || !drag.item) return;
+    HUDManager._moveGhost(e.clientX, e.clientY);
+    HUDManager._clearDropHints();
+    const under = document.elementFromPoint(e.clientX, e.clientY)?.closest('.loadout-slot, .backpack-slot');
+    if (under && under !== drag.el) {
+      const ctx = HUDManager._slotContext(under);
+      if (ctx) {
+        const check = InventorySystem.validateMove(app.player, drag.ref, ctx.ref);
+        under.classList.add(check.valid ? 'drop-valid' : 'drop-invalid');
+      }
+    }
+  }
 
-    if (!current) {
-      app._selectedSlot = target;
-      HUDManager._highlightSelection(app, target);
+  static _onPointerUp(app, e) {
+    const drag = app._drag;
+    app._drag = null;
+    HUDManager._clearDropHints();
+    if (drag?.el) drag.el.classList.remove('slot-dragging');
+    const ghost = document.getElementById('slot-drag-ghost');
+    if (ghost) ghost.style.display = 'none';
+
+    if (drag && drag.moved && drag.item) {
+      const under = document.elementFromPoint(e.clientX, e.clientY)?.closest('.loadout-slot, .backpack-slot');
+      const ctx = under ? HUDManager._slotContext(under) : null;
+      if (ctx && ctx.ref !== drag.ref) HUDManager._commitMove(app, drag.ref, ctx.ref, ctx.el);
+      HUDManager._clearSelection(app);
       return;
     }
 
-    // Clicking the same slot again clears the selection.
-    const same = current.source === target.source
-      && (current.source === 'keyed' ? current.keyed === target.keyed : current.index === target.index);
-    if (same) {
-      app._selectedSlot = null;
-      HUDManager._highlightSelection(app, null);
+    const slot = e.target.closest('.loadout-slot, .backpack-slot') || drag?.el;
+    if (!slot) return;
+    const ctx = HUDManager._slotContext(slot);
+    if (!ctx) return;
+    HUDManager._handleSlotActivate(app, ctx, slot);
+  }
+
+  /** Click / Enter activation: select a source, or resolve a pending move. */
+  static _handleSlotActivate(app, ctx, slotEl) {
+    const selected = app._selectedSlot;
+    if (selected && selected.ref !== ctx.ref) {
+      HUDManager._commitMove(app, selected.ref, ctx.ref, slotEl);
+      HUDManager._clearSelection(app);
       return;
     }
+    if (selected && selected.ref === ctx.ref) {
+      HUDManager._clearSelection(app);
+      return;
+    }
+    if (HUDManager._itemAt(app, ctx.ref)) {
+      app._selectedSlot = { ref: ctx.ref };
+      HUDManager._highlightSelection(app, ctx.ref);
+    }
+  }
 
-    // Only a banked (backpack) <-> keyed swap is supported by the bank rule.
-    const from = current.source === 'backpack' ? `backpack:${current.index}` : current.keyed;
-    const to = target.source === 'backpack' ? `backpack:${target.index}` : target.keyed;
+  static _commitMove(app, from, to, targetEl) {
     const res = InventorySystem.swapKeyedItem(app.player, from, to);
+    if (res.success) {
+      soundFX.play('equip');
+      app.logCombat(res.message, 'loot');
+      app.updateHUD();
+      app.persistSave();
+      return;
+    }
+    soundFX.play('uiDenied');
+    app.logCombat(res.message, 'warning');
+    if (targetEl) {
+      targetEl.classList.remove('slot-shake');
+      // Force reflow so the shake animation replays on consecutive rejects.
+      void targetEl.offsetWidth;
+      targetEl.classList.add('slot-shake');
+      setTimeout(() => targetEl.classList.remove('slot-shake'), 220);
+    }
+  }
 
-    app._selectedSlot = null;
-    HUDManager._highlightSelection(app, null);
-
+  static _onDoubleClick(app, e) {
+    if (app.isPaused || !app.isInGameplay) return;
+    const slot = e.target.closest('.backpack-slot');
+    if (!slot) return;
+    const index = parseInt(slot.getAttribute('data-index') || '-1', 10);
+    if (index < 0) return;
+    const res = InventorySystem.useBackpackItem(app.player, index);
     if (res.success) {
       soundFX.play('equip');
       app.logCombat(res.message, 'loot');
@@ -126,21 +245,13 @@ export class HUDManager {
     }
   }
 
-  static _highlightSelection(app, target) {
-    const root = app.modalOverlayEl ? document : document;
-    root.querySelectorAll('.keyed-slot.selected, .backpack-slot.selected').forEach(el => el.classList.remove('selected'));
-    if (!target) return;
-    const selector = target.source === 'backpack'
-      ? `.backpack-slot[data-index="${target.index}"]`
-      : `.keyed-slot[data-keyed="${target.keyed}"]`;
-    document.querySelector(selector)?.classList.add('selected');
-  }
+  // ---- Render -------------------------------------------------------------
 
   static updateHUD(elements, app) {
     HUDManager.bindHUDEvents(elements, app);
-    const { statusBarsEl, paperdollEl, backpackEl } = elements;
+    const { statusBarsEl, loadoutEl, backpackEl } = elements;
     HUDManager.renderStatusBars(statusBarsEl, app.player, app.currentFloorName);
-    HUDManager.renderKeyedSlots(paperdollEl, app);
+    HUDManager.renderLoadout(loadoutEl, app);
     HUDManager.renderBackpack(backpackEl, app);
   }
 
@@ -216,14 +327,6 @@ export class HUDManager {
     `;
   }
 
-  /**
-   * Renders the three per-level key indicators for the current floor: one icon
-   * per authored gate tier, greyed-out until the player earns that level's key
-   * (then colored-in). Keys are per-level and come from `player.levelKeys`, not
-   * the inventory (LIV-16).
-   * @param {object} player
-   * @returns {string} HTML for the key row
-   */
   static renderKeyIndicators(player) {
     const floor = player?.current_floor || 1;
     const tiers = DoorSystem.tiers();
@@ -231,7 +334,6 @@ export class HUDManager {
 
     const icons = tiers.map(tier => {
       const earned = DoorSystem.hasKey(player, tier, floor);
-      // Prefer an authored key item icon; fall back to the door accent glyph.
       const keyItemId = DoorSystem.keyItemForTier(tier);
       const catalogItem = keyItemId ? ITEMS_CATALOG[keyItemId] : null;
       const accent = DOORS_CATALOG?.[tier]?.accent || '#94a3b8';
@@ -255,117 +357,67 @@ export class HUDManager {
   }
 
   /**
-   * The 8 keyed slots (LIV-22 item 1): `q w e r` equipment row with the four
-   * active items (`1 2 3 4`) drawn directly above it. Slots are mouse
-   * drop/swap targets; rendering is skeleton-once + selective diff.
+   * The Loadout panel (D1 §2): row 1 active `1-4`, row 2 equipment `q w e r`.
+   * Skeleton built once; slots diffed via classList/textContent only.
    */
-  static renderKeyedSlots(paperdollEl, app) {
-    if (!paperdollEl) return;
-    HUDManager.bindHUDEvents({ paperdollEl }, app);
-    const paperdoll = app.player.paperdoll || {};
-    const actionBar = app.player.action_bar || [];
+  static renderLoadout(loadoutEl, app) {
+    if (!loadoutEl) return;
+    const loadout = UI_CATALOG?.hud?.loadout || {};
+    const activeKeys = Array.isArray(loadout.activeKeys) && loadout.activeKeys.length ? loadout.activeKeys : ACTIVE_SLOT_KEYS;
+    const equipmentKeys = Array.isArray(loadout.equipmentKeys) && loadout.equipmentKeys.length ? loadout.equipmentKeys : Object.keys(EQUIPMENT_KEY_MAP);
+    const columns = Number(loadout.columns) || 4;
 
-    const equipmentSlots = [
-      { key: 'main_hand', hotkey: 'q', label: 'Main Hand', placeholder: '2694' },
-      { key: 'off_hand', hotkey: 'w', label: 'Off Hand', placeholder: '1F6E1' },
-      { key: 'armor', hotkey: 'e', label: 'Armor', placeholder: '1F9BA' },
-      { key: 'relic', hotkey: 'r', label: 'Relic', placeholder: '1F4FF' },
-    ];
-
-    let grid = paperdollEl.querySelector('.keyed-slots-grid');
+    let grid = loadoutEl.querySelector('.loadout-grid');
     if (!grid) {
-      let html = `
-        <div class="panel-header">KEYED SLOTS (EQUIPMENT &amp; ACTIVE)</div>
-        <div class="keyed-slots-grid">
-          <div class="keyed-row keyed-active-row">
-      `;
-      for (let i = 0; i < 4; i++) {
-        html += `
-            <div class="keyed-slot active-slot" data-keyed="active_${i}" data-kind="active" data-index="${i}" title="Active Slot ${i + 1}">
-              <div class="keyed-slot-key">${i + 1}</div>
-              <div class="keyed-slot-content"></div>
-              <div class="keyed-slot-name">Empty</div>
-            </div>`;
-      }
-      html += `
-          </div>
-          <div class="keyed-row keyed-equip-row">
-      `;
-      for (const slot of equipmentSlots) {
-        html += `
-            <div class="keyed-slot equip-slot" data-keyed="${slot.key}" data-kind="equipment" data-slot="${slot.key}" title="${slot.label}">
-              <div class="keyed-slot-key">${slot.hotkey}</div>
-              <div class="keyed-slot-content"><span class="empty-icon"><img class="openmoji-icon placeholder" src="./assets/openmoji/${slot.placeholder}.svg" alt="${slot.label}" /></span></div>
-              <div class="keyed-slot-name">Empty</div>
-            </div>`;
-      }
-      html += `
-          </div>
-        </div>
-      `;
-      paperdollEl.innerHTML = html;
-      grid = paperdollEl.querySelector('.keyed-slots-grid');
+      const activeHtml = activeKeys.map((key, i) => `
+        <button class="loadout-slot active-slot slot-empty" type="button" data-ref="active:${i}" data-slot="active_${i}" data-kind="active" data-index="${i}" data-key="${key}" aria-label="Active slot ${key}">
+          <span class="key-badge">${key}</span>
+          <span class="slot-class-badge" aria-hidden="true"></span>
+          <span class="slot-content"></span>
+          <span class="slot-name"></span>
+          <span class="item-qty"></span>
+          <span class="cooldown-overlay" style="display:none;"></span>
+        </button>`).join('');
+      const equipHtml = equipmentKeys.map(key => {
+        const slotName = EQUIPMENT_KEY_MAP[key] || key;
+        const label = HUDManager.slotLabel(slotName);
+        return `
+        <button class="loadout-slot equip-slot slot-empty" type="button" data-ref="${slotName}" data-slot="${slotName}" data-kind="equipment" data-key="${key}" aria-label="${label}, key ${key.toUpperCase()}">
+          <span class="key-badge">${String(key).toUpperCase()}</span>
+          <span class="slot-class-badge" aria-hidden="true"></span>
+          <span class="slot-content"></span>
+          <span class="slot-name"></span>
+          <span class="item-qty"></span>
+          <span class="cooldown-overlay" style="display:none;"></span>
+        </button>`;
+      }).join('');
+      loadoutEl.innerHTML = `
+        <div class="panel-header">LOADOUT <span class="slot-count">${activeKeys.length + equipmentKeys.length} KEYED</span></div>
+        <div class="loadout-grid" style="grid-template-columns: repeat(${columns}, 1fr);">
+          ${activeHtml}${equipHtml}
+        </div>`;
+      grid = loadoutEl.querySelector('.loadout-grid');
     }
 
-    const paint = (el, item, hotkey) => {
-      const isOccupied = Boolean(item);
-      el.classList.toggle('occupied', isOccupied);
-      const nameEl = el.querySelector('.keyed-slot-name');
-      const newName = isOccupied ? item.name : 'Empty';
-      if (nameEl && nameEl.textContent !== newName) nameEl.textContent = newName;
-
-      const contentEl = el.querySelector('.keyed-slot-content');
-      const newIcon = isOccupied ? HUDManager.renderItemIcon(item) : '';
-      if (contentEl && contentEl.dataset.iconItem !== (item?.item_id || '')) {
-        contentEl.innerHTML = newIcon;
-        contentEl.dataset.iconItem = item?.item_id || '';
+    const paperdoll = app.player.paperdoll || {};
+    const actionBar = app.player.action_bar || [];
+    grid.querySelectorAll('.loadout-slot').forEach(el => {
+      const kind = el.getAttribute('data-kind');
+      if (kind === 'active') {
+        const i = parseInt(el.getAttribute('data-index') || '-1', 10);
+        HUDManager._paintSlot(el, actionBar[i] || null);
+      } else {
+        const slotName = el.getAttribute('data-slot');
+        HUDManager._paintSlot(el, paperdoll[slotName] || null);
       }
-
-      const qty = isOccupied && item.quantity > 1 ? `x${item.quantity}` : '';
-      let qtyEl = el.querySelector('.keyed-slot-qty');
-      if (qty) {
-        if (!qtyEl) {
-          qtyEl = document.createElement('div');
-          qtyEl.className = 'keyed-slot-qty';
-          el.appendChild(qtyEl);
-        }
-        if (qtyEl.textContent !== qty) qtyEl.textContent = qty;
-      } else if (qtyEl) {
-        qtyEl.remove();
-      }
-
-      const cost = isOccupied && item.manaCost ? `${item.manaCost} MP` : '';
-      let costEl = el.querySelector('.keyed-slot-cost');
-      if (cost) {
-        if (!costEl) {
-          costEl = document.createElement('div');
-          costEl.className = 'keyed-slot-cost';
-          el.appendChild(costEl);
-        }
-        if (costEl.textContent !== cost) costEl.textContent = cost;
-      } else if (costEl) {
-        costEl.remove();
-      }
-      el.title = isOccupied ? `${item.name} [${hotkey}]` : `${hotkey} (Empty)`;
-    };
-
-    grid.querySelectorAll('.keyed-slot[data-kind="active"]').forEach(el => {
-      const idx = parseInt(el.getAttribute('data-index') || '-1', 10);
-      paint(el, actionBar[idx] || null, String(idx + 1));
-    });
-    grid.querySelectorAll('.keyed-slot[data-kind="equipment"]').forEach(el => {
-      const slot = el.getAttribute('data-slot');
-      const hotkey = el.querySelector('.keyed-slot-key')?.textContent || '';
-      paint(el, paperdoll[slot] || null, hotkey);
     });
   }
 
   static renderBackpack(backpackEl, app) {
     if (!backpackEl) return;
-    HUDManager.bindHUDEvents({ backpackEl }, app);
-    const layout = UI_CATALOG?.inventory || {};
-    const columns = Number(layout.backpackColumns) || 6;
-    const total = Number(layout.backpackSlots) || 36;
+    const layout = UI_CATALOG?.inventory?.backpack || {};
+    const columns = Number(layout.columns) || INVENTORY_CONFIG.BACKPACK_COLUMNS;
+    const total = Number(layout.defaultSlots) || INVENTORY_CONFIG.BACKPACK_SLOTS;
     const backpack = app.player.backpack || new Array(total).fill(null);
     const occupiedCount = backpack.filter(Boolean).length;
 
@@ -373,17 +425,17 @@ export class HUDManager {
     if (!grid) {
       let html = `
         <div class="panel-header">
-          <span>BACKPACK (${total} SLOTS)</span>
+          <span>BACKPACK</span>
           <span class="slot-count" id="backpack-slot-count">${occupiedCount}/${total}</span>
         </div>
-        <div class="backpack-slots-grid" style="grid-template-columns: repeat(${columns}, 1fr);">
-      `;
+        <div class="backpack-slots-grid backpack-6x6" style="grid-template-columns: repeat(${columns}, 1fr);">`;
       for (let i = 0; i < total; i++) {
         html += `
-          <div class="backpack-slot" data-index="${i}" data-container="backpack" title="Backpack Slot ${i + 1} (Empty)">
-            <div class="slot-num">#${i + 1}</div>
-            <div class="slot-content"></div>
-          </div>`;
+          <button class="backpack-slot slot-empty" type="button" data-ref="backpack:${i}" data-index="${i}" aria-label="Backpack slot ${i + 1}">
+            <span class="slot-class-badge" aria-hidden="true"></span>
+            <span class="slot-content"></span>
+            <span class="item-qty"></span>
+          </button>`;
       }
       html += `</div>`;
       backpackEl.innerHTML = html;
@@ -398,118 +450,85 @@ export class HUDManager {
 
     grid.querySelectorAll('.backpack-slot').forEach(el => {
       const i = parseInt(el.getAttribute('data-index') || '-1', 10);
-      const item = backpack[i] || null;
-      const isOccupied = item !== null;
-      el.classList.toggle('occupied', isOccupied);
-      el.classList.toggle('empty', !isOccupied);
-
-      const contentEl = el.querySelector('.slot-content');
-      const newIcon = isOccupied ? HUDManager.renderItemIcon(item) : '';
-      if (contentEl && contentEl.dataset.iconItem !== (item?.item_id || '')) {
-        contentEl.innerHTML = newIcon;
-        contentEl.dataset.iconItem = item?.item_id || '';
-      }
-
-      let qtyEl = el.querySelector('.item-qty');
-      const qty = isOccupied && item.quantity > 1 ? `x${item.quantity}` : '';
-      if (qty) {
-        if (!qtyEl) {
-          qtyEl = document.createElement('div');
-          qtyEl.className = 'item-qty';
-          el.appendChild(qtyEl);
-        }
-        if (qtyEl.textContent !== qty) qtyEl.textContent = qty;
-      } else if (qtyEl) {
-        qtyEl.remove();
-      }
-
-      el.title = isOccupied
-        ? `${item.name} (${item.type})${item.quantity > 1 ? ` x${item.quantity}` : ''}`
-        : `Backpack Slot ${i + 1} (Empty)`;
+      HUDManager._paintSlot(el, backpack[i] || null);
     });
   }
 
-  static renderHotbar(hotbarEl, app) {
-    if (!hotbarEl) return;
-    HUDManager.bindHUDEvents({ hotbarEl }, app);
-    const actionBar = app.player.action_bar || Array(10).fill(null);
+  /** Diffs one slot element to an item (or null) without rebuilding DOM. */
+  static _paintSlot(el, item) {
+    const isOccupied = Boolean(item);
+    el.classList.toggle('slot-empty', !isOccupied);
+    el.classList.toggle('slot-occupied', isOccupied);
 
-    let grid = hotbarEl.querySelector('.action-slots-grid');
-    if (!grid) {
-      let html = `
-        <div class="panel-header">ACTIONS & ABILITIES (KEYS 1-9, 0)</div>
-        <div class="action-slots-container">
-          <div class="action-slots-grid">
-      `;
+    // Key badge stays constant; class tint + glyph reflect the item.
+    el.classList.remove(...CLASS_TINT_CLASSES);
+    const classInfo = HUDManager._classInfo(item);
+    if (isOccupied) el.classList.add(`voc-${classInfo.key}`);
 
-      for (let i = 0; i < 10; i++) {
-        const hotkey = GestureEngine.slotIndexToHotkey(i);
-        html += `
-          <button class="action-slot-btn" data-slot-index="${i}">
-            <div class="hotkey-badge">[${hotkey}]</div>
-            <div class="btn-icon">•</div>
-            <div class="btn-name">Empty</div>
-            <div class="btn-cost"></div>
-            <div class="cooldown-overlay" style="display:none;"></div>
-            <div class="charge-bar-track"><div class="charge-fill"></div></div>
-          </button>
-        `;
-      }
-
-      html += `
-          </div>
-        </div>
-      `;
-
-      hotbarEl.innerHTML = html;
-      grid = hotbarEl.querySelector('.action-slots-grid');
+    const classBadge = el.querySelector('.slot-class-badge');
+    if (classBadge) {
+      const next = isOccupied ? classInfo.label : '';
+      if (classBadge.textContent !== next) classBadge.textContent = next;
+      classBadge.classList.toggle('visible', isOccupied);
     }
 
-    const actionSlotButtons = grid.querySelectorAll('.action-slot-btn');
-    actionSlotButtons.forEach((btn, i) => {
-      const item = actionBar[i] || null;
-      const hotkey = GestureEngine.slotIndexToHotkey(i);
-      const isOccupied = item !== null;
-      const cdKey = item?.item_id?.replace('spell_', '') || '';
-      const cd = app.player.cooldowns?.[cdKey] || 0;
-      const isOnCooldown = cd > 0;
+    const contentEl = el.querySelector('.slot-content');
+    if (contentEl && contentEl.dataset.iconItem !== (item?.item_id || '')) {
+      contentEl.innerHTML = isOccupied ? HUDManager.renderItemIcon(item) : '';
+      contentEl.dataset.iconItem = item?.item_id || '';
+    }
 
-      const title = isOccupied
-        ? `${item.name} [${hotkey}] (${item.type}) - Tap / Hold / Double-Tap`
-        : `Slot [${hotkey}] (Empty)`;
+    const nameEl = el.querySelector('.slot-name');
+    if (nameEl) {
+      const next = isOccupied ? item.name : 'Empty';
+      if (nameEl.textContent !== next) nameEl.textContent = next;
+    }
 
-      btn.title = title;
-      btn.classList.toggle('on-cooldown', isOnCooldown);
+    const qtyEl = el.querySelector('.item-qty');
+    if (qtyEl) {
+      const qty = isOccupied && item.quantity > 1 ? `x${item.quantity}` : '';
+      if (qtyEl.textContent !== qty) qtyEl.textContent = qty;
+    }
 
-      const iconEl = btn.querySelector('.btn-icon');
-      if (iconEl) {
-        const newIconHtml = isOccupied ? HUDManager.renderItemIcon(item) : '•';
-        if (iconEl.innerHTML !== newIconHtml) iconEl.innerHTML = newIconHtml;
-      }
+    el.title = HUDManager._tooltip(item);
+  }
 
-      const nameEl = btn.querySelector('.btn-name');
-      if (nameEl) {
-        const newName = isOccupied ? item.name : 'Empty';
-        if (nameEl.textContent !== newName) nameEl.textContent = newName;
-      }
+  static _classInfo(item) {
+    if (!item) return { key: 'neutral', label: '', glyph: NEUTRAL_CLASS.classGlyphSvgCode };
+    const affinity = item.vocationAffinity || ITEMS_CATALOG[item.item_id]?.vocationAffinity;
+    let key = 'neutral';
+    if (affinity && affinity !== 'neutral') {
+      key = Array.isArray(affinity) ? (affinity[0] || 'neutral') : affinity;
+    }
+    const theme = VOCATIONS_CATALOG?.[key]?.renderTheme || NEUTRAL_CLASS;
+    return {
+      key,
+      label: theme.classLabel || key.charAt(0).toUpperCase(),
+      glyph: theme.classGlyphSvgCode || NEUTRAL_CLASS.classGlyphSvgCode,
+    };
+  }
 
-      const costEl = btn.querySelector('.btn-cost');
-      if (costEl) {
-        const newCost = isOccupied ? (item.quantity > 1 ? `x${item.quantity}` : (item.manaCost ? `${item.manaCost} MP` : 'Ready')) : '';
-        if (costEl.textContent !== newCost) costEl.textContent = newCost;
-      }
+  static slotLabel(slotName) {
+    const map = { main_hand: 'Main hand', off_hand: 'Off hand', armor: 'Armor', relic: 'Relic' };
+    return map[slotName] || String(slotName || '').replace('_', ' ');
+  }
 
-      const cdEl = btn.querySelector('.cooldown-overlay');
-      if (cdEl) {
-        if (isOnCooldown) {
-          cdEl.style.display = '';
-          const newCd = `${cd.toFixed(1)}s`;
-          if (cdEl.textContent !== newCd) cdEl.textContent = newCd;
-        } else {
-          cdEl.style.display = 'none';
-        }
-      }
-    });
+  static _tooltip(item) {
+    if (!item) return 'Empty';
+    const catalog = ITEMS_CATALOG[item.item_id] || {};
+    const lines = [item.name];
+    const classInfo = HUDManager._classInfo(item);
+    if (classInfo.key !== 'neutral') lines.push(`Class: ${classInfo.key}`);
+    lines.push(`Slot: ${HUDManager.slotLabel(item.slot || catalog.slot || catalog.type || '')}`);
+    if (item.itemLevel > 1) lines.push(`Rank ${item.itemLevel}/5`);
+    if (item.damageMin || item.damageMax) lines.push(`Damage: ${item.damageMin || 0}–${item.damageMax || 0}`);
+    if (item.stat_bonus) lines.push(`Power: +${item.stat_bonus}`);
+    if (item.manaCost) lines.push(`Mana: ${item.manaCost}`);
+    if (item.hpBonus) lines.push(`+${item.hpBonus} Max HP`);
+    if (item.manaBonus) lines.push(`+${item.manaBonus} Max MP`);
+    const actionKey = item.actionKey || catalog.actionKey;
+    if (actionKey) lines.push(`Ability: ${actionKey.replace(/_/g, ' ')}`);
+    return lines.join('\n');
   }
 
   static emojiToOpenMojiCode(emoji) {

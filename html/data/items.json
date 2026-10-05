@@ -7,7 +7,8 @@
     "lightRadiusBonus": 2,
     "icon": "🔥",
     "svgCode": "1F525",
-    "maxStack": 9
+    "maxStack": 9,
+    "slotRole": "active"
   },
   "health_potion": {
     "item_id": "health_potion",
@@ -17,7 +18,8 @@
     "icon": "🧪",
     "svgCode": "1F9EA",
     "actionKey": "use_health_potion",
-    "maxStack": 9
+    "maxStack": 9,
+    "slotRole": "active"
   },
   "mana_potion": {
     "item_id": "mana_potion",
@@ -27,7 +29,8 @@
     "icon": "🔷",
     "svgCode": "2697",
     "actionKey": "use_mana_potion",
-    "maxStack": 9
+    "maxStack": 9,
+    "slotRole": "active"
   },
   "arrows": {
     "item_id": "arrows",
@@ -36,7 +39,8 @@
     "stat_bonus": 0,
     "icon": "🏹",
     "svgCode": "1F3F9",
-    "maxStack": 99
+    "maxStack": 99,
+    "slotRole": "bank"
   },
   "apprentice_wand": {
     "item_id": "apprentice_wand",
@@ -65,7 +69,8 @@
     },
     "lootTier": 1,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "astral_scepter": {
     "item_id": "astral_scepter",
@@ -89,7 +94,8 @@
     },
     "lootTier": 2,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "wooden_bow": {
     "item_id": "wooden_bow",
@@ -108,7 +114,8 @@
     "maxStack": 1,
     "lootTier": 1,
     "lootTierEligible": true,
-    "legacyTier": true
+    "legacyTier": true,
+    "slotRole": "equipment"
   },
   "composite_bow": {
     "item_id": "composite_bow",
@@ -140,7 +147,8 @@
     },
     "lootTier": 2,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "hunter_quiver": {
     "item_id": "hunter_quiver",
@@ -154,7 +162,8 @@
     "maxStack": 1,
     "lootTier": 1,
     "lootTierEligible": true,
-    "legacyTier": true
+    "legacyTier": true,
+    "slotRole": "equipment"
   },
   "grey_stalker_quiver": {
     "item_id": "grey_stalker_quiver",
@@ -177,7 +186,8 @@
     },
     "lootTier": 2,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "hunter_leathers": {
     "item_id": "hunter_leathers",
@@ -197,7 +207,8 @@
     },
     "lootTier": 1,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "archer_hood": {
     "item_id": "archer_hood",
@@ -219,7 +230,8 @@
     },
     "lootTier": 2,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "tempered_broadsword": {
     "item_id": "tempered_broadsword",
@@ -246,7 +258,8 @@
     },
     "lootTier": 1,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "iron_helm": {
     "item_id": "iron_helm",
@@ -266,7 +279,8 @@
     },
     "lootTier": 1,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "vanguard_shield": {
     "item_id": "vanguard_shield",
@@ -290,7 +304,8 @@
     },
     "lootTier": 2,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "consecrated_warhammer": {
     "item_id": "consecrated_warhammer",
@@ -318,7 +333,8 @@
       "descriptionPattern": "Level Up Consecrated Warhammer (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Holy Strike Damage."
     },
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "slotRole": "equipment"
   },
   "holy_crown": {
     "item_id": "holy_crown",
@@ -340,7 +356,8 @@
     },
     "lootTier": 1,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "aegis_shield": {
     "item_id": "aegis_shield",
@@ -365,7 +382,8 @@
     },
     "lootTier": 2,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "buckler": {
     "item_id": "buckler",
@@ -382,7 +400,8 @@
     "maxStack": 1,
     "lootTier": 1,
     "lootTierEligible": true,
-    "legacyTier": true
+    "legacyTier": true,
+    "slotRole": "equipment"
   },
   "plate_armor": {
     "item_id": "plate_armor",
@@ -405,7 +424,8 @@
     },
     "lootTier": 2,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "apprentice_cape": {
     "item_id": "apprentice_cape",
@@ -426,7 +446,8 @@
     },
     "lootTier": 1,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "relic_luminous_amulet": {
     "item_id": "relic_luminous_amulet",
@@ -449,7 +470,8 @@
     },
     "lootTier": 2,
     "lootTierEligible": true,
-    "solidGear": true
+    "solidGear": true,
+    "slotRole": "equipment"
   },
   "relic_champions_crest": {
     "item_id": "relic_champions_crest",
@@ -465,7 +487,8 @@
     "svgCode": "1F4FF",
     "maxStack": 1,
     "lootTier": 3,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "slotRole": "equipment"
   },
   "spell_wand_spark": {
     "item_id": "spell_wand_spark",
@@ -491,7 +514,8 @@
       "descriptionPattern": "Level Up Spark Wand (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Damage, +1 Targeting Range, +1 MP Cost."
     },
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "slotRole": "equipment"
   },
   "spell_light": {
     "item_id": "spell_light",
@@ -504,7 +528,8 @@
     "icon": "💡",
     "svgCode": "1F4A1",
     "actionKey": "light_spell",
-    "maxStack": 1
+    "maxStack": 1,
+    "slotRole": "active"
   },
   "spell_energy_beam": {
     "item_id": "spell_energy_beam",
@@ -527,7 +552,8 @@
       "descriptionPattern": "Level Up Beam Staff (Rank {prevRank} ➔ {nextRank}): +5 Wave Dmg, +1 Wave Range, +5 MP Cost."
     },
     "lootTier": 2,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "slotRole": "equipment"
   },
   "spell_bow_shot": {
     "item_id": "spell_bow_shot",
@@ -543,7 +569,8 @@
       "item_id": "arrows",
       "quantity": 20
     },
-    "maxStack": 1
+    "maxStack": 1,
+    "slotRole": "active"
   },
   "spell_power_shot": {
     "item_id": "spell_power_shot",
@@ -559,7 +586,8 @@
       "item_id": "arrows",
       "quantity": 20
     },
-    "maxStack": 1
+    "maxStack": 1,
+    "slotRole": "active"
   },
   "spell_slash": {
     "item_id": "spell_slash",
@@ -571,7 +599,8 @@
     "icon": "⚔️",
     "svgCode": "2694",
     "actionKey": "slash",
-    "maxStack": 1
+    "maxStack": 1,
+    "slotRole": "active"
   },
   "spell_cleave": {
     "item_id": "spell_cleave",
@@ -584,7 +613,8 @@
     "icon": "🌪️",
     "svgCode": "1F32A",
     "actionKey": "cleave",
-    "maxStack": 1
+    "maxStack": 1,
+    "slotRole": "active"
   },
   "spell_fortify": {
     "item_id": "spell_fortify",
@@ -597,7 +627,8 @@
     "icon": "🛡️",
     "svgCode": "1F6E1",
     "actionKey": "fortify",
-    "maxStack": 1
+    "maxStack": 1,
+    "slotRole": "active"
   },
   "spell_holy_strike": {
     "item_id": "spell_holy_strike",
@@ -610,7 +641,8 @@
     "icon": "🔨",
     "svgCode": "2692",
     "actionKey": "holy_strike",
-    "maxStack": 1
+    "maxStack": 1,
+    "slotRole": "active"
   },
   "spell_healing_prayer": {
     "item_id": "spell_healing_prayer",
@@ -623,7 +655,8 @@
     "icon": "💖",
     "svgCode": "1F496",
     "actionKey": "healing_prayer",
-    "maxStack": 1
+    "maxStack": 1,
+    "slotRole": "active"
   },
   "spell_holy_radiance": {
     "item_id": "spell_holy_radiance",
@@ -636,7 +669,8 @@
     "icon": "☀️",
     "svgCode": "2600",
     "actionKey": "holy_radiance",
-    "maxStack": 1
+    "maxStack": 1,
+    "slotRole": "active"
   },
   "key_copper": {
     "item_id": "key_copper",
@@ -648,7 +682,8 @@
     "svgCode": "1F511",
     "svgCodeActive": "1F511-copper",
     "maxStack": 1,
-    "droppable": false
+    "droppable": false,
+    "slotRole": "bank"
   },
   "key_silver": {
     "item_id": "key_silver",
@@ -660,7 +695,8 @@
     "svgCode": "1F5DD",
     "svgCodeActive": "1F5DD-silver",
     "maxStack": 1,
-    "droppable": false
+    "droppable": false,
+    "slotRole": "bank"
   },
   "key_gold": {
     "item_id": "key_gold",
@@ -672,6 +708,7 @@
     "svgCode": "1F511",
     "svgCodeActive": "1F511-gold",
     "maxStack": 1,
-    "droppable": false
+    "droppable": false,
+    "slotRole": "bank"
   }
 }

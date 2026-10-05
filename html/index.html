@@ -64,8 +64,8 @@
         <!-- Status, Level/Vocation, Gold, HP/MP/XP Bars -->
         <div class="hud-panel status-panel" id="status-bars-container"></div>
 
-        <!-- 8 Keyed Slots: q w e r (equipment) + 1 2 3 4 (active items above) -->
-        <div class="hud-panel keyed-slots-panel" id="paperdoll-container"></div>
+        <!-- Loadout (D1 §2): 1 2 3 4 active items above q w e r equipment -->
+        <div class="hud-panel loadout-panel" id="loadout-container"></div>
 
         <!-- Single Backpack Grid: 36 slots (6x6) -->
         <div class="hud-panel backpack-panel" id="backpack-container"></div>
@@ -74,6 +74,9 @@
 
     <!-- Modals & Overlays (Title Screen, Character Select, Fate Grant, Guide, Victory, Defeat) -->
     <div id="modal-overlay" class="modal-overlay"></div>
+
+    <!-- Persistent Town screen (D1 §0.4): sibling of the modal overlay, not a dismissible modal -->
+    <div id="town-screen" class="town-screen" role="dialog" aria-modal="true" aria-labelledby="town-title" hidden></div>
 
     <!-- Title ambient background ("Emberfall Parallax") -->
     <canvas id="title-ambient-canvas" class="title-ambient-canvas" aria-hidden="true"></canvas>

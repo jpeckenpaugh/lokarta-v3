@@ -120,6 +120,12 @@
     "maxBrazierLights": 2,
     "bossRoomFixed": { "room": 5, "props": ["throne", "brazier", "brazier"] }
   },
+  "townGatePolicy": {
+    "roomRole": "entry",
+    "countPerLevel": 1,
+    "propId": "prop_town_gate",
+    "walkOn": true
+  },
   "placement": {
     "roles": {
       "keyHolder": [2, 2],

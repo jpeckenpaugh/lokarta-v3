@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Multi-Modal Gesture Engine Subsystem
  */
 
-import { CONFIG } from './config.js';
+import { CONFIG, EQUIPMENT_KEY_MAP } from './config.js';
 
 export class GestureEngine {
   constructor(onGesture, onChargeUpdate) {
@@ -11,7 +11,7 @@ export class GestureEngine {
     this.trackers = new Map();
     this.animationFrameId = null;
 
-    for (let i = 0; i < CONFIG.ACTION_BAR_SLOTS; i++) {
+    for (let i = 0; i < CONFIG.ACTIVE_SLOT_COUNT; i++) {
       this.trackers.set(i, {
         isDown: false,
         pressTimestamp: 0,
@@ -23,17 +23,31 @@ export class GestureEngine {
     this.startChargeLoop();
   }
 
+  /**
+   * Active-item keys `1..N` -> `active_0..N-1` slot index. Returns null for any
+   * other key (D1 §0.2/§2.6). The active count comes from `CONFIG`.
+   */
   static keyToSlotIndex(key) {
     if (key >= '1' && key <= '9') {
       const idx = parseInt(key, 10) - 1;
-      // LIV-22: only the 1-4 active slots are keyed; 5-9/0 are unbound.
-      return idx < CONFIG.ACTION_BAR_SLOTS ? idx : null;
+      return idx < CONFIG.ACTIVE_SLOT_COUNT ? idx : null;
     }
     return null;
   }
 
+  /**
+   * Equipment keys `q/w/e/r` -> `main_hand|off_hand|armor|relic` (D1 §2.6),
+   * resolved from `keybindings.json.keySlots.equipment`. Returns null otherwise.
+   */
+  static keyToEquipmentSlot(key) {
+    if (key === undefined || key === null) return null;
+    const raw = String(key);
+    const letter = raw.length === 1 ? raw.toLowerCase() : (raw.startsWith('Key') ? raw.slice(3).toLowerCase() : raw.toLowerCase());
+    return EQUIPMENT_KEY_MAP[letter] || null;
+  }
+
   static slotIndexToHotkey(slotIndex) {
-    if (slotIndex >= 0 && slotIndex < CONFIG.ACTION_BAR_SLOTS) {
+    if (slotIndex >= 0 && slotIndex < CONFIG.ACTIVE_SLOT_COUNT) {
       return `${slotIndex + 1}`;
     }
     return '';

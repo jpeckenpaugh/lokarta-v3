@@ -10,6 +10,7 @@ const CODE_TO_TILE_TYPE = {
   3: TILE_TYPES.DOOR,
   4: TILE_TYPES.GATED_DOOR,
   5: TILE_TYPES.SPRING,
+  6: TILE_TYPES.TOWN_GATE,
 };
 
 export class GridMap {
@@ -111,6 +112,11 @@ export class GridMap {
   isSpring(x, y) {
     if (!this.isInBounds(x, y)) return false;
     return this.tiles[y][x].type === TILE_TYPES.SPRING;
+  }
+
+  isTownGate(x, y) {
+    if (!this.isInBounds(x, y)) return false;
+    return this.tiles[y][x].type === TILE_TYPES.TOWN_GATE;
   }
 
   getTile(x, y) {

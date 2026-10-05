@@ -28,6 +28,7 @@ export const TILE_TYPES = {
   DOOR: 3,
   GATED_DOOR: 4,
   SPRING: 5,
+  TOWN_GATE: 6,
 };
 
 export const TOWER_LEVEL_COUNT = 5;
@@ -742,6 +743,34 @@ export function generateFloor(floorNumber = 1, seed = null) {
     }
   }
 
+  // 8.5 Tower Gate (LIV-25 / D1 §0.4): a walk-on interactable in each floor's
+  //     arrival room for bidirectional Town <-> Tower navigation. Placed beside
+  //     the arrival spawn on a free floor tile, before monsters claim tiles.
+  const townGates = [];
+  const townGatePolicy = tower.townGatePolicy || {};
+  const gateRoom = townGatePolicy.roomRole === 'stair' ? levelSpec.stairRoom : levelSpec.entryRoom;
+  const gateAnchor = levelId === 1 ? entryCoords : spawnCoords;
+  if (townGatePolicy.countPerLevel !== 0 && gateRoom && gateAnchor) {
+    const gateTile = neighbors(gateAnchor.x, gateAnchor.y).find(n => {
+      if (!matrix[n.y] || matrix[n.y][n.x] === undefined) return false;
+      if (matrix[n.y][n.x] !== TILE_TYPES.FLOOR) return false;
+      if (blocked.has(`${n.x},${n.y}`)) return false;
+      return true;
+    });
+    if (gateTile) {
+      matrix[gateTile.y][gateTile.x] = TILE_TYPES.TOWN_GATE;
+      blocked.add(`${gateTile.x},${gateTile.y}`);
+      occupied.add(`${gateTile.x},${gateTile.y}`);
+      townGates.push({
+        id: `f${levelId}_town_gate`,
+        room: gateRoom,
+        x: gateTile.x,
+        y: gateTile.y,
+        propId: townGatePolicy.propId || 'prop_town_gate',
+      });
+    }
+  }
+
   const groupSize = tower.monsterGroups.groupSize[String(levelId)];
   const pool = tower.monsterGroups.pool[String(levelId)];
   const statScale = tower.monsterGroups.statScale[String(levelId)];
@@ -1113,6 +1142,7 @@ export function generateFloor(floorNumber = 1, seed = null) {
     chests,
     chest_tiers: Object.fromEntries(chests.map(c => [String(c.room), c.tier])),
     springs,
+    town_gates: townGates,
     props,
     monsters,
     spawns: monsters,

@@ -15,6 +15,8 @@
     "floorAdvance": { "ms": 400, "easing": "ease-in-out", "skippable": false },
     "gameOverToRetry": { "ms": 340, "easing": "ease-out", "skippable": false },
     "townVisit": { "ms": 320, "easing": "ease-in-out", "skippable": true },
+    "townToTower": { "ms": 300, "easing": "ease-in-out", "skippable": true },
+    "towerToTown": { "ms": 300, "easing": "ease-in-out", "skippable": true },
     "toTitle": { "ms": 400, "easing": "ease-in-out", "skippable": true }
   },
   "titleAmbient": {
@@ -27,9 +29,7 @@
   },
   "saveSlots": { "count": 5 },
   "inventory": {
-    "backpackColumns": 6,
-    "backpackRows": 6,
-    "backpackSlots": 36,
+    "backpack": { "columns": 6, "rows": 6, "defaultSlots": 36 },
     "activeSlots": 4,
     "equipmentSlots": 4,
     "keyedSlots": 8
@@ -39,16 +39,27 @@
     "goldStackCap": 999999
   },
   "hud": {
-    "barWidthPx": 26,
-    "barHeightPx": 4,
-    "barOffsetPx": 6,
-    "barBorderPx": 1,
-    "hpColor": "#22c55e",
-    "hpLowColor": "#ef4444",
-    "hpLowPct": 0.3,
-    "hpBackColor": "rgba(5,6,8,0.85)",
-    "mpColor": "#3b82f6",
-    "mpBackColor": "rgba(5,6,8,0.85)"
+    "loadout": {
+      "activeKeys": ["1", "2", "3", "4"],
+      "equipmentKeys": ["q", "w", "e", "r"],
+      "columns": 4
+    }
+  },
+  "entityBars": {
+    "widthPx": 24,
+    "bossWidthPx": 32,
+    "heightPx": 3,
+    "gapPx": 1,
+    "outlinePx": 1,
+    "offsetAboveSpritePx": 6,
+    "track": "#1e293b",
+    "hpFill": "#ef4444",
+    "hpFillLow": "#dc2626",
+    "mpFill": "#3b82f6",
+    "lowHpPct": 30,
+    "lowHpPulseHz": 1.5,
+    "playerShowWhen": "always",
+    "enemyShowWhen": "damaged"
   },
   "town": {
     "title": "Havenreach",
