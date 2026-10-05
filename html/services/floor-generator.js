@@ -383,29 +383,65 @@ function neighbors(x, y) {
   ];
 }
 
+/** True when a tile can be walked on in the structural BFS (walls + blockers). */
+function isPassableForBfs(matrix, x, y, blockedSet) {
+  if (!matrix[y] || matrix[y][x] === undefined) return false;
+  if (matrix[y][x] === TILE_TYPES.WALL) return false;
+  return !blockedSet.has(`${x},${y}`);
+}
+
 /**
- * Tile-level BFS from the spawn tile over every passable tile (walls blocked).
- * Gated doors count as passable here — the structural no-soft-lock guarantee
- * comes from `validateFloorSoftlock`; this proves the carved floor is connected.
+ * Structural BFS from `start` over non-WALL tiles that are not in `blockedSet`.
+ * No heap allocation in the loop beyond the worklist (called outside the tick).
+ */
+function reachableFrom(matrix, width, height, start, blockedSet) {
+  const visited = new Set();
+  if (!start || !isPassableForBfs(matrix, start.x, start.y, blockedSet)) return visited;
+  visited.add(`${start.x},${start.y}`);
+  const queue = [{ x: start.x, y: start.y }];
+  let head = 0;
+  while (head < queue.length) {
+    const { x, y } = queue[head++];
+    for (const n of neighbors(x, y)) {
+      const key = `${n.x},${n.y}`;
+      if (visited.has(key)) continue;
+      if (n.x < 0 || n.x >= width || n.y < 0 || n.y >= height) continue;
+      if (!isPassableForBfs(matrix, n.x, n.y, blockedSet)) continue;
+      visited.add(key);
+      queue.push(n);
+    }
+  }
+  return visited;
+}
+
+/** Blocking tiles for the structural walkability graph: springs + furniture props. */
+function structuralBlockedTiles(floor) {
+  const blocked = new Set();
+  for (let y = 0; y < floor.height; y++) {
+    for (let x = 0; x < floor.width; x++) {
+      if (floor.tiles[y][x] === TILE_TYPES.SPRING) blocked.add(`${x},${y}`);
+    }
+  }
+  for (const spring of floor.springs || []) blocked.add(`${spring.x},${spring.y}`);
+  for (const prop of floor.props || []) {
+    if (prop && prop.layer === 'prop') blocked.add(`${prop.x},${prop.y}`);
+  }
+  return blocked;
+}
+
+/**
+ * Tile-level BFS from the spawn tile over every structurally walkable tile:
+ * walls, healing-spring fountains (LIV-29 item 9) and placed furniture props
+ * (LIV-29 item 3) all block. Gated doors count as passable here — the
+ * structural no-soft-lock guarantee comes from `validateFloorSoftlock`; this
+ * proves the carved floor stays connected under the blocking decor.
  * @param {object} floor
  * @returns {{ ok: boolean, reached: number, unreachableStairs: object[] }}
  */
 export function validateFloorConnectivity(floor) {
   const { width, height } = floor;
-  const visited = new Set([`${floor.spawn_coords.x},${floor.spawn_coords.y}`]);
-  const queue = [{ x: floor.spawn_coords.x, y: floor.spawn_coords.y }];
-
-  while (queue.length > 0) {
-    const { x, y } = queue.shift();
-    for (const n of neighbors(x, y)) {
-      const key = `${n.x},${n.y}`;
-      if (visited.has(key)) continue;
-      if (n.x < 0 || n.x >= width || n.y < 0 || n.y >= height) continue;
-      if (floor.tiles[n.y][n.x] === TILE_TYPES.WALL) continue;
-      visited.add(key);
-      queue.push(n);
-    }
-  }
+  const blockedSet = structuralBlockedTiles(floor);
+  const visited = reachableFrom(floor.tiles, width, height, floor.spawn_coords, blockedSet);
 
   const unreachableStairs = (floor.stairs || []).filter(
     s => !visited.has(`${s.x},${s.y}`)
@@ -1003,6 +1039,16 @@ export function generateFloor(floorNumber = 1, seed = null) {
     };
     const pushProp = (room, tile, id, layer) => {
       propBlocked.add(`${tile.x},${tile.y}`);
+      // LIV-29 item 3: furniture props are blocking, so never let one wall off
+      // the spawn from a stair. Decor rugs stay walk-over and need no guard.
+      if (layer === 'prop') {
+        const blocked = new Set();
+        for (const s of springs) blocked.add(`${s.x},${s.y}`);
+        for (const p of props) if (p.layer === 'prop') blocked.add(`${p.x},${p.y}`);
+        blocked.add(`${tile.x},${tile.y}`);
+        const reach = reachableFrom(matrix, width, height, spawnCoords, blocked);
+        if (!stairs.every(s => reach.has(`${s.x},${s.y}`))) return;
+      }
       props.push({
         id: `f${levelId}_prop_${props.length + 1}`,
         room,

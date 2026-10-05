@@ -39,6 +39,7 @@ export class GridMap {
           lightIntensity: 0,
           gateTier: null,
           gateOpen: false,
+          blocked: false,
         });
       }
       this.tiles.push(row);
@@ -70,6 +71,7 @@ export class GridMap {
           lightIntensity: 0,
           gateTier: null,
           gateOpen: false,
+          blocked: false,
         });
       }
       this.tiles.push(row);
@@ -86,7 +88,19 @@ export class GridMap {
     if (tile.type === TILE_TYPES.WALL) return false;
     // E3: a locked gated door blocks movement until its key unlocks the tile.
     if (tile.type === TILE_TYPES.GATED_DOOR && !tile.gateOpen) return false;
+    // LIV-29 item 9: healing springs are fountains and cannot be stepped on.
+    if (tile.type === TILE_TYPES.SPRING) return false;
+    // LIV-29 item 3: placed decorative furniture is impassable; dropped items
+    // and chests stay walkable (they are not marked blocked).
+    if (tile.blocked === true) return false;
     return true;
+  }
+
+  /** Marks a tile impassable without changing its type (LIV-29 item 3). */
+  blockTile(x, y, blocked = true) {
+    const tile = this.getTile(x, y);
+    if (tile) tile.blocked = blocked === true;
+    return Boolean(tile);
   }
 
   isWall(x, y) {
