@@ -143,8 +143,8 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 
 Three tiers:
 
-1. **T0 — unit/code (agents, every change).** Run `node --test html/tests/*.test.mjs` (baseline 140 tests / 14 suites / 0 fail, ~0.2s, zero dependencies) and keep [`.github/workflows/test.yml`](../../.github/workflows/test.yml) green on push/PR. New behavior updates its tests; never delete a test to go green. This is the definition-of-done gate.
-2. **T1 — build/preview smoke (agents, light).** CI deploys `main` to GitHub Pages via [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml). The Tech Lead posts the preview URL plus a 3–5 line manual test script on the issue. No screenshot archive and no committed evidence bundle.
+1. **T0 — unit/code (agents, every change).** Run `node --test html/tests/*.test.mjs` (full native suite, zero dependencies) and keep [`.github/workflows/test.yml`](../../.github/workflows/test.yml) green on push/PR. New behavior updates its tests; never delete a test to go green. This is the definition-of-done gate.
+2. **T1 — build/preview smoke (agents, light).** CI deploys `main` to GitHub Pages via [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml); the live preview is <https://lk.livive.net/>. The Tech Lead posts the preview URL plus a 3–5 line manual test script on the issue. No screenshot archive and no committed evidence bundle.
 3. **T2 — browser/gameplay (board only).** The board plays the preview and confirms. Agents do not block on browser verification, do not own it, and do not build per-change browser evidence.
 
 **On-demand tooling (not a gate).** Keep `tools/render-*.mjs` available as a self-serve smoke aid for anyone who wants a rendered preview. They are optional, not required for any change, and are not wired into CI.
@@ -163,8 +163,8 @@ Three tiers:
    ```bash
    node --test html/tests/*.test.mjs
    ```
-   The glob covers all 9 test files (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`, `packaging`, `sprite-assets`, `storage-migration`). CI (`test.yml`) runs the same command on every push.
-   **Acceptance Criteria:** All test suites must pass with zero failures (140 tests / 14 suites / 0 fail baseline).
+   The glob covers every `html/tests/*.test.mjs` file. CI (`test.yml`) runs the same command on every push.
+   **Acceptance Criteria:** All test suites must pass with zero failures.
 2. **Synchronize Catalog Tests:**
    When adding or modifying entries in `html/data/*.json`, always update or verify the corresponding schema test assertions in [`html/tests/data-catalogs.test.mjs`](file:///Users/jarad/git/lokarta-v3/html/tests/data-catalogs.test.mjs).
 3. **Regression Safety:**
@@ -181,3 +181,12 @@ Three tiers:
 - [ ] Are event listeners delegated with boundary checks?
 - [ ] Did you test procedural generation determinism with Mulberry32?
 - [ ] Did you execute `node --test ...` and verify all tests pass?
+
+---
+
+## 11. 🌿 Branching, Merge & Deploy
+
+- **Land on `main`.** Finished work is not done until it is merged to `main` and pushed to `origin`. Never leave a detached feature branch as the handoff; the board tests `main`.
+- **`main` auto-deploys.** A push to `main` triggers [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) to GitHub Pages at <https://lk.livive.net/>. The deploy step regenerates `build-id.json`, which drives the per-deployment cache flush ([`docs/build-versioning.md`](build-versioning.md)).
+- **Keep the suite green.** [`.github/workflows/test.yml`](../../.github/workflows/test.yml) must stay green on every push/PR before the change is considered landed.
+- **Small, reversible commits.** Use a `LIV-NN:` prefix and add `Co-Authored-By: Paperclip <noreply@paperclip.ing>`.
