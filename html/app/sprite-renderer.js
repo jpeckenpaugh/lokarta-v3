@@ -714,13 +714,19 @@ export class SpriteRenderer {
     const propId = resolvePropId(item);
     const propDef = propId ? PROP_CATALOG[propId] : null;
     if (propDef) {
-      const scale = Math.max(1, Math.floor(size / (propDef.native?.w || SPRITE_NATIVE)));
+      // LIV-30 item 1: a ground prop may declare a presentation scale (keys
+      // render at half the tile); `drawSize` drives the integer pixel scale.
+      const groundScale = Number(propDef.groundScale);
+      const drawSize = Number.isFinite(groundScale) && groundScale > 0
+        ? Math.max(1, Math.round(size * groundScale))
+        : size;
+      const scale = Math.max(1, Math.floor(drawSize / (propDef.native?.w || SPRITE_NATIVE)));
       const nw = (propDef.native?.w || SPRITE_NATIVE) * scale;
       const nh = (propDef.native?.h || SPRITE_NATIVE) * scale;
       const dx = Math.round(screenX + (size - nw) / 2);
       const dy = Math.round(screenY + (size - nh) / 2);
       const frameId = item.type === 'chest' ? (opts.open || item.opened ? 'open' : 'closed') : 'icon';
-      if (drawPropFrame(ctx, propDef, frameId, dx, dy, size)) {
+      if (drawPropFrame(ctx, propDef, frameId, dx, dy, drawSize)) {
         SpriteRenderer.drawItemQuantity(ctx, item, screenX, screenY, size);
         return;
       }

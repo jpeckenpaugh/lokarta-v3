@@ -2,6 +2,7 @@
   "id": "key_silver",
   "kind": "item",
   "tier": "silver",
+  "groundScale": 0.5,
   "native": {
     "w": 32,
     "h": 32
