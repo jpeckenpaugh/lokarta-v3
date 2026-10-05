@@ -146,8 +146,8 @@
     "name": "Hunter's Quiver",
     "rarity": "common",
     "icon": "🏹",
-    "description": "A fletched quiver of spare arrows worn at the hip, steadying the archer's draw.",
-    "statBonusText": "+3 Armor",
+    "description": "A fletched quiver of spare arrows worn at the hip. Poison Tip (2 MP) coats your next 5 arrows so hits poison for 3s (8s cooldown).",
+    "statBonusText": "+3 Armor, Poison Tip (2 MP)",
     "vocationAffinity": "archer",
     "item": {
       "item_id": "hunter_quiver",
@@ -160,15 +160,15 @@
   },
   {
     "id": "card_hunter_leathers",
-    "name": "Hunter's Leathers",
+    "name": "Vampiric Cloak",
     "rarity": "rare",
     "icon": "🧥",
-    "description": "Supple cured-hide armor granting swift mobility without sacrificing protection.",
-    "statBonusText": "+5 Armor",
+    "description": "Supple cured-hide cloak that drinks the life of nearby foes. Life Siphon (1 MP) drains 5 HP from each enemy within 2 tiles and heals you (8s cooldown).",
+    "statBonusText": "+5 Armor, Life Siphon (1 MP)",
     "vocationAffinity": "archer",
     "item": {
       "item_id": "hunter_leathers",
-      "name": "Hunter's Leathers",
+      "name": "Vampiric Cloak",
       "type": "armor",
       "quantity": 1,
       "stat_bonus": 5,
@@ -176,20 +176,20 @@
     }
   },
   {
-    "id": "card_archer_hood",
-    "name": "Archer's Hood",
+    "id": "card_ranger_talisman",
+    "name": "Ranger's Talisman",
     "rarity": "rare",
-    "icon": "🧢",
-    "description": "A woven leather hood keeping the hunter's eyes sharp and focused in the gloom.",
-    "statBonusText": "+4 Armor",
+    "icon": "📿",
+    "description": "A hunter's charm sharpening every shot. Grants +4 ranged damage and +10% crit; Hunter's Mark (3 MP) marks foes in line of sight for 6s so arrows deal bonus damage (15s cooldown).",
+    "statBonusText": "+4 Ranged, +10% Crit, Hunter's Mark (3 MP)",
     "vocationAffinity": "archer",
     "item": {
-      "item_id": "archer_hood",
-      "name": "Archer's Hood",
+      "item_id": "ranger_talisman",
+      "name": "Ranger's Talisman",
       "type": "relic",
       "quantity": 1,
       "stat_bonus": 4,
-      "icon": "🧢"
+      "icon": "📿"
     }
   },
   {

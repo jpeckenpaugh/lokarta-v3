@@ -533,7 +533,11 @@ export class CombatSystem {
     const baseDmg = (item && typeof item.damage === 'number')
       ? item.damage
       : CombatSystem.randomBetween(CONFIG.ARCHER_BOW_DAMAGE_MIN, CONFIG.ARCHER_BOW_DAMAGE_MAX);
-    let damage = Math.round(baseDmg * mult);
+    let damage = Math.round(baseDmg * mult) + CombatSystem.getEquippedStat(player, 'rangedDamageBonus');
+
+    // LIV-36: Hunter's Mark (Ranger's Talisman) amplifies arrows on marked foes.
+    const marked = target.hunterMarkTimer > 0;
+    if (marked) damage = Math.round(damage * (CombatSystem.getEquippedStat(player, 'markDamageMult') || 1.5));
 
     const critChance = CombatSystem.getEquippedStat(player, 'critChance');
     const critMult = CombatSystem.getEquippedStat(player, 'critMult') || 1.0;
@@ -544,6 +548,8 @@ export class CombatSystem {
     }
 
     target.hp -= damage;
+
+    const poisoned = CombatSystem.applyArrowPoison(player, target);
 
     const projectile = {
       id: `proj_arrow_${Date.now()}_${Math.random()}`,
@@ -564,6 +570,8 @@ export class CombatSystem {
     let message = isCrit
       ? `CRITICAL! Your arrow pierces ${target.name} for ${damage} damage!`
       : `You fired an arrow at ${target.name} for ${damage} damage.`;
+    if (marked) message += ' Marked target: bonus damage!';
+    if (poisoned) message += ' Poison seeps into the wound!';
 
     if (target.hp <= 0) {
       defeatedMonsterId = target.id;
@@ -576,6 +584,8 @@ export class CombatSystem {
       message,
       damageDealt: damage,
       isCrit,
+      marked,
+      poisoned,
       projectiles: [projectile],
       defeatedMonsterId,
       droppedLoot,
@@ -612,11 +622,14 @@ export class CombatSystem {
     player.cooldowns.power_shot = CONFIG.ARCHER_POWER_SHOT_COOLDOWN_SEC;
 
     // Damage parity: embedded item.damage first, CONFIG fallback, crit roll
-    // from equipped critChance/critMult (archer_hood).
+    // from equipped critChance/critMult (Ranger's Talisman).
     const baseDmg = (item && typeof item.damage === 'number')
       ? item.damage
       : CombatSystem.randomBetween(CONFIG.ARCHER_POWER_SHOT_DAMAGE_MIN, CONFIG.ARCHER_POWER_SHOT_DAMAGE_MAX);
-    let damage = Math.round(baseDmg * mult);
+    let damage = Math.round(baseDmg * mult) + CombatSystem.getEquippedStat(player, 'rangedDamageBonus');
+
+    const marked = target.hunterMarkTimer > 0;
+    if (marked) damage = Math.round(damage * (CombatSystem.getEquippedStat(player, 'markDamageMult') || 1.5));
 
     const critChance = CombatSystem.getEquippedStat(player, 'critChance');
     const critMult = CombatSystem.getEquippedStat(player, 'critMult') || 1.0;
@@ -627,6 +640,8 @@ export class CombatSystem {
     }
 
     target.hp -= damage;
+
+    const poisoned = CombatSystem.applyArrowPoison(player, target);
 
     const projectile = {
       id: `proj_power_${Date.now()}_${Math.random()}`,
@@ -647,6 +662,8 @@ export class CombatSystem {
     let message = isCrit
       ? `CRITICAL! Power Shot strikes ${target.name} for ${damage} heavy damage!`
       : `Power Shot strikes ${target.name} for ${damage} heavy damage!`;
+    if (marked) message += ' Marked target: bonus damage!';
+    if (poisoned) message += ' Poison seeps into the wound!';
 
     if (target.hp <= 0) {
       defeatedMonsterId = target.id;
@@ -659,6 +676,8 @@ export class CombatSystem {
       message,
       damageDealt: damage,
       isCrit,
+      marked,
+      poisoned,
       projectiles: [projectile],
       defeatedMonsterId,
       droppedLoot,
@@ -1086,6 +1105,193 @@ export class CombatSystem {
       hpRestored,
       mpRestored,
       cooldownSet: effectiveCooldown,
+    };
+  }
+
+  /**
+   * Arms the Hunter's Quiver "Poison Tip" active (off-hand, W key). For the
+   * next `poisonArrows` arrows (or until `poisonBuffSec` elapses), every arrow
+   * that damages a living enemy applies a poison DoT. Mana- and
+   * cooldown-gated; poison damage scales with `upgradeSpec.poisonDpsInc`.
+   */
+  static executePoisonTip(player, item = null) {
+    if (!item) {
+      return { success: false, message: 'No quiver equipped for Poison Tip.' };
+    }
+    if (player.cooldowns?.poison_tip > 0) {
+      return { success: false, message: 'Poison Tip is on cooldown.' };
+    }
+    const manaCost = (typeof item.manaCost === 'number') ? item.manaCost : 2;
+    if (player.mana < manaCost) {
+      return { success: false, message: `Not enough Mana to cast Poison Tip (${manaCost} MP).` };
+    }
+    const effectiveCooldown = CombatSystem.getEffectiveCooldown(item) ?? 8;
+    const dps = item.poisonDps || 2;
+    const durationSec = item.poisonDurationSec || 3;
+    player.mana -= manaCost;
+    if (!player.cooldowns) player.cooldowns = {};
+    player.cooldowns.poison_tip = effectiveCooldown;
+    player.poisonTipArrows = item.poisonArrows || 5;
+    player.poisonTipTimer = item.poisonBuffSec || 10;
+    player.poisonTipDps = dps;
+    player.poisonTipDurationSec = durationSec;
+    return {
+      success: true,
+      message: `Poison Tip! Your next ${player.poisonTipArrows} arrows poison for ${dps} dmg/s over ${durationSec}s (${manaCost} MP, ${effectiveCooldown}s CD).`,
+      manaCost,
+      cooldownSet: effectiveCooldown,
+      poisonDps: dps,
+      arrows: player.poisonTipArrows,
+      durationSec,
+    };
+  }
+
+  /**
+   * Applies the armed Poison Tip to a living enemy hit by an arrow. Consumes
+   * one charged arrow and refreshes the target's poison DoT. No-op when the
+   * buff is not armed or the target already died.
+   */
+  static applyArrowPoison(player, target) {
+    const arrows = player.poisonTipArrows || 0;
+    if (arrows <= 0 || !target || target.hp <= 0) return false;
+    const quiver = player.paperdoll?.off_hand;
+    const dps = player.poisonTipDps || quiver?.poisonDps || 2;
+    const durationSec = player.poisonTipDurationSec || quiver?.poisonDurationSec || 3;
+    target.poisonDps = Math.max(target.poisonDps || 0, dps);
+    target.poisonTimer = Math.max(target.poisonTimer || 0, durationSec);
+    player.poisonTipArrows = arrows - 1;
+    if (player.poisonTipArrows <= 0) player.poisonTipTimer = 0;
+    return true;
+  }
+
+  /**
+   * Ticks poison DoT and Hunter's Mark timers on every monster. Poison damage
+   * accumulates as whole HP so per-tick fractions do not leak. Returns the
+   * monsters slain by poison this tick (caller resolves loot/XP).
+   */
+  static tickStatusEffects(monsters = [], deltaSec) {
+    const defeated = [];
+    for (const m of monsters) {
+      if (!m || m.hp <= 0) continue;
+      if (m.hunterMarkTimer > 0) {
+        m.hunterMarkTimer = Math.max(0, m.hunterMarkTimer - deltaSec);
+      }
+      if (m.poisonTimer > 0) {
+        const dps = m.poisonDps || 0;
+        m.poisonAccumulator = (m.poisonAccumulator || 0) + dps * deltaSec;
+        const whole = Math.floor(m.poisonAccumulator);
+        if (whole > 0) {
+          m.hp -= whole;
+          m.poisonAccumulator -= whole;
+        }
+        m.poisonTimer = Math.max(0, m.poisonTimer - deltaSec);
+        if (m.poisonTimer <= 0) {
+          m.poisonDps = 0;
+          m.poisonAccumulator = 0;
+        }
+        if (m.hp <= 0) {
+          m.hp = 0;
+          defeated.push(m);
+        }
+      }
+    }
+    return defeated;
+  }
+
+  /**
+   * Executes the Vampiric Cloak "Life Siphon" active (armor, E key). Drains
+   * `siphonHp` from every living monster within `siphonRadius` tiles and heals
+   * the player for the total drained (capped at max HP). Mana- and
+   * cooldown-gated; refuses to cast with no enemy in range.
+   */
+  static executeLifeSiphon(player, gridMap, monsters = [], item = null) {
+    if (!item) {
+      return { success: false, message: 'No armor equipped for Life Siphon.' };
+    }
+    if (player.cooldowns?.life_siphon > 0) {
+      return { success: false, message: 'Life Siphon is on cooldown.' };
+    }
+    const manaCost = (typeof item.manaCost === 'number') ? item.manaCost : 1;
+    if (player.mana < manaCost) {
+      return { success: false, message: `Not enough Mana to cast Life Siphon (${manaCost} MP).` };
+    }
+    const radius = item.siphonRadius || 2;
+    const siphonHp = item.siphonHp || 5;
+    const affected = [];
+    let totalDrained = 0;
+    for (const m of monsters) {
+      if (!m || m.hp <= 0) continue;
+      const dist = Math.hypot(m.x - player.x, m.y - player.y);
+      if (dist > radius) continue;
+      const drained = Math.min(siphonHp, m.hp);
+      m.hp -= drained;
+      totalDrained += drained;
+      affected.push({ monster: m, drained, defeated: m.hp <= 0 });
+    }
+    if (affected.length === 0) {
+      return { success: false, message: `No enemies within ${radius} tiles to siphon.` };
+    }
+    const hpMissing = Math.max(0, player.max_hp - player.hp);
+    const healed = Math.min(totalDrained, hpMissing);
+    player.hp = Math.min(player.max_hp, player.hp + healed);
+    player.mana -= manaCost;
+    const effectiveCooldown = CombatSystem.getEffectiveCooldown(item) ?? 8;
+    if (!player.cooldowns) player.cooldowns = {};
+    player.cooldowns.life_siphon = effectiveCooldown;
+    return {
+      success: true,
+      message: `Life Siphon drains ${totalDrained} HP from ${affected.length} enem${affected.length === 1 ? 'y' : 'ies'} and heals you +${healed} HP (${manaCost} MP, ${effectiveCooldown}s CD).`,
+      drained: totalDrained,
+      healed,
+      affected,
+      manaCost,
+      cooldownSet: effectiveCooldown,
+    };
+  }
+
+  /**
+   * Executes the Ranger's Talisman "Hunter's Mark" active (relic, R key).
+   * Marks every living, visible enemy in line of sight within `markRange`
+   * tiles for `markDurationSec` seconds; arrows then deal `markDamageMult`
+   * bonus damage to marked targets. Mana- and cooldown-gated.
+   */
+  static executeHuntersMark(player, gridMap, monsters = [], item = null) {
+    if (!item) {
+      return { success: false, message: "No relic equipped for Hunter's Mark." };
+    }
+    if (player.cooldowns?.hunters_mark > 0) {
+      return { success: false, message: "Hunter's Mark is on cooldown." };
+    }
+    const manaCost = (typeof item.manaCost === 'number') ? item.manaCost : 3;
+    if (player.mana < manaCost) {
+      return { success: false, message: `Not enough Mana to cast Hunter's Mark (${manaCost} MP).` };
+    }
+    const range = item.markRange || 8;
+    const durationSec = item.markDurationSec || 6;
+    const marked = [];
+    for (const m of monsters) {
+      if (!m || m.hp <= 0 || m.visible === false) continue;
+      const dist = Math.hypot(m.x - player.x, m.y - player.y);
+      if (dist > range + 0.5) continue;
+      if (gridMap && !LightingSystem.hasLineOfSight(gridMap, player.x, player.y, m.x, m.y)) continue;
+      m.hunterMarkTimer = Math.max(m.hunterMarkTimer || 0, durationSec);
+      marked.push(m);
+    }
+    if (marked.length === 0) {
+      return { success: false, message: 'No enemies in line of sight to mark.' };
+    }
+    player.mana -= manaCost;
+    const effectiveCooldown = CombatSystem.getEffectiveCooldown(item) ?? 15;
+    if (!player.cooldowns) player.cooldowns = {};
+    player.cooldowns.hunters_mark = effectiveCooldown;
+    return {
+      success: true,
+      message: `Hunter's Mark! ${marked.length} enem${marked.length === 1 ? 'y' : 'ies'} marked for ${durationSec}s — arrows deal bonus damage (${manaCost} MP, ${effectiveCooldown}s CD).`,
+      marked,
+      manaCost,
+      durationSec,
+      cooldownSet: effectiveCooldown,
+      markDamageMult: item.markDamageMult || 1.5,
     };
   }
 

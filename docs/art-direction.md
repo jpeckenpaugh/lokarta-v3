@@ -333,7 +333,7 @@ Shared defaults: native 32×32; palette ≤ 16; outline `#0b0d12`; ramps map to 
 ### 4.2 Archer
 
 - **Silhouette:** lean, hooded, back quiver breaking the shoulder line, bow arc held forward (the arc must read as a curve, not a blob).
-- **Gear:** hood (`archer_hood`), leathers (`hunter_leathers`), quiver (`hunter_quiver`), bow.
+- **Gear:** talisman (`ranger_talisman`), vampiric cloak (`hunter_leathers`), quiver (`hunter_quiver`), bow.
 - **Eye glow:** `eyeColor #e9d8a6`.
 - **Palette (extends `renderTheme`):**
 

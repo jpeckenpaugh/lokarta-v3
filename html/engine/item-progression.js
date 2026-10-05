@@ -190,6 +190,24 @@ export function applyItemRankUp(player, item, opts = {}) {
     notes.push(`-${spec.cooldownReductionSec}s CD`);
   }
 
+  // --- LIV-36 archer primary-item ability escalations ---
+  if (spec.poisonDpsInc) {
+    item.poisonDps = (item.poisonDps || catalogEntry.poisonDps || 2) + spec.poisonDpsInc;
+    notes.push(`Poison +${spec.poisonDpsInc}/s`);
+  }
+  if (spec.siphonHpInc) {
+    item.siphonHp = (item.siphonHp || catalogEntry.siphonHp || 5) + spec.siphonHpInc;
+    notes.push(`+${spec.siphonHpInc} Siphon HP`);
+  }
+  if (spec.markDurationInc) {
+    item.markDurationSec = (item.markDurationSec || catalogEntry.markDurationSec || 6) + spec.markDurationInc;
+    notes.push(`+${spec.markDurationInc}s Mark`);
+  }
+  if (spec.rangedDamageBonusInc) {
+    item.rangedDamageBonus = (item.rangedDamageBonus || catalogEntry.rangedDamageBonus || 0) + spec.rangedDamageBonusInc;
+    notes.push(`+${spec.rangedDamageBonusInc} Ranged Dmg`);
+  }
+
   return { item, rank, notes, source: opts.source || null };
 }
 

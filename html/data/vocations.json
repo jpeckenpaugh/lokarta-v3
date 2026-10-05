@@ -49,7 +49,7 @@
       "composite_bow",
       "grey_stalker_quiver",
       "hunter_leathers",
-      "archer_hood"
+      "ranger_talisman"
     ],
     "description": "Deadly long-range sniper utilizing fletched arrows and precision burst.",
     "renderTheme": {
@@ -63,7 +63,7 @@
       "main_hand": "composite_bow",
       "off_hand": "grey_stalker_quiver",
       "armor": "hunter_leathers",
-      "relic": "archer_hood"
+      "relic": "ranger_talisman"
     }
   },
   "fighter": {

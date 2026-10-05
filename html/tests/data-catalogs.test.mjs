@@ -84,7 +84,7 @@ test('JSON Data Catalogs', async (t) => {
     const newItems = {
       hunter_quiver: { slot: 'off_hand', type: 'offhand', affinity: 'archer' },
       hunter_leathers: { slot: 'armor', type: 'armor', affinity: 'archer' },
-      archer_hood: { slot: 'relic', type: 'relic', affinity: 'archer' },
+      ranger_talisman: { slot: 'relic', type: 'relic', affinity: 'archer' },
       iron_helm: { slot: 'relic', type: 'relic', affinity: 'fighter' },
       holy_crown: { slot: 'relic', type: 'relic', affinity: 'paladin' },
     };

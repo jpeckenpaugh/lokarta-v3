@@ -758,15 +758,15 @@ describe('InventorySystem & Stacking', () => {
   });
 
   it('enforces class-specific gear affinity (archer/fighter/paladin sets)', () => {
-    // Archer set: archer_hood equips for archers only
+    // Archer set: ranger_talisman equips for archers only
     const archer = createPlayer('archer');
-    archer.action_bar[0] = { item_id: 'archer_hood', name: "Archer's Hood", type: 'relic', slot: 'relic', quantity: 1 };
+    archer.action_bar[0] = { item_id: 'ranger_talisman', name: "Ranger's Talisman", type: 'relic', slot: 'relic', quantity: 1 };
     const ok = InventorySystem.equipItem(archer, 'action_bar', 0);
     assert.equal(ok.success, true);
-    assert.equal(archer.paperdoll.relic.item_id, 'archer_hood');
+    assert.equal(archer.paperdoll.relic.item_id, 'ranger_talisman');
 
     const fighter = createPlayer('fighter');
-    fighter.action_bar[0] = { item_id: 'archer_hood', name: "Archer's Hood", type: 'relic', slot: 'relic', quantity: 1 };
+    fighter.action_bar[0] = { item_id: 'ranger_talisman', name: "Ranger's Talisman", type: 'relic', slot: 'relic', quantity: 1 };
     assert.equal(InventorySystem.equipItem(fighter, 'action_bar', 0).success, false);
 
     // Fighter set: iron_helm for fighters only

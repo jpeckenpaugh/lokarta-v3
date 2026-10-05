@@ -359,7 +359,7 @@ Each chest rolls `rolls` entries, weighted, **without replacement**. Quantities 
 | Tier | Magician | Archer | Fighter | Paladin | Neutral |
 | --: | :-- | :-- | :-- | :-- | :-- |
 | 1 | `apprentice_wand`, `apprentice_cape`, `spell_wand_spark` | `wooden_bow`, `hunter_quiver`, `hunter_leathers` | `tempered_broadsword`, `iron_helm`, `buckler` | `consecrated_warhammer`, `holy_crown` | — |
-| 2 | `astral_scepter`, `spell_energy_beam` | `composite_bow`, `grey_stalker_quiver`, `archer_hood` | `vanguard_shield`, `plate_armor` | `aegis_shield`, `plate_armor` | `relic_luminous_amulet` |
+| 2 | `astral_scepter`, `spell_energy_beam` | `composite_bow`, `grey_stalker_quiver`, `ranger_talisman` | `vanguard_shield`, `plate_armor` | `aegis_shield`, `plate_armor` | `relic_luminous_amulet` |
 | 3 | — | — | — | — | `relic_champions_crest` |
 
 ### 7.5 Ground scatter (reduced)

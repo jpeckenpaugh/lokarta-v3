@@ -255,7 +255,18 @@ function makeFateOverlay(cardIds) {
       contains: c => classes.has(c),
     },
     get innerHTML() { return html; },
-    set innerHTML(v) { html = v; },
+    set innerHTML(v) {
+      html = v;
+      // Rebuild the card stubs from the markup the modal actually rendered so
+      // the stubs always mirror the offer the modal generated internally
+      // (generateDraftOffer is randomized, so pre-building from a separate
+      // offer made this suite flaky).
+      const ids = [...String(v).matchAll(/data-card-id="([^"]+)"/g)].map(m => m[1]);
+      if (ids.length) {
+        cards.length = 0;
+        for (const id of ids) cards.push(makeCardElement(id));
+      }
+    },
     querySelector(sel) {
       if (sel === '.fate-grant-modal') return modalEl;
       if (sel === '#fate-selection-status') return statusEl;

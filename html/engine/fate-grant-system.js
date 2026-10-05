@@ -221,6 +221,10 @@ export class FateGrantSystem {
         'pushbackRange', 'stunSec', 'shieldAbsorb', 'shieldDuration',
         'dodgePct', 'critChance', 'critMult', 'mitigationPct',
         'hpBonus', 'manaBonus', 'healPowerPct', 'grantedAmmo', 'upgradeSpec',
+        // LIV-36 archer primary-item abilities.
+        'poisonDps', 'poisonDurationSec', 'poisonArrows', 'poisonBuffSec',
+        'siphonHp', 'siphonRadius', 'rangedDamageBonus',
+        'markDurationSec', 'markRange', 'markDamageMult',
       ];
       if (catalogItem) {
         for (const key of FUNCTIONAL_ITEM_KEYS) {

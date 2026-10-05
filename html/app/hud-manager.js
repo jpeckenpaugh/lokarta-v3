@@ -568,8 +568,14 @@ export class HUDManager {
     if (item.manaCost) lines.push(`Mana: ${item.manaCost}`);
     if (item.hpBonus) lines.push(`+${item.hpBonus} Max HP`);
     if (item.manaBonus) lines.push(`+${item.manaBonus} Max MP`);
+    if (item.rangedDamageBonus) lines.push(`+${item.rangedDamageBonus} Ranged Damage`);
+    if (item.critChance) lines.push(`+${item.critChance}% Crit`);
+    if (item.poisonDps) lines.push(`Poison: ${item.poisonDps} dmg/s for ${item.poisonDurationSec || 3}s`);
+    if (item.siphonHp) lines.push(`Life Siphon: ${item.siphonHp} HP / ${item.siphonRadius || 2} tiles`);
+    if (item.markDurationSec) lines.push(`Hunter's Mark: ${item.markDurationSec}s`);
     const actionKey = item.actionKey || catalog.actionKey;
     if (actionKey) lines.push(`Ability: ${actionKey.replace(/_/g, ' ')}`);
+    if (item.cooldown) lines.push(`Cooldown: ${item.cooldown}s`);
     return lines.join('\n');
   }
 

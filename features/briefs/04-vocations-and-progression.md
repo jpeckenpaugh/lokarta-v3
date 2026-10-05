@@ -18,7 +18,7 @@ The 4 playable vocations (`DEFAULT_ARCHETYPES` in `engine.js`) possess initial v
 - **Archer:**
   - Base Vitals: 90 HP, 80 MP.
   - Per-Level Growth: +14 HP, +8 MP.
-  - Locked Gear & Abilities: Bows, Longbows, Hunter's Quiver, Hunter's Leathers, Archer's Hood (native equipment: `wooden_bow`, `composite_bow`, `hunter_quiver`, `hunter_leathers`, `archer_hood`); Bow Shot, Power Shot, Arrows.
+  - Locked Gear & Abilities: Bows, Longbows, Hunter's Quiver, Vampiric Cloak, Ranger's Talisman (native equipment: `wooden_bow`, `composite_bow`, `hunter_quiver`, `hunter_leathers`, `ranger_talisman`); Bow Shot, Power Shot, Poison Tip (Quiver `W`), Life Siphon (Cloak `E`), Hunter's Mark (Talisman `R`), Arrows.
 - **Fighter:**
   - Base Vitals: 140 HP, 30 MP.
   - Per-Level Growth: +18 HP, +4 MP.

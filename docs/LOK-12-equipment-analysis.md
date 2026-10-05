@@ -35,12 +35,12 @@ All four vocations acquire gear the same way today:
 | Slot | Item (item_id) | Type | Key values | Upgrade spec |
 |---|---|---|---|---|
 | main_hand | Wooden Bow (`wooden_bow`) / Composite Longbow (`composite_bow`) | weapon | stat 4 / 6, `bow_shot` (14–18 dmg, range 6, 1.0s CD, consumes arrow); Composite grants 20 arrows | none |
-| off_hand | Hunter's Quiver (`hunter_quiver`) | offhand | stat 3 | none |
-| armor | Hunter's Leathers (`hunter_leathers`) | armor | stat 5 | none |
-| relic | Archer's Hood (`archer_hood`) | relic | stat 4 | none |
+| off_hand | Hunter's Quiver (`hunter_quiver`) | offhand | stat 3, `poison_tip` (2 MP, 8s CD) | `poisonDpsInc` 1 → rank 5: 6 poison dmg/s |
+| armor | Vampiric Cloak (`hunter_leathers`) | armor | stat 5, `dodgePct` 10%, `life_siphon` (1 MP, 8s CD) | `dodgePctInc` 2%, `siphonHpInc` 1 → rank 5: 18% dodge, 9 HP siphon |
+| relic | Ranger's Talisman (`ranger_talisman`) | relic | stat 4, `critChance` 10%, `critMult` 1.25×, `rangedDamageBonus` 4, `hunters_mark` (3 MP, 15s CD) | `critChanceInc` 1%, `critMultInc` 0.05, `rangedDamageBonusInc` 2, `markDurationInc` 1 |
 | bonus | Power Shot (`spell_power_shot`) | spell | 32–42 dmg, range 6, 4.0s CD, consumes arrow, grants 20 arrows | none |
 
-`nativeEquipment`: wooden_bow, composite_bow, hunter_quiver, hunter_leathers, archer_hood.
+`nativeEquipment`: wooden_bow, composite_bow, hunter_quiver, hunter_leathers, ranger_talisman.
 
 ### Fighter — "resilient front-line warrior … heavy broadswords, cleaves, defensive stances" (HP regen)
 
@@ -161,8 +161,8 @@ Target: each set ≈ **~20 stat point budget** ≈ **one signature** ≈ **compa
 |---|---|---|---|
 | main_hand | Composite Longbow (`composite_bow`) — kept as the Golden bow base | stat 6, `bow_shot` (14–18 dmg, range 6, CD 1.0 s, consumes arrow), grants 20 arrows | `randomDamageInc` [5,8], `rangeInc` 1 → rank 5: +20–32 dmg, range 10 |
 | off_hand | Regen Quiver (`grey_stalker_quiver`) — **NEW** (replaces `hunter_quiver` in the Golden loadout) | stat 3; **`arrowCapacity` 25**, **`arrowCount` 25**, **`ammoRegenSec` 5** | **`arrowCapacityInc` 5**, **`ammoRegenSecReduction` 0.5** → rank 5: capacity 45, regen every 3.0 s |
-| armor | Hunter's Leathers (`hunter_leathers`) | stat 5, **`dodgePct` 10%** | **`dodgePctInc` 2%** → rank 5: 18% dodge |
-| relic | Archer's Hood (`archer_hood`) | stat 4, **`critChance` 10%**, **`critMult` 1.25×** | **`critChanceInc` 1%**, **`critMultInc` 0.05** → rank 5: 14% / 1.45× |
+| armor | Vampiric Cloak (`hunter_leathers`) | stat 5, **`dodgePct` 10%**, **`life_siphon`** (1 MP, 8s CD) | **`dodgePctInc` 2%**, **`siphonHpInc` 1** → rank 5: 18% dodge, 9 HP siphon |
+| relic | Ranger's Talisman (`ranger_talisman`) | stat 4, **`critChance` 10%**, **`critMult` 1.25×**, **`rangedDamageBonus` 4**, **`hunters_mark`** (3 MP, 15s CD) | **`critChanceInc` 1%**, **`critMultInc` 0.05**, **`rangedDamageBonusInc` 2**, **`markDurationInc` 1** → rank 5: 14% / 1.45× / +12 ranged / 10s mark |
 | bonus | Power Shot (`spell_power_shot`) | 32–42 dmg, range 6, 4.0 s CD, consumes arrow, grants 20 arrows | — (spell, outside the 4-slot set) |
 
 **The quiver mechanic, honestly specified:**
@@ -173,9 +173,9 @@ Target: each set ≈ **~20 stat point budget** ≈ **one signature** ≈ **compa
 - **Bow damage parity (engine alignment, no new field):** align `executeBowShot` (and `executePowerShot` for procurement of `item.damage` in the future) with the proven `executeWandSpark` pattern — if the equipped bow item embeds `damage` (card-rolled, e.g. 14–18), read it; else fall back to `CONFIG.ARCHER_BOW_DAMAGE_MIN/MAX`. `randomDamageInc` then bumps the item's `damage` exactly like the wand does today.
 - **Upgrade wiring (directive 5):** new `fate-grant-system.applyDraftedCards` branches for `arrowCapacityInc` (`item.arrowCapacity += 5` per rank) and `ammoRegenSecReduction` (`item.ammoRegenSec = max(2.5, base − 0.5×(rank−1))`), plus `dodgePctInc`, `critChanceInc`, `critMultInc` recomputing their base fields by rank.
 
-**Set synergy:** quiver regen pays for sustained kiting; hood crit makes every arrow count; leathers dodge covers the moment a rat gets adjacent. Ranking up any piece makes the whole "spend-then-regen" loop smoother. Rank-5 archer fires bow shots well above the 14–18 base (up to +32 from upgrades) with 14% ×1.45 crits, 18% dodge, and effectively infinite arrows.
+**Set synergy:** quiver regen pays for sustained kiting; talisman crit makes every arrow count; cloak dodge covers the moment a rat gets adjacent. Ranking up any piece makes the whole "spend-then-regen" loop smoother. Rank-5 archer fires bow shots well above the 14–18 base (up to +32 from upgrades) with 14% ×1.45 crits, 18% dodge, and effectively infinite arrows.
 
-`nativeEquipment` (v2): composite_bow, grey_stalker_quiver, hunter_leathers, archer_hood. New off-hand card `card_grey_stalker_quiver` satisfies LOK-4's ≥1 off_hand guarantee for level-1 drafts.
+`nativeEquipment` (v2): composite_bow, grey_stalker_quiver, hunter_leathers, ranger_talisman. New off-hand card `card_grey_stalker_quiver` satisfies LOK-4's ≥1 off_hand guarantee for level-1 drafts.
 
 ### 4.3 Fighter — **"Iron Vanguard"** *(directive 3: active shield pushback + stun; directive 5: full set upgrades)*
 

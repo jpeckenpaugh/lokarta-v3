@@ -31,7 +31,7 @@ import { ITEMS_CATALOG, CARDS_CATALOG, VOCATIONS_CATALOG, MONSTERS_CATALOG } fro
 
 const GOLDEN_SET_IDS = {
   magician: { main_hand: 'astral_scepter', off_hand: 'apprentice_wand', armor: 'apprentice_cape', relic: 'relic_luminous_amulet' },
-  archer: { main_hand: 'composite_bow', off_hand: 'grey_stalker_quiver', armor: 'hunter_leathers', relic: 'archer_hood' },
+  archer: { main_hand: 'composite_bow', off_hand: 'grey_stalker_quiver', armor: 'hunter_leathers', relic: 'ranger_talisman' },
   fighter: { main_hand: 'tempered_broadsword', off_hand: 'vanguard_shield', armor: 'plate_armor', relic: 'iron_helm' },
   paladin: { main_hand: 'consecrated_warhammer', off_hand: 'aegis_shield', armor: 'plate_armor', relic: 'holy_crown' },
 };
@@ -90,7 +90,7 @@ describe('LOK-15 Golden Sets — Data & Drafts', () => {
   });
 
   it('each vocation declares its Golden 4-slot nativeEquipment', () => {
-    assert.equal(VOCATIONS_CATALOG.archer.nativeEquipment.join(','), 'composite_bow,grey_stalker_quiver,hunter_leathers,archer_hood');
+    assert.equal(VOCATIONS_CATALOG.archer.nativeEquipment.join(','), 'composite_bow,grey_stalker_quiver,hunter_leathers,ranger_talisman');
     assert.equal(VOCATIONS_CATALOG.fighter.nativeEquipment.join(','), 'tempered_broadsword,vanguard_shield,plate_armor,iron_helm');
     assert.equal(VOCATIONS_CATALOG.paladin.nativeEquipment.join(','), 'consecrated_warhammer,aegis_shield,plate_armor,holy_crown');
   });
@@ -212,16 +212,17 @@ describe('LOK-15 Golden Sets — Archer (Grey Stalker)', () => {
     const target = { id: 'm1', name: 'Rat', type: 'giant_rat', x: 5, y: 2, hp: 500, max_hp: 500 };
     let res = CombatSystem.executeBowShot(arch, target, makeFloorGrid(), arch.paperdoll.main_hand);
     assert.equal(res.success, true);
-    assert.equal(res.damageDealt, 30, 'item damage read, no CONFIG fallback needed');
+    // Embedded item.damage (30) + the Ranger's Talisman's +4 ranged bonus.
+    assert.equal(res.damageDealt, 34, 'item damage read with equipped ranged bonus');
 
-    // 100% crit roll from the hood (critChance 100, critMult 1.45)
+    // 100% crit roll from the talisman (critChance 100, critMult 1.45)
     arch.cooldowns = {};
     arch.paperdoll.relic.critChance = 100;
     arch.paperdoll.relic.critMult = 1.45;
     res = CombatSystem.executeBowShot(arch, target, makeFloorGrid(), arch.paperdoll.main_hand);
     assert.equal(res.success, true);
     assert.equal(res.isCrit, true);
-    assert.equal(res.damageDealt, Math.round(30 * 1.45));
+    assert.equal(res.damageDealt, Math.round(34 * 1.45));
   });
 });
 

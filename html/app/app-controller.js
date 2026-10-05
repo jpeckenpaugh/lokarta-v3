@@ -992,6 +992,25 @@ export class LokartaApp {
       this.player.luminousPrayerVfxSec = Math.max(0, this.player.luminousPrayerVfxSec - deltaSec);
     }
 
+    // LIV-36: Poison Tip buff expiry — the charge window (10s or 5 arrows)
+    // closes when either the timer runs out or the last charged arrow is spent.
+    if (this.player.poisonTipTimer > 0) {
+      this.player.poisonTipTimer = Math.max(0, this.player.poisonTipTimer - deltaSec);
+      if (this.player.poisonTipTimer <= 0) this.player.poisonTipArrows = 0;
+    }
+
+    // LIV-36: tick poison DoT + Hunter's Mark on monsters. Any enemy slain by
+    // poison resolves through the normal death/loot/XP path.
+    const poisonedDeaths = CombatSystem.tickStatusEffects(this.monsters, deltaSec);
+    for (const dead of poisonedDeaths) {
+      this.handleCombatResult({
+        success: true,
+        message: `${dead.name} succumbs to poison!`,
+        defeatedMonsterId: dead.id,
+        droppedLoot: CombatSystem.generateMonsterLoot(dead),
+      }, null, null);
+    }
+
     // Grey Stalker quiver arrow regen: +1 arrow per ammoRegenSec (5 s base)
     // while below capacity. The accumulator resets on regen and on quiver swap.
     const quiver = this.player.paperdoll?.off_hand;
@@ -1800,6 +1819,46 @@ export class LokartaApp {
           this.logCombat(res.message, 'spell');
           if (res.hpRestored > 0) this.addFloatingText(`+${res.hpRestored} HP`, this.player.x, this.player.y, '#22c55e');
           if (res.mpRestored > 0) this.addFloatingText(`+${res.mpRestored} MP`, this.player.x, this.player.y, '#3b82f6');
+        } else {
+          this.logCombat(res.message, 'warning');
+        }
+      },
+      poison_tip: () => {
+        const res = CombatSystem.executePoisonTip(this.player, item);
+        if (res.success) {
+          soundFX.play('hit');
+          this.logCombat(res.message, 'spell');
+          this.addFloatingText('Poison Tip!', this.player.x, this.player.y, '#84cc16');
+        } else {
+          this.logCombat(res.message, 'warning');
+        }
+      },
+      life_siphon: () => {
+        const res = CombatSystem.executeLifeSiphon(this.player, this.gridMap, this.monsters, item);
+        if (!res.success) {
+          this.logCombat(res.message, 'warning');
+          return;
+        }
+        soundFX.play('holyChime');
+        this.logCombat(res.message, 'spell');
+        if (res.healed > 0) this.addFloatingText(`+${res.healed} HP`, this.player.x, this.player.y, '#22c55e');
+        for (const hit of res.affected || []) {
+          this.addFloatingText(`-${hit.drained}`, hit.monster.x, hit.monster.y, '#a855f7');
+          if (hit.defeated && hit.monster.id) {
+            this.handleCombatResult({
+              success: true,
+              defeatedMonsterId: hit.monster.id,
+              droppedLoot: CombatSystem.generateMonsterLoot(hit.monster),
+            }, hit.monster.x, hit.monster.y);
+          }
+        }
+      },
+      hunters_mark: () => {
+        const res = CombatSystem.executeHuntersMark(this.player, this.gridMap, this.monsters, item);
+        if (res.success) {
+          soundFX.play('uiMove');
+          this.logCombat(res.message, 'spell');
+          for (const m of res.marked) this.addFloatingText('MARKED', m.x, m.y, '#f59e0b');
         } else {
           this.logCombat(res.message, 'warning');
         }
