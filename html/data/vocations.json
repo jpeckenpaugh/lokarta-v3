@@ -82,8 +82,8 @@
     "nativeEquipment": [
       "tempered_broadsword",
       "vanguard_shield",
-      "plate_armor",
-      "iron_helm"
+      "vanguard_battleplate",
+      "relic_berserkers_sigil"
     ],
     "description": "Resilient front-line warrior using heavy broadswords, cleaves, and defensive stances.",
     "renderTheme": {
@@ -96,8 +96,8 @@
     "solidEquipment": {
       "main_hand": "tempered_broadsword",
       "off_hand": "vanguard_shield",
-      "armor": "plate_armor",
-      "relic": "iron_helm"
+      "armor": "vanguard_battleplate",
+      "relic": "relic_berserkers_sigil"
     }
   },
   "paladin": {
@@ -116,8 +116,8 @@
     "nativeEquipment": [
       "consecrated_warhammer",
       "aegis_shield",
-      "plate_armor",
-      "holy_crown"
+      "sanctuary_plate",
+      "relic_dawnlight"
     ],
     "description": "Holy champion striking with sacred warhammers, area light, and restorative prayers.",
     "renderTheme": {
@@ -130,8 +130,8 @@
     "solidEquipment": {
       "main_hand": "consecrated_warhammer",
       "off_hand": "aegis_shield",
-      "armor": "plate_armor",
-      "relic": "holy_crown"
+      "armor": "sanctuary_plate",
+      "relic": "relic_dawnlight"
     }
   }
 }

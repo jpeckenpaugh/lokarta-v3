@@ -66,7 +66,19 @@ export function getEffectiveRange(item) {
 }
 
 /**
- * Effective mana cost for a spell weapon at its current rank.
+ * Effective mana cost for an item's granted ability at its current rank.
+ *
+ * Two rank-scaled levers apply:
+ *  - authored per-rank deltas: `manaCostInc` (weapons that intentionally get
+ *    pricier as they rank) and `shieldManaCostReduction` (shields that get
+ *    cheaper).
+ *  - the LIV-41 promoted-item rule: every promoted rank label above Rank 1
+ *    lowers the consumed MP by 1. "Promoted label" = the `Rank N` an item
+ *    gains through the upgrade/rank-up system (`itemLevel`). Rank 1 is
+ *    unpromoted (discount 0); Rank 5 has four promotions (discount 4).
+ *
+ * Floored at 0 MP. Pure: no DOM/worker/storage I/O.
+ *
  * @param {object} item
  * @returns {number}
  */
@@ -77,7 +89,9 @@ export function getEffectiveManaCost(item) {
   const base = typeof item.manaCost === 'number' ? item.manaCost : (catalog.manaCost || 0);
   const spec = catalog.upgradeSpec || item.upgradeSpec || {};
   const perRank = typeof spec.manaCostInc === 'number' ? spec.manaCostInc : 0;
-  return base + perRank * (rank - 1);
+  const shieldPerRank = typeof spec.shieldManaCostReduction === 'number' ? spec.shieldManaCostReduction : 0;
+  const promotionDiscount = Math.max(0, rank - 1);
+  return Math.max(0, base + (perRank - shieldPerRank) * (rank - 1) - promotionDiscount);
 }
 
 /**

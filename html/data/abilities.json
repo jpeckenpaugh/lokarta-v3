@@ -137,7 +137,7 @@
     "damageMin": 18,
     "damageMax": 26,
     "range": 1,
-    "manaCost": 10,
+    "manaCost": 5,
     "cooldownSec": 1.2,
     "soundId": "holy_chime",
     "actionKey": "holy_strike"

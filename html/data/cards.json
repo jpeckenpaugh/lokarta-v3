@@ -206,6 +206,74 @@
     }
   },
   {
+    "id": "card_vanguard_battleplate",
+    "name": "Vanguard Battleplate",
+    "rarity": "epic",
+    "icon": "🦺",
+    "description": "Interlocking vanguard steel built to brace for the charge. Fortify Stance (12 MP) halves all incoming damage for 10s (14s cooldown).",
+    "statBonusText": "+8 Armor, Fortify: -50% Dmg 10s (12 MP)",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "vanguard_battleplate",
+      "name": "Vanguard Battleplate",
+      "type": "armor",
+      "quantity": 1,
+      "stat_bonus": 8,
+      "icon": "🦺"
+    }
+  },
+  {
+    "id": "card_relic_berserkers_sigil",
+    "name": "Berserker's Sigil",
+    "rarity": "rare",
+    "icon": "🩸",
+    "description": "A blood-bound sigil that sharpens every strike. Grants +8% crit and Whirlwind Cleave (10 MP): a 2.5-tile sweep that hits every nearby foe (3s cooldown).",
+    "statBonusText": "+5 Armor, +8% Crit, Whirlwind Cleave (10 MP)",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "relic_berserkers_sigil",
+      "name": "Berserker's Sigil",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 5,
+      "icon": "🩸"
+    }
+  },
+  {
+    "id": "card_sanctuary_plate",
+    "name": "Sanctuary Plate",
+    "rarity": "epic",
+    "icon": "🦺",
+    "description": "Consecrated plate that answers a prayer. Sanctuary (12 MP) wraps you in a holy force-field that absorbs 15 damage for 20s (16s cooldown).",
+    "statBonusText": "+8 Armor, Sanctuary: Absorb 15 / 20s (12 MP)",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "sanctuary_plate",
+      "name": "Sanctuary Plate",
+      "type": "armor",
+      "quantity": 1,
+      "stat_bonus": 8,
+      "icon": "🦺"
+    }
+  },
+  {
+    "id": "card_relic_dawnlight",
+    "name": "Dawnlight Reliquary",
+    "rarity": "rare",
+    "icon": "📿",
+    "description": "A reliquary holding the first light of dawn. Grants +15 Max MP and Dawnlight Benediction (20 MP): restores 25-35 HP and 15 MP (18s cooldown).",
+    "statBonusText": "+6 Armor, +15 MP, Benediction: Heal + MP (20 MP)",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "relic_dawnlight",
+      "name": "Dawnlight Reliquary",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 6,
+      "icon": "📿"
+    }
+  },
+  {
     "id": "card_health_potion_x3",
     "name": "Health Potion Stash",
     "rarity": "common",

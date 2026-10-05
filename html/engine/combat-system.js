@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
-import { ABILITIES_CATALOG, MONSTERS_CATALOG } from '../data/index.js';
+import { ABILITIES_CATALOG, MONSTERS_CATALOG, ITEMS_CATALOG } from '../data/index.js';
 import { getEffectiveDamage, getEffectiveRange, getEffectiveManaCost } from './item-stats.js';
 
 export class CombatSystem {
@@ -55,7 +55,8 @@ export class CombatSystem {
   static getEffectiveCooldown(item) {
     if (!item || typeof item.cooldown !== 'number') return null;
     const rank = item.itemLevel || 1;
-    const perRank = item.upgradeSpec?.cooldownReductionSec || 0;
+    const spec = ITEMS_CATALOG[item.item_id]?.upgradeSpec || item.upgradeSpec || {};
+    const perRank = spec.cooldownReductionSec || 0;
     return Math.max(1, item.cooldown - perRank * (rank - 1));
   }
 
@@ -76,14 +77,14 @@ export class CombatSystem {
 
   /**
    * Effective mana cost for an equipped item's active (e.g. aegis_shield
-   * holy_shield). `upgradeSpec.shieldManaCostReduction` shortens the base
-   * `item.manaCost` by `reductionSec * (rank - 1)`, flooring at 1 MP.
+   * holy_shield, sanctuary_plate sanctuary). Delegates to the shared
+   * rank-scaled projection in `item-stats.js`, which applies the authored
+   * `shieldManaCostReduction`/`manaCostInc` deltas plus the LIV-41
+   * promoted-item MP-1-per-rank rule. Floors at 0 MP.
    */
   static getEffectiveManaCost(item) {
     if (!item || typeof item.manaCost !== 'number') return null;
-    const rank = item.itemLevel || 1;
-    const perRank = item.upgradeSpec?.shieldManaCostReduction || 0;
-    return Math.max(1, item.manaCost - perRank * (rank - 1));
+    return getEffectiveManaCost(item);
   }
 
   /**
@@ -795,18 +796,24 @@ export class CombatSystem {
       return { success: false, message: 'Holy Strike is on cooldown.' };
     }
 
-    if (player.mana < CONFIG.PALADIN_HOLY_STRIKE_MANA_COST) {
-      return { success: false, message: 'Not enough Mana for Holy Strike.' };
+    const weaponItem = opts.item || player.paperdoll?.main_hand || null;
+    // LIV-41: the equipped weapon is the source of truth for its granted
+    // ability's MP cost, reconciled with abilities.json (both 5 MP). A
+    // promoted Warhammer then gets the shared MP-1-per-rank discount.
+    const manaCost = (weaponItem && typeof weaponItem.manaCost === 'number')
+      ? getEffectiveManaCost(weaponItem)
+      : CONFIG.PALADIN_HOLY_STRIKE_MANA_COST;
+    if (player.mana < manaCost) {
+      return { success: false, message: `Not enough Mana for Holy Strike (${manaCost} MP).` };
     }
 
-    player.mana -= CONFIG.PALADIN_HOLY_STRIKE_MANA_COST;
+    player.mana -= manaCost;
     if (!player.cooldowns) player.cooldowns = {};
     player.cooldowns.holy_strike = CONFIG.PALADIN_HOLY_STRIKE_COOLDOWN_SEC;
 
     const reach = 2.5;
     const facing = opts.facing || player.facing || 'right';
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
-    const weaponItem = opts.item || player.paperdoll?.main_hand || null;
 
     let hitMonster = null;
     if (target && Math.hypot(target.x - player.x, target.y - player.y) <= reach) {
@@ -1021,6 +1028,95 @@ export class CombatSystem {
   }
 
   /**
+   * Executes the Paladin's Sanctuary Plate active (armor, E key). A second
+   * holy force-field source alongside `executeHolyShield`: mana- and
+   * cooldown-gated, it arms/refreshes `player.shieldAbsorb` and
+   * `player.shieldDurationSec`, so it reuses the exact same damage-intercept
+   * seam and silver barrier VFX as the Aegis Shield / Apprentice's Cape. It
+   * never downgrades an existing stronger bubble (`Math.max`).
+   */
+  static executeSanctuary(player, item = null) {
+    if (!item) {
+      return { success: false, message: 'No armor equipped for Sanctuary.' };
+    }
+    if (player.cooldowns?.sanctuary > 0) {
+      return { success: false, message: 'Sanctuary is on cooldown.' };
+    }
+
+    const manaCost = CombatSystem.getEffectiveManaCost(item) ?? 0;
+    if (player.mana < manaCost) {
+      return { success: false, message: `Not enough Mana to cast Sanctuary (${manaCost} MP).` };
+    }
+
+    const absorb = item.shieldAbsorb || 0;
+    const duration = item.shieldDuration || 0;
+    player.mana -= manaCost;
+    player.shieldAbsorb = Math.max(player.shieldAbsorb || 0, absorb);
+    player.shieldDurationSec = Math.max(player.shieldDurationSec || 0, duration);
+
+    const effectiveCooldown = CombatSystem.getEffectiveCooldown(item) ?? item.cooldown ?? 16;
+    if (!player.cooldowns) player.cooldowns = {};
+    player.cooldowns.sanctuary = effectiveCooldown;
+
+    return {
+      success: true,
+      message: `Sanctuary! A holy force-field absorbs ${absorb} damage for ${duration}s (${manaCost} MP, ${effectiveCooldown}s CD).`,
+      shieldAbsorb: absorb,
+      shieldDurationSec: duration,
+      manaCost,
+      cooldownSet: effectiveCooldown,
+    };
+  }
+
+  /**
+   * Executes the Paladin's Dawnlight Reliquary active (relic, R key).
+   * Mana- and cooldown-gated restoration: heals a `healMin`..`healMax` roll
+   * scaled by the equipped `healPowerPct` and restores `mpRestore` MP. Refuses
+   * to cast when both pools are already full.
+   */
+  static executeBenediction(player, item = null) {
+    if (!item) {
+      return { success: false, message: 'No relic equipped for Benediction.' };
+    }
+    if (player.cooldowns?.benediction > 0) {
+      return { success: false, message: 'Benediction is on cooldown.' };
+    }
+
+    const manaCost = CombatSystem.getEffectiveManaCost(item) ?? 0;
+    if (player.mana < manaCost) {
+      return { success: false, message: `Not enough Mana to cast Benediction (${manaCost} MP).` };
+    }
+    if (player.hp >= player.max_hp && player.mana >= player.max_mana) {
+      return { success: false, message: 'Benediction finds nothing to restore — HP and MP are full.' };
+    }
+
+    player.mana -= manaCost;
+    const effectiveCooldown = CombatSystem.getEffectiveCooldown(item) ?? item.cooldown ?? 18;
+    if (!player.cooldowns) player.cooldowns = {};
+    player.cooldowns.benediction = effectiveCooldown;
+
+    const healPowerPct = CombatSystem.getEquippedStat(player, 'healPowerPct');
+    const healBoost = 1 + (healPowerPct || 0) / 100;
+    const baseHeal = CombatSystem.randomBetween(item.healMin || 25, item.healMax || 35);
+    const heal = Math.round(baseHeal * healBoost);
+    const mpRestore = item.mpRestore || 15;
+
+    const hpRestored = Math.min(heal, Math.max(0, player.max_hp - player.hp));
+    const mpRestored = Math.min(mpRestore, Math.max(0, player.max_mana - player.mana));
+    player.hp = Math.min(player.max_hp, player.hp + heal);
+    player.mana = Math.min(player.max_mana, player.mana + mpRestore);
+
+    return {
+      success: true,
+      message: `Benediction! Restored +${hpRestored} HP and +${mpRestored} MP (${manaCost} MP, ${effectiveCooldown}s CD).`,
+      hpRestored,
+      mpRestored,
+      manaCost,
+      cooldownSet: effectiveCooldown,
+    };
+  }
+
+  /**
    * Executes the Magician's Shock Shield (Apprentice's Cape active, `e` key).
    * Costs `item.manaCost` MP (2 base) and arms a one-charge electro shield:
    * the next incoming attack is deflected (0 damage) and its attacker is
@@ -1037,7 +1133,7 @@ export class CombatSystem {
       return { success: false, message: 'Shock Shield is on cooldown.' };
     }
 
-    const manaCost = (typeof item.manaCost === 'number') ? item.manaCost : 2;
+    const manaCost = (typeof item.manaCost === 'number') ? getEffectiveManaCost(item) : 2;
     if (player.mana < manaCost) {
       return { success: false, message: `Not enough Mana to cast Shock Shield (${manaCost} MP).` };
     }
@@ -1121,7 +1217,7 @@ export class CombatSystem {
     if (player.cooldowns?.poison_tip > 0) {
       return { success: false, message: 'Poison Tip is on cooldown.' };
     }
-    const manaCost = (typeof item.manaCost === 'number') ? item.manaCost : 2;
+    const manaCost = (typeof item.manaCost === 'number') ? getEffectiveManaCost(item) : 2;
     if (player.mana < manaCost) {
       return { success: false, message: `Not enough Mana to cast Poison Tip (${manaCost} MP).` };
     }
@@ -1211,7 +1307,7 @@ export class CombatSystem {
     if (player.cooldowns?.life_siphon > 0) {
       return { success: false, message: 'Life Siphon is on cooldown.' };
     }
-    const manaCost = (typeof item.manaCost === 'number') ? item.manaCost : 1;
+    const manaCost = (typeof item.manaCost === 'number') ? getEffectiveManaCost(item) : 1;
     if (player.mana < manaCost) {
       return { success: false, message: `Not enough Mana to cast Life Siphon (${manaCost} MP).` };
     }
@@ -1262,7 +1358,7 @@ export class CombatSystem {
     if (player.cooldowns?.hunters_mark > 0) {
       return { success: false, message: "Hunter's Mark is on cooldown." };
     }
-    const manaCost = (typeof item.manaCost === 'number') ? item.manaCost : 3;
+    const manaCost = (typeof item.manaCost === 'number') ? getEffectiveManaCost(item) : 3;
     if (player.mana < manaCost) {
       return { success: false, message: `Not enough Mana to cast Hunter's Mark (${manaCost} MP).` };
     }
@@ -1308,14 +1404,16 @@ export class CombatSystem {
       return { success: false, message: 'Cleave is on cooldown.' };
     }
 
-    const manaCost = CONFIG.FIGHTER_CLEAVE_MANA_COST;
+    const manaCost = (item && typeof item.manaCost === 'number') ? getEffectiveManaCost(item) : CONFIG.FIGHTER_CLEAVE_MANA_COST;
     if (player.mana < manaCost) {
       return { success: false, message: 'Not enough Mana for Cleave.' };
     }
 
     player.mana -= manaCost;
     if (!player.cooldowns) player.cooldowns = {};
-    player.cooldowns.cleave = CONFIG.FIGHTER_CLEAVE_COOLDOWN_SEC;
+    player.cooldowns.cleave = (item && typeof item.cooldown === 'number')
+      ? (CombatSystem.getEffectiveCooldown(item) ?? item.cooldown)
+      : CONFIG.FIGHTER_CLEAVE_COOLDOWN_SEC;
 
     const reach = 2.5;
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
@@ -1378,14 +1476,16 @@ export class CombatSystem {
       return { success: false, message: 'Fortify is on cooldown.' };
     }
 
-    const manaCost = (item && typeof item.manaCost === 'number') ? item.manaCost : 15;
+    const manaCost = (item && typeof item.manaCost === 'number') ? getEffectiveManaCost(item) : 15;
     if (player.mana < manaCost) {
       return { success: false, message: 'Not enough Mana for Fortify.' };
     }
 
     player.mana -= manaCost;
     if (!player.cooldowns) player.cooldowns = {};
-    player.cooldowns.fortify = (item && typeof item.cooldown === 'number') ? item.cooldown : 12;
+    player.cooldowns.fortify = (item && typeof item.cooldown === 'number')
+      ? (CombatSystem.getEffectiveCooldown(item) ?? item.cooldown)
+      : 12;
 
     player.fortifyActive = true;
     player.fortifyTimer = 10;

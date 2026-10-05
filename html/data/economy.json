@@ -58,7 +58,11 @@
     { "itemId": "composite_bow", "price": 220, "maxPurchases": 1, "vocationAffinity": "archer" },
     { "itemId": "tempered_broadsword", "price": 120, "maxPurchases": 1, "vocationAffinity": "fighter" },
     { "itemId": "vanguard_shield", "price": 200, "maxPurchases": 1, "vocationAffinity": "fighter" },
+    { "itemId": "vanguard_battleplate", "price": 260, "maxPurchases": 1, "vocationAffinity": "fighter" },
+    { "itemId": "relic_berserkers_sigil", "price": 220, "maxPurchases": 1, "vocationAffinity": "fighter" },
     { "itemId": "consecrated_warhammer", "price": 120, "maxPurchases": 1, "vocationAffinity": "paladin" },
-    { "itemId": "aegis_shield", "price": 200, "maxPurchases": 1, "vocationAffinity": "paladin" }
+    { "itemId": "aegis_shield", "price": 200, "maxPurchases": 1, "vocationAffinity": "paladin" },
+    { "itemId": "sanctuary_plate", "price": 260, "maxPurchases": 1, "vocationAffinity": "paladin" },
+    { "itemId": "relic_dawnlight", "price": 220, "maxPurchases": 1, "vocationAffinity": "paladin" }
   ]
 }

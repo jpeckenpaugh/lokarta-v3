@@ -32,8 +32,8 @@ import { ITEMS_CATALOG, CARDS_CATALOG, VOCATIONS_CATALOG, MONSTERS_CATALOG } fro
 const GOLDEN_SET_IDS = {
   magician: { main_hand: 'astral_scepter', off_hand: 'apprentice_wand', armor: 'apprentice_cape', relic: 'relic_luminous_amulet' },
   archer: { main_hand: 'composite_bow', off_hand: 'grey_stalker_quiver', armor: 'hunter_leathers', relic: 'ranger_talisman' },
-  fighter: { main_hand: 'tempered_broadsword', off_hand: 'vanguard_shield', armor: 'plate_armor', relic: 'iron_helm' },
-  paladin: { main_hand: 'consecrated_warhammer', off_hand: 'aegis_shield', armor: 'plate_armor', relic: 'holy_crown' },
+  fighter: { main_hand: 'tempered_broadsword', off_hand: 'vanguard_shield', armor: 'vanguard_battleplate', relic: 'relic_berserkers_sigil' },
+  paladin: { main_hand: 'consecrated_warhammer', off_hand: 'aegis_shield', armor: 'sanctuary_plate', relic: 'relic_dawnlight' },
 };
 
 const GOLDEN_OFF_HAND = { archer: 'grey_stalker_quiver', fighter: 'vanguard_shield', paladin: 'aegis_shield' };
@@ -91,8 +91,8 @@ describe('LOK-15 Golden Sets — Data & Drafts', () => {
 
   it('each vocation declares its Golden 4-slot nativeEquipment', () => {
     assert.equal(VOCATIONS_CATALOG.archer.nativeEquipment.join(','), 'composite_bow,grey_stalker_quiver,hunter_leathers,ranger_talisman');
-    assert.equal(VOCATIONS_CATALOG.fighter.nativeEquipment.join(','), 'tempered_broadsword,vanguard_shield,plate_armor,iron_helm');
-    assert.equal(VOCATIONS_CATALOG.paladin.nativeEquipment.join(','), 'consecrated_warhammer,aegis_shield,plate_armor,holy_crown');
+    assert.equal(VOCATIONS_CATALOG.fighter.nativeEquipment.join(','), 'tempered_broadsword,vanguard_shield,vanguard_battleplate,relic_berserkers_sigil');
+    assert.equal(VOCATIONS_CATALOG.paladin.nativeEquipment.join(','), 'consecrated_warhammer,aegis_shield,sanctuary_plate,relic_dawnlight');
   });
 
   it('the three Golden off-hand draft cards exist in the pool', () => {
@@ -294,13 +294,13 @@ describe('LOK-15 Golden Sets — Fighter (Iron Vanguard)', () => {
     const c2 = { id: 'c2', name: 'Sk2', type: 'crypt_skeleton', x: 3, y: 4, hp: 80, max_hp: 80 };
     const c3 = { id: 'c3', name: 'Sk3', type: 'crypt_skeleton', x: 8, y: 8, hp: 80, max_hp: 80 };
 
-    const res = CombatSystem.executeCleave(fgt, grid, [c1, c2, c3], fgt.paperdoll.main_hand);
+    const res = CombatSystem.executeCleave(fgt, grid, [c1, c2, c3], fgt.paperdoll.relic);
     assert.equal(res.success, true);
     assert.equal(res.hits.length, 2, 'cleave hits every in-reach monster');
     assert.ok(c1.hp < 80 && c2.hp < 80);
     assert.equal(c3.hp, 80, 'out-of-reach monster untouched');
     assert.equal(fgt.mana, 90, 'cleave costs 10 MP');
-    assert.equal(fgt.cooldowns.cleave, CONFIG.FIGHTER_CLEAVE_COOLDOWN_SEC);
+    assert.equal(fgt.cooldowns.cleave, fgt.paperdoll.relic.cooldown, 'cleave uses the Berserker Sigil cooldown');
   });
 
   it('fortify is registered and halves incoming damage while active', () => {
@@ -313,10 +313,10 @@ describe('LOK-15 Golden Sets — Fighter (Iron Vanguard)', () => {
     assert.equal(fgt.fortifyTimer, 10);
     assert.equal(fgt.mana, 85);
 
-    // Fighters also wear plate (10% mitigation) — halving + mitigation both land.
+    // Fighters also wear battleplate (10% mitigation) — halving + mitigation both land.
     const hpBefore = fgt.hp;
     const hit = CombatSystem.applyIncomingDamage(fgt, 20);
-    assert.equal(hit.damageToPlayer, 9, '20 -> fortify halves to 10 -> 10% plate mitigation -> 9');
+    assert.equal(hit.damageToPlayer, 9, '20 -> fortify halves to 10 -> 10% battleplate mitigation -> 9');
     assert.equal(fgt.hp, hpBefore - 9);
     // Fortify is cooldown-gated; a second cast within the window is blocked.
     const again = CombatSystem.executeFortify(fgt, fgt.action_bar[0]);
@@ -325,9 +325,9 @@ describe('LOK-15 Golden Sets — Fighter (Iron Vanguard)', () => {
 });
 
 describe('LOK-15 Golden Sets — Paladin (Radiant Crusader)', () => {
-  it('holy crown grants +20 max mana; aegis casts a 10-absorb / 30s bubble for 15 MP', () => {
+  it('dawnlight reliquary grants +15 max mana; aegis casts a 10-absorb / 30s bubble for 15 MP', () => {
     const pal = equipGoldenSet('paladin');
-    assert.equal(pal.max_mana, 110, 'holy crown manaBonus +20 on equip');
+    assert.equal(pal.max_mana, 105, 'dawnlight reliquary manaBonus +15 on equip');
     const shield = pal.paperdoll.off_hand;
     const manaBefore = pal.mana;
     const res = CombatSystem.executeHolyShield(pal, shield);
@@ -378,7 +378,7 @@ describe('LOK-15 Golden Sets — Paladin (Radiant Crusader)', () => {
     assert.equal(shield.itemLevel, 5);
     assert.equal(shield.shieldAbsorb, 30);
     assert.equal(shield.shieldDuration, 46);
-    assert.equal(CombatSystem.getEffectiveManaCost(shield), 7, 'rank-5 holy shield costs 7 MP');
+    assert.equal(CombatSystem.getEffectiveManaCost(shield), 3, 'rank-5 holy shield costs 3 MP (-2/rank shield spec plus the promoted-label discount)');
   });
 
   it('healPowerPct scales Healing Prayer', () => {

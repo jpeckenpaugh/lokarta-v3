@@ -101,8 +101,8 @@ describe('LIV-22 #3 equipment consolidation', () => {
     }
   });
 
-  it('minimizes the Consecrated War Hammer mana cost so the paladin stays usable', () => {
-    assert.ok((ITEMS_CATALOG.consecrated_warhammer.manaCost || 0) <= 1);
+  it('sets the Consecrated War Hammer ability MP cost to 5 (LIV-41)', () => {
+    assert.equal(ITEMS_CATALOG.consecrated_warhammer.manaCost, 5);
   });
 });
 

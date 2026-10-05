@@ -27,7 +27,8 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(Array.isArray(CARDS_CATALOG), 'CARDS_CATALOG must be an array');
     // LIV-34: the "Radiant Light Spell" (card_light_spell) draft card was removed.
     // LIV-40: retired 8 inert spell_* cards, card_hunter_quiver, and card_iron_buckler.
-    assert.equal(CARDS_CATALOG.length, 19, 'CARDS_CATALOG must contain 19 draft cards');
+    // LIV-41: added 4 ability-bearing Fighter/Paladin armor+relic cards.
+    assert.equal(CARDS_CATALOG.length, 23, 'CARDS_CATALOG must contain 23 draft cards');
     assert.ok(
       !CARDS_CATALOG.some(c => c.id === 'card_light_spell' || c.item?.item_id === 'spell_light' || /radiant light/i.test(c.name)),
       'the Radian Light Spell card must be absent'
@@ -90,7 +91,7 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(ITEMS_CATALOG['apprentice_wand'].maxStack, 1);
   });
 
-  await t.test('loads the 5 new vocation-locked items with required fields', () => {
+  await t.test('loads the vocation-locked items with required fields', () => {
     const requiredFields = ['name', 'type', 'slot', 'stat_bonus', 'icon', 'svgCode', 'vocationAffinity', 'maxStack'];
     const newItems = {
       grey_stalker_quiver: { slot: 'off_hand', type: 'offhand', affinity: 'archer' },
@@ -98,6 +99,11 @@ test('JSON Data Catalogs', async (t) => {
       ranger_talisman: { slot: 'relic', type: 'relic', affinity: 'archer' },
       iron_helm: { slot: 'relic', type: 'relic', affinity: 'fighter' },
       holy_crown: { slot: 'relic', type: 'relic', affinity: 'paladin' },
+      // LIV-41 Phase 2: ability-bearing armor/relic for Fighter and Paladin.
+      vanguard_battleplate: { slot: 'armor', type: 'armor', affinity: 'fighter' },
+      relic_berserkers_sigil: { slot: 'relic', type: 'relic', affinity: 'fighter' },
+      sanctuary_plate: { slot: 'armor', type: 'armor', affinity: 'paladin' },
+      relic_dawnlight: { slot: 'relic', type: 'relic', affinity: 'paladin' },
     };
 
     for (const [itemId, spec] of Object.entries(newItems)) {
@@ -459,8 +465,15 @@ test('JSON Data Catalogs', async (t) => {
         assert.ok(item.upgradeSpec, `${itemId} must be upgradeable (no flat stat stick)`);
       }
     }
-    // Paladin's warhammer must be usable: its MP cost is minimized to 0.
-    assert.ok((ITEMS_CATALOG.consecrated_warhammer.manaCost || 0) <= 1, 'warhammer MP cost must be <= 1');
+    // Paladin's warhammer must be usable: its MP cost is reduced to 5 (LIV-41).
+    assert.equal(ITEMS_CATALOG.consecrated_warhammer.manaCost, 5, 'warhammer ability MP cost must be 5');
+    // LIV-41: every solid item must also grant a real active ability (4/4 coverage).
+    for (const voc of ['fighter', 'paladin', 'magician', 'archer']) {
+      const solid = VOCATIONS_CATALOG[voc].solidEquipment;
+      for (const slot of slots) {
+        assert.ok(ITEMS_CATALOG[solid[slot]].actionKey, `${voc}.${slot} (${solid[slot]}) must grant an actionKey ability`);
+      }
+    }
   });
 });
 

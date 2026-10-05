@@ -414,6 +414,10 @@ export class CanvasRenderer {
    *  - Shock Shield: a pulsing silver barrier ring while a deflect charge is
    *    armed (`player.shockShieldCharges > 0`). It disappears the moment the
    *    charge is consumed by a deflect (or the shield is otherwise cleared).
+   *  - Holy/Sanctuary bubble: the exact same silver force-field is reused
+   *    whenever a damage-absorbing bubble is active (`player.shieldAbsorb > 0`),
+   *    covering the Paladin Aegis Shield, the Sanctuary Plate, and any future
+   *    bubble source. It fades when the absorb pool or duration is exhausted.
    *  - Luminous Prayer: small glowing healing orbs orbiting the player while
    *    `player.luminousPrayerVfxSec > 0`, fading out over the final
    *    `fadeSec` before the timer reaches 0.
@@ -429,7 +433,7 @@ export class CanvasRenderer {
     const cy = screenY + size / 2;
     const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 
-    if (player.shockShieldCharges > 0) {
+    if (player.shockShieldCharges > 0 || player.shieldAbsorb > 0) {
       const s = PLAYER_VFX.shield;
       const pulse = 0.5 + 0.5 * Math.sin((now / 1000) * s.pulseHz * Math.PI * 2);
       const radius = size * s.radiusScale + size * 0.03 * pulse;

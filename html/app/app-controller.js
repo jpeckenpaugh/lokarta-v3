@@ -1801,6 +1801,27 @@ export class LokartaApp {
         const res = CombatSystem.executeHolyShield(this.player, item);
         this.handleCombatResult(res, null, null);
       },
+      sanctuary: () => {
+        soundFX.play('lightSpell');
+        const res = CombatSystem.executeSanctuary(this.player, item);
+        if (res.success) {
+          this.logCombat(res.message, 'spell');
+          this.addFloatingText('Sanctuary!', this.player.x, this.player.y, '#f8fafc');
+        } else {
+          this.logCombat(res.message, 'warning');
+        }
+      },
+      benediction: () => {
+        const res = CombatSystem.executeBenediction(this.player, item);
+        if (res.success) {
+          soundFX.play('holyChime');
+          this.logCombat(res.message, 'spell');
+          if (res.hpRestored > 0) this.addFloatingText(`+${res.hpRestored} HP`, this.player.x, this.player.y, '#22c55e');
+          if (res.mpRestored > 0) this.addFloatingText(`+${res.mpRestored} MP`, this.player.x, this.player.y, '#3b82f6');
+        } else {
+          this.logCombat(res.message, 'warning');
+        }
+      },
       shock_shield: () => {
         soundFX.play('lightSpell');
         const res = CombatSystem.executeShockShield(this.player, item);

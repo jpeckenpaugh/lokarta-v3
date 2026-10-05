@@ -236,7 +236,32 @@ function itemStackFromDef(def, quantity, fallbackId = null) {
     ...(def.slot ? { slot: def.slot } : {}),
     ...(def.vocationAffinity ? { vocationAffinity: def.vocationAffinity } : {}),
     ...(def.actionKey ? { actionKey: def.actionKey } : {}),
+    // Functional ability fields (LIV-41): a chest-looted ability item must
+    // carry the same combat/upgrade data as a drafted or shop-bought one, or
+    // its active would silently no-op once equipped.
+    ...copyFunctionalFields(def),
   };
+}
+
+/** Catalog keys that make an equipped item's granted ability functional. */
+const FUNCTIONAL_ITEM_KEYS = [
+  'cooldown', 'manaCost', 'range', 'damageMin', 'damageMax', 'upgradeSpec',
+  'pushbackRange', 'stunSec', 'shieldAbsorb', 'shieldDuration',
+  'dodgePct', 'critChance', 'critMult', 'mitigationPct',
+  'hpBonus', 'manaBonus', 'healPowerPct', 'healMin', 'healMax', 'mpRestore',
+  'arrowCapacity', 'arrowCount', 'ammoRegenSec', 'grantedAmmo',
+  'poisonDps', 'poisonDurationSec', 'poisonArrows', 'poisonBuffSec',
+  'siphonHp', 'siphonRadius', 'rangedDamageBonus',
+  'markDurationSec', 'markRange', 'markDamageMult',
+];
+
+/** Copies only the authored functional keys present on `def`. */
+function copyFunctionalFields(def) {
+  const out = {};
+  for (const key of FUNCTIONAL_ITEM_KEYS) {
+    if (def[key] !== undefined) out[key] = def[key];
+  }
+  return out;
 }
 
 /**

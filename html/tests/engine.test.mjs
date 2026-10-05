@@ -604,7 +604,7 @@ describe('CombatSystem (No Class Multiplier) & Vocation-Locked Equipment', () =>
     const pal = createPlayer('paladin');
     pal.x = 2;
     pal.y = 2;
-    pal.mana = CONFIG.PALADIN_HOLY_STRIKE_MANA_COST + 10;
+    pal.mana = CONFIG.PALADIN_HOLY_STRIKE_MANA_COST * 2;
     const range2 = { id: 'm1', name: 'Skeleton', type: 'crypt_skeleton', x: 4, y: 2, hp: 100, max_hp: 100 };
 
     const res = CombatSystem.executeHolyStrike(pal, range2, grid);

@@ -225,6 +225,8 @@ export class FateGrantSystem {
         'poisonDps', 'poisonDurationSec', 'poisonArrows', 'poisonBuffSec',
         'siphonHp', 'siphonRadius', 'rangedDamageBonus',
         'markDurationSec', 'markRange', 'markDamageMult',
+        // LIV-41 paladin relic Benediction restoration fields.
+        'healMin', 'healMax', 'mpRestore',
       ];
       if (catalogItem) {
         for (const key of FUNCTIONAL_ITEM_KEYS) {
