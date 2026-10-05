@@ -51,6 +51,54 @@ const DIRECTION_VECTORS = {
   right: { dx: 1, dy: 0 },
 };
 
+/** Ring used to scatter a multi-item monster drop across distinct squares. */
+const GROUND_DROP_OFFSETS = [
+  [0, 0], [0, -1], [1, 0], [0, 1], [-1, 0],
+  [1, 1], [-1, 1], [1, -1], [-1, -1],
+];
+
+/** Presentation tunables for floating text (LIV-29 item 6). */
+const FLOATING_TEXT = UI_CATALOG?.floatingText || {};
+const FLOATING_DEFAULT_MS = Number(FLOATING_TEXT.defaultDurationMs) || 1200;
+const FLOATING_LOOT_MS = Number(FLOATING_TEXT.lootDurationMs) || 2400;
+const FLOATING_STAGGER_PX = Number(FLOATING_TEXT.staggerPx) || 0;
+const FLOATING_MAX_ACTIVE = Number(FLOATING_TEXT.maxActive) || 48;
+
+/**
+ * Special ground-pickup dispatch keyed by an item's catalog `pickupType`.
+ * Normal inventory items fall through to `InventorySystem.pickUpItem`. Keeps
+ * currency and keys out of the backpack so gold credits the purse and a key
+ * unlocks its per-level gate (LIV-29 items 4/5).
+ */
+const GROUND_PICKUP_HANDLERS = {
+  currency: (app, item) => {
+    const gained = EconomySystem.addGold(app.player, item.quantity || 0);
+    app.gridMap.popTopItem(app.player.x, app.player.y);
+    if (gained > 0) {
+      soundFX.play('coins');
+      app.logCombat(`Picked up ${gained} gold.`, 'loot');
+      app.addFloatingText(`+${gained}g`, app.player.x, app.player.y, '#fbbf24', { durationMs: FLOATING_LOOT_MS });
+      app.updateHUD();
+    }
+    return gained > 0;
+  },
+  key: (app, item) => {
+    const level = app.player?.current_floor || 1;
+    const newlyEarned = DoorSystem.grantKey(app.player, level, item.keyTier);
+    app.gridMap.popTopItem(app.player.x, app.player.y);
+    soundFX.play('keyJangle');
+    app.logCombat(
+      newlyEarned
+        ? `Picked up the ${item.name}. Walk onto the ${item.keyTier} door to open it.`
+        : `The ${item.name} was already earned on this floor.`,
+      'loot'
+    );
+    app.addFloatingText(`+${item.name}`, app.player.x, app.player.y, '#facc15', { durationMs: FLOATING_LOOT_MS });
+    app.updateHUD();
+    return newlyEarned;
+  },
+};
+
 export class LokartaApp {
   constructor() {
     this.gameClient = new GameClient();
@@ -75,6 +123,8 @@ export class LokartaApp {
     this.location = 'town';
     this.townConfig = EconomySystem.townConfig();
     this.passiveRecoveryAccumulator = 0;
+    // LIV-29 item 9: adjacency spring regen accumulator (1 Hz).
+    this.springRegenAccumulator = 0;
 
     // E8: active-floor stair traversal state (dir/targetLevel + §9.3 arming).
     this.stairs = [];
@@ -596,28 +646,41 @@ export class LokartaApp {
     this.transition.run('townVisit', () => this.showTown());
   }
 
-  /** The shop stock + upgrade list for the current player. */
+  /** The shop stock + upgrade/pawn lists for the current player. */
   buildShopState() {
     return {
       shopStock: EconomySystem.shopStock(this.player.vocation),
       ownedUpgradableItems: this.collectUpgradableItems(),
+      pawnItems: this.collectPawnableItems(),
       templeCost: EconomySystem.templeHealCost(this.player),
     };
   }
 
-  /** Banked/equipped items the shop can rank up. */
+  /** Banked/equipped items the shop can rank up (all four equipment slots). */
   collectUpgradableItems() {
     const out = [];
     const push = (item, source, index) => {
       if (!item || !EconomySystem.canUpgrade(item)) return;
       out.push({ item, source, index, rank: item.itemLevel || 1, cost: EconomySystem.upgradeCost(item) });
     };
-    (this.player.backpack || []).forEach((item, i) => push(item, 'backpack', i));
-    (this.player.action_bar || []).forEach((item, i) => push(item, 'action_bar', i));
+    // Paperdoll first so the four wearable slots are always offered.
     Object.entries(this.player.paperdoll || {}).forEach(([slot, item]) => {
       if (item && EconomySystem.canUpgrade(item)) {
         out.push({ item, source: 'equipment', index: slot, rank: item.itemLevel || 1, cost: EconomySystem.upgradeCost(item) });
       }
+    });
+    (this.player.backpack || []).forEach((item, i) => push(item, 'backpack', i));
+    (this.player.action_bar || []).forEach((item, i) => push(item, 'action_bar', i));
+    return out;
+  }
+
+  /** Backpack items the merchant will buy (LIV-29 item 1 — Pawn section). */
+  collectPawnableItems() {
+    const out = [];
+    (this.player.backpack || []).forEach((item, index) => {
+      if (!item || item.droppable === false) return;
+      const value = EconomySystem.pawnValue(item);
+      if (value > 0) out.push({ item, source: 'backpack', index, value });
     });
     return out;
   }
@@ -627,6 +690,7 @@ export class LokartaApp {
     ModalManager.renderTownShop(this.townEl, { ...this, ...state }, {
       onBuy: itemId => this.buyShopItem(itemId),
       onUpgrade: (source, index) => this.upgradeShopItem(source, index),
+      onPawn: (source, index) => this.pawnShopItem(source, index),
       onBack: () => this.showTown(),
     });
   }
@@ -640,7 +704,9 @@ export class LokartaApp {
       this.openShop();
       return;
     }
-    const addRes = InventorySystem.addItem(this.player, { ...res.item, quantity: res.item.quantity || 1 });
+    // LIV-29 item 1: a purchase banks a second copy; it never ranks up an
+    // already-owned item (that is the Upgrade Gear section's job).
+    const addRes = InventorySystem.addItem(this.player, { ...res.item, quantity: res.item.quantity || 1 }, { allowRankUp: false });
     if (!addRes.success) {
       // No room: refund and tell the player.
       EconomySystem.addGold(this.player, res.cost);
@@ -650,10 +716,35 @@ export class LokartaApp {
       return;
     }
     purchased[itemId] = (purchased[itemId] || 0) + 1;
-    soundFX.play('itemPickup');
+    soundFX.play('coins');
     this.logCombat(res.message, 'loot');
     this.updateHUD();
     this.persistSave();
+    this.openShop();
+  }
+
+  /**
+   * Pawns a backpack item to the merchant for 50% of its purchase price
+   * (LIV-29 item 1). Removes the item and credits gold.
+   */
+  pawnShopItem(source, index) {
+    const item = (this.player.backpack || [])[Number(index)];
+    if (!item) {
+      this.openShop();
+      return;
+    }
+    const res = EconomySystem.pawnItem(this.player, item);
+    if (!res.success) {
+      soundFX.play('uiBack');
+      this.logCombat(res.message, 'warning');
+      this.openShop();
+      return;
+    }
+    this.player.backpack[Number(index)] = null;
+    soundFX.play('coins');
+    this.logCombat(res.message, 'loot');
+    this.updateHUD();
+    this.persistSave(true);
     this.openShop();
   }
 
@@ -753,11 +844,17 @@ export class LokartaApp {
     // so a save/load keeps opened chests empty (E4 persistence).
     this.chests = (floorData.chests || []).map(chest => ({ ...chest }));
 
-    // D4 room props/decor (LIV-20) are render-only, non-blocking world data.
+    // D4 room props/decor (LIV-20). LIV-29 item 3: placed furniture props block
+    // movement, while floor decor (rugs) stays walk-over. Dropped items and
+    // chests are never marked blocked, so they remain walkable.
     this.props = (floorData.props || []).map(p => ({ ...p }));
+    for (const prop of this.props) {
+      if (prop.layer === 'prop') this.gridMap.blockTile(prop.x, prop.y, true);
+    }
 
-    // Healing springs (LIV-22 item 7) are world entities in each floor's stair
-    // room; stepping onto one heals + restores magic, gated to 1 charge / 60s.
+    // Healing springs (LIV-29 item 9) are impassable fountains in each floor's
+    // stair room; standing on an adjacent square regenerates +5 HP/+5 MP per
+    // second (applied in the fixed tick below).
     this.springs = (floorData.springs || []).map(s => ({ ...s }));
 
     this.ambientLights = [];
@@ -916,6 +1013,24 @@ export class LokartaApp {
       if (restored.hp > 0) this.addFloatingText(`+${restored.hp} HP`, this.player.x, this.player.y, '#22c55e');
       if (restored.mp > 0) this.addFloatingText(`+${restored.mp} MP`, this.player.x, this.player.y, '#3b82f6');
       if (restored.hp > 0 || restored.mp > 0) this.updateHUD();
+    }
+
+    // Healing spring (LIV-29 item 9): while the player stands on a square
+    // adjacent to a fountain, restore +5 HP and +5 MP each second (capped).
+    if (this.findAdjacentSpring()) {
+      this.springRegenAccumulator += deltaSec;
+      if (this.springRegenAccumulator >= 1) {
+        this.springRegenAccumulator -= Math.floor(this.springRegenAccumulator);
+        const springRestored = EconomySystem.applySpringRegen(this.player);
+        if (springRestored.hp > 0) this.addFloatingText(`+${springRestored.hp} HP`, this.player.x, this.player.y, '#22c55e');
+        if (springRestored.mp > 0) this.addFloatingText(`+${springRestored.mp} MP`, this.player.x, this.player.y, '#3b82f6');
+        if (springRestored.hp > 0 || springRestored.mp > 0) {
+          soundFX.play('holyChime');
+          this.updateHUD();
+        }
+      }
+    } else {
+      this.springRegenAccumulator = 0;
     }
 
     // Auto-Prayer Pulse (Luminous Amulet every 10 seconds)
@@ -1466,10 +1581,8 @@ export class LokartaApp {
             this.handleOpenChest(this.player.x, this.player.y);
           }
 
-          // Walk-on healing spring (LIV-22 item 7).
-          if (this.gridMap.isSpring(this.player.x, this.player.y)) {
-            this.handleSpring(this.player.x, this.player.y);
-          }
+          // Healing springs (LIV-29 item 9) are impassable fountains; their
+          // effect is applied per-second from an adjacent square in tick().
 
           // Walk-on Tower Gate (LIV-25 / D1 §0.4): step back to the Town.
           if (this.gridMap.isTownGate(this.player.x, this.player.y)) {
@@ -1731,21 +1844,28 @@ export class LokartaApp {
       const index = this.monsters.findIndex(m => m.id === res.defeatedMonsterId);
       if (index !== -1) {
         const deadMonster = this.monsters[index];
-        if (res.droppedLoot && res.droppedLoot.length > 0) {
-          for (const item of res.droppedLoot) {
-            this.gridMap.addItem(deadMonster.x, deadMonster.y, item);
-            this.logCombat(`${deadMonster.name} dropped ${item.name}.`, 'loot');
-          }
-        }
-
         const isBoss = deadMonster.isBoss || deadMonster.id.includes('boss') || deadMonster.max_hp >= 200;
 
-        // Gold drop (LIV-22 item 6): monsters yield gold in addition to items.
+        // LIV-29 items 4/5: every drop (equipment, potions, gold, keys) lands on
+        // the ground and must be walked over to collect. Multi-item drops spread
+        // across distinct adjacent squares instead of stacking one tile.
+        const drops = [...(res.droppedLoot || [])];
         const goldDrop = EconomySystem.goldFromMonster(deadMonster);
         if (goldDrop > 0) {
-          EconomySystem.addGold(this.player, goldDrop);
-          this.logCombat(`${deadMonster.name} dropped ${goldDrop} gold.`, 'loot');
-          this.addFloatingText(`+${goldDrop}g`, deadMonster.x, deadMonster.y, '#fbbf24');
+          drops.push({ item_id: 'gold', name: 'Gold', type: 'currency', pickupType: 'currency', quantity: goldDrop });
+        }
+        if (deadMonster.holdsKey) {
+          const keyDrop = DoorSystem.keyDropForMonster(deadMonster);
+          if (keyDrop) drops.push(keyDrop);
+        }
+        if (drops.length > 0) {
+          const spots = this.groundDropTiles(deadMonster.x, deadMonster.y);
+          drops.forEach((item, i) => {
+            const spot = spots[i % spots.length];
+            this.gridMap.addItem(spot.x, spot.y, { ...item, x: spot.x, y: spot.y });
+            this.logCombat(`${deadMonster.name} dropped ${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ''}.`, 'loot');
+          });
+          if (drops.some(d => d.pickupType === 'key')) soundFX.play('keyJangle');
         }
 
         this.spawnDeathEffect(deadMonster);
@@ -1771,20 +1891,9 @@ export class LokartaApp {
           this.selectedMonsterId = null;
         }
 
-        // E3: defeating a key holder grants its per-level key. The grant does
-        // NOT open the gate; the player must walk onto the closed door to spend
-        // the key (LIV-16). Advancing copper -> silver -> gold.
-        if (deadMonster.holdsKey) {
-          const keyDrop = DoorSystem.keyDropForMonster(deadMonster);
-          const level = this.player?.current_floor || 1;
-          const newlyEarned = DoorSystem.grantKey(this.player, level, deadMonster.holdsKey);
-          if (keyDrop && newlyEarned) {
-            this.logCombat(`${deadMonster.name} yielded the ${keyDrop.name}! Walk onto the ${deadMonster.holdsKey} door to open it.`, 'loot');
-            this.addFloatingText(`+${keyDrop.name}`, deadMonster.x, deadMonster.y, '#facc15');
-          }
-          this.updateHUD();
-          this.persistSave(true);
-        }
+        // E3 / LIV-29 item 4: the key holder's key now drops on the ground (see
+        // the drops block above); walking over it grants the per-level key. The
+        // grant does NOT open the gate — the player walks into the closed door.
 
         // E8: the catalog-driven final floor (not the retired 20-floor cave)
         // resolves the boss kill into the campaign ending.
@@ -1800,14 +1909,45 @@ export class LokartaApp {
 
   async handlePickUp() {
     soundFX.init();
+    // LIV-29 items 4/5: currency and keys resolve through a typed dispatch so
+    // they credit the purse / unlock the level rather than banking as items.
+    const tileItems = this.gridMap.getItems(this.player.x, this.player.y);
+    const topItem = tileItems[tileItems.length - 1];
+    const specialHandler = topItem && GROUND_PICKUP_HANDLERS[topItem.pickupType];
+    if (specialHandler) {
+      if (specialHandler(this, topItem)) await this.persistSave();
+      return;
+    }
+
     const res = InventorySystem.pickUpItem(this.player, this.gridMap);
     if (res.success) {
       soundFX.play('itemPickup');
       this.logCombat(res.message, 'loot');
-      this.addFloatingText(`+${res.item?.name}`, this.player.x, this.player.y, '#22c55e');
+      this.addFloatingText(`+${res.item?.name}`, this.player.x, this.player.y, '#22c55e', { durationMs: FLOATING_LOOT_MS });
       this.updateHUD();
       await this.persistSave();
     }
+  }
+
+  /**
+   * Distinct, walkable squares for a monster's multi-item drop, starting from
+   * the death tile and spreading across its neighbours (LIV-29 item 5).
+   * @returns {{x:number,y:number}[]} at least one tile
+   */
+  groundDropTiles(cx, cy) {
+    const tiles = [];
+    const seen = new Set();
+    for (const [dx, dy] of GROUND_DROP_OFFSETS) {
+      const x = cx + dx;
+      const y = cy + dy;
+      const key = `${x},${y}`;
+      if (seen.has(key)) continue;
+      if (!this.gridMap.isInBounds(x, y) || !this.gridMap.isWalkable(x, y)) continue;
+      seen.add(key);
+      tiles.push({ x, y });
+    }
+    if (tiles.length === 0) tiles.push({ x: cx, y: cy });
+    return tiles;
   }
 
   /**
@@ -1829,7 +1969,7 @@ export class LokartaApp {
     }
 
     this.logCombat(res.message, 'loot');
-    this.addFloatingText(`OPENED ${chest.tier.toUpperCase()} CHEST`, chest.x, chest.y, '#ffd700');
+    this.addFloatingText(`OPENED ${chest.tier.toUpperCase()} CHEST`, chest.x, chest.y, '#ffd700', { durationMs: FLOATING_LOOT_MS });
 
     // Gold from chests (LIV-22 item 6), in addition to the rolled item loot.
     const goldDrop = EconomySystem.goldFromChest(chest.tier);
@@ -1856,7 +1996,7 @@ export class LokartaApp {
 
     if (picked > 0) {
       soundFX.play('itemPickup');
-      this.addFloatingText(`+${pickedNames.join(', ')}`, chest.x, chest.y, '#22c55e');
+      this.addFloatingText(`+${pickedNames.join(', ')}`, this.player.x, this.player.y, '#22c55e', { durationMs: FLOATING_LOOT_MS });
     }
     this.updateHUD();
     await this.persistChests();
@@ -1864,29 +2004,19 @@ export class LokartaApp {
   }
 
   /**
-   * Uses the healing spring at (gridX, gridY): restores up to the catalog
-   * +10 HP/MP per use, gated to 1 charge per 60s (LIV-22 item 7).
+   * Returns the healing fountain on one of the four squares adjacent to the
+   * player, or null (LIV-29 item 9). Springs are impassable, so adjacency is
+   * the only trigger surface.
    */
-  handleSpring(gridX, gridY) {
-    const spring = (this.springs || []).find(s => s.x === gridX && s.y === gridY)
-      || { id: `spring_${this.player.current_floor}_${gridX}_${gridY}` };
-    const res = EconomySystem.useSpring(this.player, spring.id, Date.now());
-    if (res.success) {
-      soundFX.init();
-      soundFX.play('holyChime');
-      this.logCombat(res.message, 'spell');
-      if (res.hp > 0) this.addFloatingText(`+${res.hp} HP`, gridX, gridY, '#22c55e');
-      if (res.mp > 0) this.addFloatingText(`+${res.mp} MP`, gridX, gridY, '#3b82f6');
-      this.updateHUD();
-      this.persistSave();
-    } else if (res.cooldownRemainingSec) {
-      // One-shot nag per spring while recharging.
-      const hint = `spring:${spring.id}`;
-      if (this.stairHint !== hint) {
-        this.stairHint = hint;
-        this.logCombat(res.message, 'warning');
-      }
+  findAdjacentSpring() {
+    if (!this.player || !this.gridMap) return null;
+    const x = this.player.x;
+    const y = this.player.y;
+    if (this.gridMap.isSpring(x + 1, y) || this.gridMap.isSpring(x - 1, y)
+      || this.gridMap.isSpring(x, y + 1) || this.gridMap.isSpring(x, y - 1)) {
+      return (this.springs || []).find(s => Math.abs(s.x - x) + Math.abs(s.y - y) === 1) || { id: 'spring' };
     }
+    return null;
   }
 
   /**
@@ -1934,7 +2064,7 @@ export class LokartaApp {
     const opened = DoorSystem.openTierGates(this.gridMap, tier);
     if (opened > 0) {
       soundFX.init();
-      soundFX.play('equip');
+      soundFX.play('keyJangle');
       this.logCombat(`You turn the ${tier} key — the door swings open!`, 'system');
       this.addFloatingText(`${tier.toUpperCase()} DOOR OPEN`, x, y, '#facc15');
       this.stairHint = null;
@@ -2072,13 +2202,13 @@ export class LokartaApp {
 
     try {
       const nextFloor = targetLevel;
-      const floorBonusXp = 50 * currentFloor;
-      const lvlRes = ProgressionSystem.awardXP(this.player, floorBonusXp);
       const descending = dir === 'up';
 
+      // LIV-29 item 7: traversing stairs grants no XP (the old 50*floor bonus
+      // was exploitable). XP comes only from defeating monsters.
       soundFX.play('stairs');
       this.logCombat(
-        `Stepped on stairway! ${descending ? 'Descended' : 'Climbed'} to Floor ${nextFloor} (+${floorBonusXp} Floor Clear XP)!`,
+        `Stepped on stairway! ${descending ? 'Descended' : 'Climbed'} to Floor ${nextFloor}.`,
         'victory'
       );
       this.addFloatingText(`FLOOR ${nextFloor}`, this.player.x, this.player.y, '#38bdf8');
@@ -2091,15 +2221,6 @@ export class LokartaApp {
         this.updateHUD();
         await this.persistSave(true);
       }, { skippable: false, label: `${descending ? 'DESCENDING TO' : 'ASCENDING TO'} FLOOR ${nextFloor}` });
-
-      if (lvlRes.leveledUp) {
-        soundFX.play('levelUp');
-        this.logCombat(
-          `⭐ LEVEL UP! You reached Level ${lvlRes.newLevel}! (+${lvlRes.hpGained} Max HP, +${lvlRes.manaGained} Max MP)`,
-          'spell'
-        );
-        this.showFateGrantModal(lvlRes.newLevel);
-      }
     } catch (err) {
       console.error('Floor transition error:', err);
     } finally {
@@ -2110,17 +2231,31 @@ export class LokartaApp {
     }
   }
 
-  addFloatingText(text, gridX, gridY, color) {
+  /**
+   * Spawns a floating combat/pickup number. LIV-29 item 6: each spawn gets a
+   * rotating sub-tile offset and (for loot) a longer life so pickup and chest
+   * messages spread around the player instead of piling on one pixel. The list
+   * is ring-buffer capped so it can never grow unbounded.
+   * @param {object} [opts] - `{ durationMs }` override
+   */
+  addFloatingText(text, gridX, gridY, color, opts = {}) {
     if (this.options && this.options.damageNumbers === false && /^-\d/.test(String(text))) return;
+    const durationMs = Number(opts.durationMs) || FLOATING_DEFAULT_MS;
+    this._floatingTextSeq = (this._floatingTextSeq || 0) + 1;
+    const idx = (this._floatingTextSeq - 1) % GROUND_DROP_OFFSETS.length;
+    const [ox, oy] = GROUND_DROP_OFFSETS[idx];
     this.floatingTexts.push({
       id: `ft_${Date.now()}_${Math.random()}`,
       text,
-      x: gridX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2,
-      y: gridY * CONFIG.GRID_SIZE,
+      x: gridX * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 + ox * FLOATING_STAGGER_PX,
+      y: gridY * CONFIG.GRID_SIZE - 6 + oy * FLOATING_STAGGER_PX,
       color,
-      durationMs: 1200,
+      durationMs,
       elapsedMs: 0,
     });
+    if (this.floatingTexts.length > FLOATING_MAX_ACTIVE) {
+      this.floatingTexts.splice(0, this.floatingTexts.length - FLOATING_MAX_ACTIVE);
+    }
   }
 
   updateHUD() {

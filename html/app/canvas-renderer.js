@@ -178,18 +178,45 @@ export class CanvasRenderer {
           ctx.fillRect(gx - 2, gy - 4, 4, CONFIG.GRID_SIZE * 0.34);
         }
 
-        // Healing spring (LIV-22 item 7): a small cyan pool marker.
+        // Healing fountain (LIV-29 item 9): a stone basin with an animated
+        // water spout and droplets, replacing the old flat blue circle.
         if (tile.type === TILE_TYPES.SPRING) {
-          const cx = screenX + CONFIG.GRID_SIZE / 2;
-          const cy = screenY + CONFIG.GRID_SIZE / 2;
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.55)';
+          const size = CONFIG.GRID_SIZE;
+          const cx = screenX + size / 2;
+          const cy = screenY + size * 0.62;
+          const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+          const phase = (now / 300) % 6.2831853;
+
+          // Stone basin.
+          ctx.fillStyle = '#4b5563';
           ctx.beginPath();
-          ctx.arc(cx, cy, CONFIG.GRID_SIZE * 0.28, 0, Math.PI * 2);
+          ctx.ellipse(cx, cy, size * 0.36, size * 0.18, 0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = 'rgba(224, 242, 254, 0.85)';
+          ctx.fillStyle = '#9ca3af';
           ctx.beginPath();
-          ctx.arc(cx, cy, CONFIG.GRID_SIZE * 0.1, 0, Math.PI * 2);
+          ctx.ellipse(cx, cy - size * 0.02, size * 0.30, size * 0.14, 0, 0, Math.PI * 2);
           ctx.fill();
+
+          // Water pool.
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.9)';
+          ctx.beginPath();
+          ctx.ellipse(cx, cy - size * 0.02, size * 0.24, size * 0.10, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Central spout with a gentle vertical bob.
+          const bob = Math.sin(phase) * size * 0.04;
+          ctx.fillStyle = 'rgba(125, 211, 252, 0.95)';
+          ctx.fillRect(cx - size * 0.03, cy - size * 0.34 + bob, size * 0.06, size * 0.30);
+          ctx.fillStyle = 'rgba(224, 242, 254, 0.95)';
+          ctx.beginPath();
+          ctx.arc(cx, cy - size * 0.36 + bob, size * 0.075, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Two droplets arcing out of the spout.
+          const dropY = cy - size * 0.30 + Math.cos(phase) * size * 0.06;
+          ctx.fillStyle = 'rgba(191, 231, 255, 0.9)';
+          ctx.fillRect(cx - size * 0.16, dropY, size * 0.03, size * 0.05);
+          ctx.fillRect(cx + size * 0.13, dropY, size * 0.03, size * 0.05);
         }
       }
     }

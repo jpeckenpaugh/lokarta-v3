@@ -11,7 +11,7 @@
  */
 
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
-import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
+import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG, CHESTS_CATALOG } from '../data/index.js';
 import { SPRITE_CATALOG, PROP_CATALOG, PROP_IDS_BY_TIER } from '../assets/sprites/index.js';
 import { dirFromFacing, resolveFrameIndex } from './animation-state.js';
 
@@ -368,6 +368,18 @@ const ITEM_RENDERERS = {
     ctx.stroke();
     ctx.fillStyle = '#e9d8a6';
     ctx.fillRect(cx - 8 * u, cy + 5 * u, 4 * u, 4 * u);
+  },
+  currency: (ctx, cx, cy, u) => {
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.arc(cx - 4 * u, cy + 2 * u, 5 * u, 0, Math.PI * 2);
+    ctx.arc(cx + 5 * u, cy - 3 * u, 4 * u, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#b45309';
+    ctx.beginPath();
+    ctx.arc(cx - 4 * u, cy + 2 * u, 2 * u, 0, Math.PI * 2);
+    ctx.arc(cx + 5 * u, cy - 3 * u, 1.5 * u, 0, Math.PI * 2);
+    ctx.fill();
   },
   weapon: (ctx, cx, cy, u, item) => {
     const affinity = item?.vocationAffinity;
@@ -744,21 +756,47 @@ export class SpriteRenderer {
    */
   static drawChest(ctx, chest, screenX, screenY, size = CONFIG.GRID_SIZE) {
     if (!chest) return false;
+    const opened = chest.opened === true;
     const propId = resolvePropId({ type: 'chest', chestTier: chest.tier, tier: chest.tier });
     const def = propId ? PROP_CATALOG[propId] : null;
-    const frame = chest.opened ? 'open' : 'closed';
-    if (drawPropFrame(ctx, def, frame, screenX, screenY, size)) return true;
+    const frame = opened ? 'open' : 'closed';
+    if (drawPropFrame(ctx, def, frame, screenX, screenY, size)) {
+      if (opened) SpriteRenderer._applySpentChestLook(ctx, screenX, screenY, size);
+      return true;
+    }
 
-    // Procedural fallback: a tier-tinted chest body with a lid seam.
+    // Procedural fallback: a tier-tinted chest body with a lid seam. A spent
+    // chest drops all tier colouring for the drained grey palette (LIV-29 #10).
     const u = size / 32;
-    const tint = TIER_TINTS[chest.tier] || TIER_TINTS.copper;
+    const tint = opened
+      ? (CHESTS_CATALOG?.spentVisual?.tint || { light: '#565b64', dark: '#2b2d33' })
+      : (TIER_TINTS[chest.tier] || TIER_TINTS.copper);
     ctx.fillStyle = tint.dark;
     ctx.fillRect(screenX + 7 * u, screenY + 10 * u, 18 * u, 14 * u);
     ctx.fillStyle = tint.light;
     ctx.fillRect(screenX + 9 * u, screenY + 12 * u, 14 * u, 10 * u);
     ctx.fillStyle = tint.dark;
     ctx.fillRect(screenX + 7 * u, screenY + 15 * u, 18 * u, 2 * u);
+    if (opened) SpriteRenderer._applySpentChestLook(ctx, screenX, screenY, size);
     return true;
+  }
+
+  /**
+   * Drains the colour out of an opened chest: a translucent grey wash plus a
+   * couple of dust specks so a spent chest can never be mistaken for an
+   * unopened silver one (LIV-29 item 10). Colors come from `chests.json`.
+   */
+  static _applySpentChestLook(ctx, screenX, screenY, size) {
+    const spent = CHESTS_CATALOG?.spentVisual || {};
+    const u = size / 32;
+    ctx.save();
+    ctx.fillStyle = spent.overlay || 'rgba(30, 32, 38, 0.62)';
+    ctx.fillRect(screenX + 5 * u, screenY + 8 * u, 22 * u, 17 * u);
+    ctx.fillStyle = spent.accent || '#6b7280';
+    ctx.fillRect(screenX + 9 * u, screenY + 14 * u, 2 * u, 2 * u);
+    ctx.fillRect(screenX + 17 * u, screenY + 18 * u, 2 * u, 2 * u);
+    ctx.fillRect(screenX + 13 * u, screenY + 11 * u, 2 * u, 2 * u);
+    ctx.restore();
   }
 
   /**

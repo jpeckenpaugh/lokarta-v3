@@ -567,6 +567,9 @@ export class ModalManager {
 
   /** In-game pause menu. */
   static showPauseModal(modalOverlayEl, callbacks = {}) {
+    // LIV-29 item 2: returning to town from the pause menu is disabled by
+    // default; the tower's stair exits / Tower Gate remain the only way back.
+    const returnToTownEnabled = UI_CATALOG?.pause?.returnToTownEnabled === true;
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
     modalOverlayEl.innerHTML = `
@@ -575,7 +578,7 @@ export class ModalManager {
         <p class="result-subtitle">The tower waits.</p>
         <div class="pause-actions">
           <button class="title-btn" id="pause-resume">RESUME</button>
-          <button class="title-btn" id="pause-town">RETURN TO TOWN</button>
+          ${returnToTownEnabled ? '<button class="title-btn" id="pause-town">RETURN TO TOWN</button>' : ''}
           <button class="title-btn" id="pause-options">OPTIONS</button>
           <button class="title-btn" id="pause-guide">GUIDE &amp; CONTROLS</button>
           <button class="title-btn" id="pause-title">RETURN TO TITLE</button>
@@ -650,7 +653,7 @@ export class ModalManager {
           <button class="action-btn town-venue" id="town-shop">
             <img class="openmoji-icon" src="./assets/openmoji/2699.svg" alt="Shop" />
             <strong>${town.shopName || 'Shop'}</strong>
-            <span>Buy items &amp; upgrade gear</span>
+            <span>Buy, pawn &amp; upgrade gear</span>
           </button>
           <button class="action-btn town-venue" id="town-temple">
             <img class="openmoji-icon" src="./assets/openmoji/1F496.svg" alt="Temple" />
@@ -683,6 +686,7 @@ export class ModalManager {
     const stock = app?.shopStock || [];
     const gold = Number(app?.player?.gold) || 0;
     const upgradeList = app?.ownedUpgradableItems || [];
+    const pawnList = app?.pawnItems || [];
     townEl.hidden = false;
     townEl.innerHTML = `
       <div class="town-modal">
@@ -690,7 +694,7 @@ export class ModalManager {
           <h2 id="town-title"><img class="openmoji-icon title-icon" src="./assets/openmoji/2699.svg" alt="Shop" /> ${app?.townConfig?.shopName || 'Shop'}</h2>
           <div class="subtitle">Gold: <strong>${gold}</strong></div>
         </div>
-        <div class="shop-section-title">For sale</div>
+        <div class="shop-section-title">Purchase</div>
         <div class="shop-stock-grid" id="shop-stock">
           ${stock.map(entry => {
             const icon = HUDManager.renderItemIcon({ item_id: entry.itemId, name: entry.name });
@@ -702,7 +706,21 @@ export class ModalManager {
               </button>`;
           }).join('')}
         </div>
-        <div class="shop-section-title">Upgrade owned gear</div>
+        <div class="shop-section-title">Pawn</div>
+        <div class="shop-upgrades" id="shop-pawn">
+          ${pawnList.length === 0
+            ? '<div class="shop-empty">No backpack items the merchant will buy.</div>'
+            : pawnList.map(entry => {
+                const icon = HUDManager.renderItemIcon(entry.item);
+                return `
+                  <button class="shop-entry pawn-entry" data-pawn-slot="${entry.source}:${entry.index}">
+                    <span class="shop-icon">${icon}</span>
+                    <span class="shop-name">${entry.item.name}${entry.item.quantity > 1 ? ` x${entry.item.quantity}` : ''}</span>
+                    <span class="shop-price">+${entry.value}g</span>
+                  </button>`;
+              }).join('')}
+        </div>
+        <div class="shop-section-title">Upgrade Gear</div>
         <div class="shop-upgrades" id="shop-upgrades">
           ${upgradeList.length === 0
             ? '<div class="shop-empty">No upgradable gear in your pack.</div>'
@@ -723,6 +741,12 @@ export class ModalManager {
     `;
     townEl.querySelectorAll('.shop-entry[data-item-id]').forEach(btn => {
       btn.addEventListener('click', () => callbacks.onBuy?.(btn.getAttribute('data-item-id')));
+    });
+    townEl.querySelectorAll('.shop-entry[data-pawn-slot]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const [source, index] = btn.getAttribute('data-pawn-slot').split(':');
+        callbacks.onPawn?.(source, Number(index));
+      });
     });
     townEl.querySelectorAll('.shop-entry[data-upgrade-slot]').forEach(btn => {
       btn.addEventListener('click', () => {
