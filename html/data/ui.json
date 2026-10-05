@@ -70,6 +70,18 @@
     "healCostPerHp": 1,
     "healCostPerMp": 1
   },
+  "pause": {
+    "returnToTownEnabled": false,
+    "description": "LIV-29 item 2: the pause menu does not offer a direct town return; use the tower's stair exits or Tower Gate."
+  },
+  "floatingText": {
+    "defaultDurationMs": 1200,
+    "lootDurationMs": 2400,
+    "staggerPx": 18,
+    "risePxPerSec": 20,
+    "maxActive": 48,
+    "description": "LIV-29 item 6: pickup/chest messages spawn staggered around the player and live longer than combat numbers."
+  },
   "options": {
     "defaults": {
       "soundEffects": true,

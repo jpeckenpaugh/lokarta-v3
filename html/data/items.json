@@ -18,7 +18,7 @@
     "icon": "🧪",
     "svgCode": "1F9EA",
     "actionKey": "use_health_potion",
-    "maxStack": 9,
+    "maxStack": 99,
     "slotRole": "active"
   },
   "mana_potion": {
@@ -29,7 +29,7 @@
     "icon": "🔷",
     "svgCode": "2697",
     "actionKey": "use_mana_potion",
-    "maxStack": 9,
+    "maxStack": 99,
     "slotRole": "active"
   },
   "arrows": {
@@ -676,6 +676,7 @@
     "item_id": "key_copper",
     "name": "Copper Key",
     "type": "key",
+    "pickupType": "key",
     "keyTier": "copper",
     "vocationAffinity": "neutral",
     "icon": "🔑",
@@ -689,6 +690,7 @@
     "item_id": "key_silver",
     "name": "Silver Key",
     "type": "key",
+    "pickupType": "key",
     "keyTier": "silver",
     "vocationAffinity": "neutral",
     "icon": "🗝️",
@@ -702,6 +704,7 @@
     "item_id": "key_gold",
     "name": "Gold Key",
     "type": "key",
+    "pickupType": "key",
     "keyTier": "gold",
     "vocationAffinity": "neutral",
     "icon": "🗝️",

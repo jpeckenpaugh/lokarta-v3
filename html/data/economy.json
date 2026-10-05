@@ -14,13 +14,11 @@
     "description": "Every player character regenerates ~1 HP and ~1 MP per 10s."
   },
   "springs": {
-    "healPerUse": 10,
-    "manaPerUse": 10,
-    "chargeSec": 60,
-    "maxCharges": 1,
+    "hpPerSec": 5,
+    "mpPerSec": 5,
     "roomsPerFloor": 1,
     "rooms": "stairRoom",
-    "description": "Healing springs sit in each floor's stair room; +10 HP/MP per use, 1 charge per 60s."
+    "description": "LIV-29 item 9: springs are impassable fountains; standing adjacent restores +5 HP and +5 MP per second, capped at max."
   },
   "temple": {
     "healCostPerHp": 1,
@@ -30,11 +28,13 @@
     "reviveCostPct": 0
   },
   "shop": {
-    "sellRatePct": 40,
+    "sellRatePct": 50,
     "buyMarkupPct": 0,
     "upgradeBaseCost": 40,
     "upgradeCostPerRank": 35,
-    "maxRank": 5
+    "maxRank": 5,
+    "pawnFallbackValuePerStat": 8,
+    "description": "LIV-29 item 1: pawn sells backpack items for 50% of purchase price; un-priced loot falls back to stat_bonus * pawnFallbackValuePerStat."
   },
   "monsterGold": {
     "giant_rat": { "min": 3, "max": 8 },

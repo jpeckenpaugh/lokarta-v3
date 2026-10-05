@@ -1,6 +1,12 @@
 {
   "source": "docs/level-design.md#7.3",
   "description": "Tiered chest loot tables. Each chest rolls `rolls` entries, weighted, without replacement. Quantities are [min,max] inclusive. A `vocationGear` entry rolls an item from the opener's vocation pool filtered by lootTier and vocationAffinity (neutral items always eligible).",
+  "spentVisual": {
+    "description": "LIV-29 item 10: opened/spent chests get a drained grey wash so they read as empty and never look like an unopened silver chest.",
+    "overlay": "rgba(30, 32, 38, 0.62)",
+    "accent": "#6b7280",
+    "tint": { "light": "#565b64", "dark": "#2b2d33" }
+  },
   "chests": {
     "copper": {
       "rolls": 2,
