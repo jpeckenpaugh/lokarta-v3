@@ -45,6 +45,7 @@ export class DoorSystem {
       item_id: itemId,
       name: def.name || `${tier} Key`,
       type: def.type || 'key',
+      pickupType: def.pickupType || 'key',
       keyTier: tier,
       quantity: 1,
       ...(def.icon ? { icon: def.icon } : {}),

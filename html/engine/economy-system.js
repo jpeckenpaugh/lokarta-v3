@@ -17,9 +17,9 @@ import { ECONOMY_CATALOG, ITEMS_CATALOG, MONSTERS_CATALOG, UI_CATALOG } from '..
 const DEFAULTS = {
   gold: { starting: 0, cap: 999999 },
   passiveRecovery: { intervalSec: 10, hpPerTick: 1, mpPerTick: 1 },
-  springs: { healPerUse: 10, manaPerUse: 10, chargeSec: 60, maxCharges: 1 },
+  springs: { hpPerSec: 5, mpPerSec: 5 },
   temple: { healCostPerHp: 1, healCostPerMp: 1, reviveAt: 'town_temple', reviveCostPct: 0 },
-  shop: { sellRatePct: 40, buyMarkupPct: 0, upgradeBaseCost: 40, upgradeCostPerRank: 35, maxRank: 5 },
+  shop: { sellRatePct: 50, buyMarkupPct: 0, upgradeBaseCost: 40, upgradeCostPerRank: 35, maxRank: 5, pawnFallbackValuePerStat: 8 },
 };
 
 function cfg(path, fallback) {
@@ -117,57 +117,34 @@ export class EconomySystem {
     return { hp, mp };
   }
 
-  /** Healing-spring tunables (item 7). */
-  static springConfig() {
+  /** Healing-spring per-second regen tunables (LIV-29 item 9). */
+  static springRegen() {
     const s = cfg('springs', DEFAULTS.springs);
     return {
-      healPerUse: Number(s.healPerUse) || 0,
-      manaPerUse: Number(s.manaPerUse) || 0,
-      chargeSec: Number(s.chargeSec) || 60,
-      maxCharges: Number(s.maxCharges) || 1,
+      hpPerSec: Number(s.hpPerSec) || 0,
+      mpPerSec: Number(s.mpPerSec) || 0,
     };
   }
 
   /**
-   * True when the player may use the spring at `springId` again. Reads
-   * `player.springCharges[springId]` (ms timestamp of last use).
+   * Applies one second of adjacent-spring regeneration (LIV-29 item 9).
+   * Restores up to `hpPerSec` / `mpPerSec`, never over max. Mutates the player
+   * and returns the amount actually restored `{ hp, mp }`.
    */
-  static isSpringReady(player, springId, nowMs = Date.now()) {
-    if (!player || !springId) return true;
-    const last = Number(player.springCharges?.[springId]) || 0;
-    const { chargeSec } = EconomySystem.springConfig();
-    return nowMs - last >= chargeSec * 1000;
-  }
-
-  /**
-   * Uses a healing spring: restores up to +heal/ +mana per use, gated to the
-   * catalog charge interval. Returns `{ success, hp, mp, message }`.
-   */
-  static useSpring(player, springId, nowMs = Date.now()) {
-    if (!player || !springId) return { success: false, hp: 0, mp: 0, message: 'No spring here.' };
-    if (!EconomySystem.isSpringReady(player, springId, nowMs)) {
-      const { chargeSec } = EconomySystem.springConfig();
-      const readyIn = Math.max(1, Math.ceil((chargeSec * 1000 - (nowMs - (Number(player.springCharges?.[springId]) || 0))) / 1000));
-      return { success: false, hp: 0, mp: 0, message: `The spring is recharging (${readyIn}s).`, cooldownRemainingSec: readyIn };
+  static applySpringRegen(player) {
+    const { hpPerSec, mpPerSec } = EconomySystem.springRegen();
+    let hp = 0;
+    let mp = 0;
+    if (!player) return { hp, mp };
+    if (hpPerSec > 0 && player.hp < player.max_hp) {
+      hp = Math.min(hpPerSec, player.max_hp - player.hp);
+      player.hp += hp;
     }
-
-    const { healPerUse, manaPerUse } = EconomySystem.springConfig();
-    const hp = Math.min(healPerUse, Math.max(0, player.max_hp - player.hp));
-    const mp = Math.min(manaPerUse, Math.max(0, player.max_mana - player.mana));
-    player.hp += hp;
-    player.mana += mp;
-    if (!player.springCharges) player.springCharges = {};
-    player.springCharges[springId] = nowMs;
-
-    const parts = [];
-    if (hp > 0) parts.push(`+${hp} HP`);
-    if (mp > 0) parts.push(`+${mp} MP`);
-    return {
-      success: true,
-      hp,
-      mp,
-      message: parts.length ? `The spring restores ${parts.join(' / ')}.` : 'The spring has nothing left to restore.',
-    };
+    if (mpPerSec > 0 && player.mana < player.max_mana) {
+      mp = Math.min(mpPerSec, player.max_mana - player.mana);
+      player.mana += mp;
+    }
+    return { hp, mp };
   }
 
   /**
@@ -203,6 +180,7 @@ export class EconomySystem {
       upgradeBaseCost: Number(s.upgradeBaseCost) || 0,
       upgradeCostPerRank: Number(s.upgradeCostPerRank) || 0,
       maxRank: Number(s.maxRank) || 5,
+      pawnFallbackValuePerStat: Number(s.pawnFallbackValuePerStat) || 0,
     };
   }
 
@@ -263,18 +241,52 @@ export class EconomySystem {
     return upgradeBaseCost + upgradeCostPerRank * (rank - 1);
   }
 
-  /** True when an item can still be upgraded in the shop. */
+  /**
+   * True when an item can still be upgraded in the shop. Falls back to the
+   * catalog `upgradeSpec` so looted/banked gear (which never carries the spec
+   * on its instance) is treated the same as crafted stock (LIV-29 item 1).
+   */
   static canUpgrade(item) {
-    if (!item || !item.upgradeSpec) return false;
+    if (!item || !item.item_id) return false;
     const { maxRank } = EconomySystem.shopConfig();
-    return (Number(item?.itemLevel) || 1) < maxRank;
+    if ((Number(item?.itemLevel) || 1) >= maxRank) return false;
+    const spec = item.upgradeSpec || ITEMS_CATALOG[item.item_id]?.upgradeSpec;
+    return Boolean(spec && Object.keys(spec).length > 0);
   }
 
-  /** Sell value for an item (floor of a percentage of its price). */
-  static sellValue(item) {
+  /**
+   * Gold a merchant pays to pawn an item (LIV-29 item 1): the catalog
+   * `sellRatePct` percentage of its purchase price. The base resolves from the
+   * price actually paid, the authored price, the shop stock price, then a
+   * catalog-driven stat-value fallback so authored loot is still sellable.
+   */
+  static pawnValue(item) {
     if (!item) return 0;
-    const base = Number(item.pricePaid ?? item.price ?? item.stat_bonus ?? 0) || 0;
-    return Math.max(0, Math.floor(base * (EconomySystem.shopConfig().sellRatePct / 100)));
+    const stockEntry = (cfg('stock', []) || []).find(entry => entry.itemId === item.item_id);
+    const { sellRatePct, pawnFallbackValuePerStat } = EconomySystem.shopConfig();
+    const authored = Number(item.pricePaid ?? item.price ?? stockEntry?.price);
+    const base = Number.isFinite(authored) && authored > 0
+      ? authored
+      : (Number(item.stat_bonus) || 0) * pawnFallbackValuePerStat;
+    return Math.max(0, Math.floor(base * (sellRatePct / 100)));
+  }
+
+  /**
+   * Pawns an item out of a container for gold. The caller owns slot removal;
+   * this helper pays the pawn value and builds the message.
+   * @returns {{ success: boolean, value: number, message: string }}
+   */
+  static pawnItem(player, item) {
+    if (!player || !item) return { success: false, value: 0, message: 'Nothing to pawn.' };
+    if (item.droppable === false) {
+      return { success: false, value: 0, message: `${item.name} cannot be pawned.` };
+    }
+    const value = EconomySystem.pawnValue(item);
+    if (value <= 0) {
+      return { success: false, value: 0, message: `${item.name} has no pawn value.` };
+    }
+    const credited = EconomySystem.addGold(player, value);
+    return { success: true, value: credited, message: `Pawned ${item.name} for ${credited} gold.` };
   }
 
   /** Description of the town temple / revive rule (item 5). */

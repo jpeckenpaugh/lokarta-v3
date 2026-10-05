@@ -250,14 +250,17 @@ export class InventorySystem {
    * items bank into the backpack. Never drops to the ground. Duplicate unique
    * gear levels up the owned copy instead of stacking a second one.
    */
-  static addItem(player, item) {
+  static addItem(player, item, opts = {}) {
     if (!player || !item || !item.item_id) {
       return { success: false, message: 'Nothing to add.', item: null };
     }
     InventorySystem.ensureContainers(player);
 
     const maxStackForDup = InventorySystem.getMaxStack(item.item_id);
-    if (maxStackForDup <= 1) {
+    // Shop purchases pass `allowRankUp: false` so buying a duplicate weapon
+    // banks a second copy instead of silently ranking up the owned one
+    // (LIV-29 item 1). Reward paths (chest loot, drafts) keep the rank-up.
+    if (opts.allowRankUp !== false && maxStackForDup <= 1) {
       const owned = findOwnedItem(player, item);
       if (owned) {
         const upgrade = applyItemRankUp(player, owned, { source: 'duplicate' });
