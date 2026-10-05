@@ -221,6 +221,20 @@ export class FateGrantSystem {
         }
       }
 
+      // LIV-30 item 4: stackable acquisitions (potion stashes, ammo) top up an
+      // existing stack in the loadout or backpack before a new cell is opened.
+      // `InventorySystem.addItem` owns that stack-first placement order; a full
+      // inventory (`success: false`) falls through to the floor-drop fallback.
+      if (InventorySystem.getMaxStack(itemToPlace.item_id) > 1) {
+        const stackRes = InventorySystem.addItem(player, itemToPlace);
+        if (stackRes.success) {
+          const label = `${itemToPlace.name}${itemToPlace.quantity > 1 ? ` (x${itemToPlace.quantity})` : ''}`;
+          const landsInHotbar = (player.action_bar || []).some(s => s && s.item_id === itemToPlace.item_id);
+          (landsInHotbar ? result.addedToHotbar : result.addedToBackpack).push(label);
+          continue;
+        }
+      }
+
       // Auto-assign staff to main_hand, wand to off_hand, armor to armor, or relic to relic slot if paperdoll slot is empty
       const targetSlot = itemToPlace.slot || catalogItem?.slot;
       if (!player.paperdoll) {
