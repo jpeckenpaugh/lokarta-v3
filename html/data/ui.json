@@ -82,6 +82,10 @@
     "maxActive": 48,
     "description": "LIV-29 item 6: pickup/chest messages spawn staggered around the player and live longer than combat numbers."
   },
+  "lootPlacement": {
+    "dropRingRadius": 4,
+    "description": "LIV-30 item 2: dropped items sort to the nearest empty walkable tile, expanding ring by ring from the drop point; stacking happens only when no free tile remains in range."
+  },
   "options": {
     "defaults": {
       "soundEffects": true,

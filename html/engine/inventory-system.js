@@ -14,7 +14,7 @@
  */
 
 import { CONFIG, INVENTORY_CONFIG, EQUIPMENT_KEY_MAP, EQUIPMENT_SLOT_KEYS } from './config.js';
-import { ITEMS_CATALOG } from '../data/index.js';
+import { ITEMS_CATALOG, UI_CATALOG } from '../data/index.js';
 import { findOwnedItem, applyItemRankUp, formatRankUpMessage } from './item-progression.js';
 
 const EQUIP_SLOT_ORDER = EQUIPMENT_SLOT_KEYS;
@@ -321,7 +321,49 @@ export class InventorySystem {
     return { success: true, message: `Added ${item.name}${qty > 1 ? ` (x${qty})` : ''}.`, item };
   }
 
-  static dropItem(player, source, slotIndex, gridMap) {
+  /** Expanding-ring radius for dropped-item placement (LIV-30 item 2). */
+  static dropRingRadius() {
+    const n = Number(UI_CATALOG?.lootPlacement?.dropRingRadius);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 4;
+  }
+
+  /**
+   * Nearest walkable in-bounds tile to `(cx, cy)` that holds no ground items
+   * and is not already reserved by the current drop event. Searches ring by
+   * ring (adjacent first, then expanding) and returns `{ x, y, key }` with an
+   * integer coordinate hash, or `null` when no free tile exists in range so the
+   * caller can fall back to stacking (LIV-30 item 2).
+   * @param {import('./grid-map.js').GridMap} gridMap
+   * @param {number} cx @param {number} cy
+   * @param {Set<number>} [reserved] - integer hashes already claimed this event
+   * @returns {{x:number,y:number,key:number}|null}
+   */
+  static findFreeGroundTile(gridMap, cx, cy, reserved) {
+    if (!gridMap) return null;
+    const maxRing = InventorySystem.dropRingRadius();
+    for (let ring = 0; ring <= maxRing; ring++) {
+      // Visit the ring shell nearest-first: orthogonal neighbours (Manhattan
+      // distance == ring) before diagonals, so a directly adjacent tile wins.
+      for (let manhattan = ring; manhattan <= 2 * ring; manhattan++) {
+        for (let dy = -ring; dy <= ring; dy++) {
+          for (let dx = -ring; dx <= ring; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+            if (Math.abs(dx) + Math.abs(dy) !== manhattan) continue;
+            const x = cx + dx;
+            const y = cy + dy;
+            if (!gridMap.isInBounds(x, y) || !gridMap.isWalkable(x, y)) continue;
+            const key = y * gridMap.width + x;
+            if (reserved && reserved.has(key)) continue;
+            if (gridMap.getItems(x, y).length > 0) continue;
+            return { x, y, key };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  static dropItem(player, source, slotIndex, gridMap, reserved) {
     InventorySystem.ensureContainers(player);
     const list = source === 'action_bar' ? player.action_bar : player.backpack;
     if (!list || slotIndex < 0 || slotIndex >= list.length) {
@@ -330,9 +372,13 @@ export class InventorySystem {
     const item = list[slotIndex];
     if (!item) return { success: false, message: 'Slot is empty.' };
 
+    // LIV-30 item 2: never cover an existing ground item. Land on the nearest
+    // free tile; only stack in place when the whole search radius is occupied.
+    const free = InventorySystem.findFreeGroundTile(gridMap, player.x, player.y, reserved);
+    const spot = free || { x: player.x, y: player.y, key: null };
     list[slotIndex] = null;
-    gridMap.addItem(player.x, player.y, item);
-    return { success: true, message: `Dropped ${item.name} on the floor.`, item };
+    gridMap.addItem(spot.x, spot.y, item);
+    return { success: true, message: `Dropped ${item.name} on the floor.`, item, x: spot.x, y: spot.y };
   }
 
   static recomputeGearBonuses(player) {

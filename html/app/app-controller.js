@@ -51,7 +51,7 @@ const DIRECTION_VECTORS = {
   right: { dx: 1, dy: 0 },
 };
 
-/** Ring used to scatter a multi-item monster drop across distinct squares. */
+/** Rotating sub-tile offsets that stagger floating pickup/combat text. */
 const GROUND_DROP_OFFSETS = [
   [0, 0], [0, -1], [1, 0], [0, 1], [-1, 0],
   [1, 1], [-1, 1], [1, -1], [-1, -1],
@@ -1859,12 +1859,17 @@ export class LokartaApp {
           if (keyDrop) drops.push(keyDrop);
         }
         if (drops.length > 0) {
-          const spots = this.groundDropTiles(deadMonster.x, deadMonster.y);
-          drops.forEach((item, i) => {
-            const spot = spots[i % spots.length];
+          // LIV-30 item 2: every drop lands on the nearest empty tile (adjacent
+          // first, then expanding) so it never covers pre-existing loot. Only
+          // stack in place when no free tile remains in the search radius.
+          const reserved = new Set();
+          for (const item of drops) {
+            const free = InventorySystem.findFreeGroundTile(this.gridMap, deadMonster.x, deadMonster.y, reserved);
+            const spot = free || { x: deadMonster.x, y: deadMonster.y };
+            if (free) reserved.add(free.key);
             this.gridMap.addItem(spot.x, spot.y, { ...item, x: spot.x, y: spot.y });
             this.logCombat(`${deadMonster.name} dropped ${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ''}.`, 'loot');
-          });
+          }
           if (drops.some(d => d.pickupType === 'key')) soundFX.play('keyJangle');
         }
 
@@ -1927,27 +1932,6 @@ export class LokartaApp {
       this.updateHUD();
       await this.persistSave();
     }
-  }
-
-  /**
-   * Distinct, walkable squares for a monster's multi-item drop, starting from
-   * the death tile and spreading across its neighbours (LIV-29 item 5).
-   * @returns {{x:number,y:number}[]} at least one tile
-   */
-  groundDropTiles(cx, cy) {
-    const tiles = [];
-    const seen = new Set();
-    for (const [dx, dy] of GROUND_DROP_OFFSETS) {
-      const x = cx + dx;
-      const y = cy + dy;
-      const key = `${x},${y}`;
-      if (seen.has(key)) continue;
-      if (!this.gridMap.isInBounds(x, y) || !this.gridMap.isWalkable(x, y)) continue;
-      seen.add(key);
-      tiles.push({ x, y });
-    }
-    if (tiles.length === 0) tiles.push({ x: cx, y: cy });
-    return tiles;
   }
 
   /**
