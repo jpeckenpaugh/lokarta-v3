@@ -65,7 +65,8 @@ test('JSON Data Catalogs', async (t) => {
     }
 
     assert.equal(ITEMS_CATALOG['arrows'].maxStack, 99);
-    assert.equal(ITEMS_CATALOG['health_potion'].maxStack, 9);
+    assert.equal(ITEMS_CATALOG['health_potion'].maxStack, 99);
+    assert.equal(ITEMS_CATALOG['mana_potion'].maxStack, 99);
     assert.equal(ITEMS_CATALOG['apprentice_wand'].maxStack, 1);
   });
 
@@ -133,12 +134,15 @@ test('JSON Data Catalogs', async (t) => {
   });
 
   await t.test('loads and validates sounds.json catalog', () => {
-    assert.equal(Object.keys(SOUNDS_CATALOG).length, 21);
+    assert.equal(Object.keys(SOUNDS_CATALOG).length, 23);
     assert.ok(SOUNDS_CATALOG.footstep);
     assert.ok(SOUNDS_CATALOG.wandSpark);
     assert.ok(SOUNDS_CATALOG.victory);
     assert.ok(SOUNDS_CATALOG.uiMove);
     assert.ok(SOUNDS_CATALOG.uiBack);
+    // LIV-29 items 4/5: metal key jangle + coin clink SFX.
+    assert.ok(SOUNDS_CATALOG.keyJangle);
+    assert.ok(SOUNDS_CATALOG.coins);
   });
 
   await t.test('loads and validates abilities.json catalog', () => {
@@ -283,6 +287,10 @@ test('JSON Data Catalogs', async (t) => {
         }
       }
     }
+    // LIV-29 item 10: a spent chest has a distinct drained palette.
+    assert.ok(CHESTS_CATALOG.spentVisual, 'chests.json must define the spent visual');
+    assert.ok(CHESTS_CATALOG.spentVisual.overlay);
+    assert.ok(CHESTS_CATALOG.spentVisual.tint?.light && CHESTS_CATALOG.spentVisual.tint?.dark);
   });
 
   await t.test('loads and validates doors.json catalog (tier → key + shape cue)', () => {    for (const tier of ['copper', 'silver', 'gold']) {
@@ -302,6 +310,7 @@ test('JSON Data Catalogs', async (t) => {
       assert.equal(key.keyTier, tier);
       assert.equal(key.maxStack, 1);
       assert.equal(key.droppable, false);
+      assert.equal(key.pickupType, 'key', 'LIV-29: keys use the ground key dispatch');
     }
     // Every lootTier in §7.4 maps to a real item tagged with that tier.
     const tiered = Object.values(ITEMS_CATALOG).filter((i) => typeof i.lootTier === 'number');
@@ -369,9 +378,10 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(Number.isFinite(ECONOMY_CATALOG.passiveRecovery.intervalSec));
     assert.equal(ECONOMY_CATALOG.passiveRecovery.hpPerTick, 1);
     assert.equal(ECONOMY_CATALOG.passiveRecovery.mpPerTick, 1);
-    assert.equal(ECONOMY_CATALOG.springs.healPerUse, 10);
-    assert.equal(ECONOMY_CATALOG.springs.manaPerUse, 10);
-    assert.equal(ECONOMY_CATALOG.springs.chargeSec, 60);
+    // LIV-29 item 9: springs are per-second adjacent regen fountains.
+    assert.equal(ECONOMY_CATALOG.springs.hpPerSec, 5);
+    assert.equal(ECONOMY_CATALOG.springs.mpPerSec, 5);
+    assert.equal(ECONOMY_CATALOG.shop.sellRatePct, 50, 'pawn pays 50% of purchase price');
     assert.ok(Array.isArray(ECONOMY_CATALOG.stock) && ECONOMY_CATALOG.stock.length > 0, 'shop stock required');
     for (const entry of ECONOMY_CATALOG.stock) {
       assert.ok(ITEMS_CATALOG[entry.itemId], `unknown shop item ${entry.itemId}`);

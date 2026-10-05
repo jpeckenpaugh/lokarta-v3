@@ -124,8 +124,15 @@ describe('D4 room props & decor (LIV-20)', () => {
         const grid = new GridMap();
         grid.loadFromMatrix(floor.tiles);
         for (const prop of floor.props) {
-          assert.equal(grid.isWalkable(prop.x, prop.y), true, `L${lv}/${seed} prop ${prop.propId} is blocking`);
+          // LIV-29 item 3: furniture props block, floor decor stays walk-over.
+          if (prop.layer === 'prop') {
+            grid.blockTile(prop.x, prop.y, true);
+            assert.equal(grid.isWalkable(prop.x, prop.y), false, `L${lv}/${seed} furniture ${prop.propId} must block`);
+          } else {
+            assert.equal(grid.isWalkable(prop.x, prop.y), true, `L${lv}/${seed} decor ${prop.propId} must stay walkable`);
+          }
         }
+        // Blocking decor must never wall off the spawn from a stair.
         assert.equal(validateFloorConnectivity(floor).ok, true, `L${lv}/${seed} floor not connected`);
       }
     }

@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { AudioSystem } from '../audio/index.js';
 
 test('AudioSystem & JSON Sound Catalog', async (t) => {
-  await t.test('loads all 21 required sound definitions from sounds.json', () => {
+  await t.test('loads all 23 required sound definitions from sounds.json', () => {
     const soundsPath = resolve(process.cwd(), 'html/data/sounds.json');
     const soundsJson = JSON.parse(readFileSync(soundsPath, 'utf8'));
 
@@ -13,10 +13,10 @@ test('AudioSystem & JSON Sound Catalog', async (t) => {
       'footstep', 'wandSpark', 'lightSpell', 'energyBeam', 'bowShot', 'powerShot',
       'hit', 'monsterAttack', 'monsterDeath', 'playerHurt', 'itemPickup',
       'potionDrink', 'equip', 'unequip', 'stairs', 'levelUp', 'victory', 'defeat', 'click',
-      'uiMove', 'uiBack'
+      'uiMove', 'uiBack', 'keyJangle', 'coins'
     ];
 
-    assert.equal(Object.keys(soundsJson).length, 21);
+    assert.equal(Object.keys(soundsJson).length, 23);
 
     for (const key of expectedKeys) {
       assert.ok(soundsJson[key], `Missing sound definition for ${key}`);

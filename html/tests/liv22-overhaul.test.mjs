@@ -205,28 +205,26 @@ describe('LIV-22 #7 healing springs', () => {
     }
   });
 
-  it('restores at most +10 HP/MP per use and gates to 1 charge / 60s', () => {
+  it('regenerates +5 HP and +5 MP per second while adjacent (LIV-29 item 9)', () => {
     const p = createPlayer('fighter');
     p.hp = 10;
     p.mana = 5;
-    const now = 1_000_000;
-    const first = EconomySystem.useSpring(p, 'spring_a', now);
-    assert.equal(first.success, true);
-    assert.equal(first.hp, 10);
-    assert.equal(first.mp, 10);
-
-    const blocked = EconomySystem.useSpring(p, 'spring_a', now + 1000);
-    assert.equal(blocked.success, false, 'second use within 60s is blocked');
-
-    const ready = EconomySystem.useSpring(p, 'spring_a', now + 60_000);
-    assert.equal(ready.success, true, 'usable again after 60s');
+    const first = EconomySystem.applySpringRegen(p);
+    assert.equal(first.hp, 5);
+    assert.equal(first.mp, 5);
+    assert.equal(p.hp, 15);
+    assert.equal(p.mana, 10);
+    // A second adjacent second tops up again.
+    const second = EconomySystem.applySpringRegen(p);
+    assert.equal(second.hp, 5);
+    assert.equal(second.mp, 5);
   });
 
-  it('caps spring healing at the missing HP/MP', () => {
+  it('caps spring regen at the missing HP/MP', () => {
     const p = createPlayer('magician');
     p.hp = p.max_hp - 3;
     p.mana = p.max_mana - 2;
-    const res = EconomySystem.useSpring(p, 'spring_b', 60_000);
+    const res = EconomySystem.applySpringRegen(p);
     assert.equal(res.hp, 3);
     assert.equal(res.mp, 2);
     assert.equal(p.hp, p.max_hp);
