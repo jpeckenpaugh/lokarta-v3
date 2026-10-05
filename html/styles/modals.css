@@ -1050,6 +1050,11 @@
   cursor: not-allowed;
 }
 
+/* Unaffordable upgrades stay clickable to explain the shortfall (LIV-31). */
+.shop-entry.is-unaffordable {
+  opacity: 0.5;
+}
+
 .shop-entry .shop-icon .openmoji-icon {
   width: 1.5rem;
   height: 1.5rem;

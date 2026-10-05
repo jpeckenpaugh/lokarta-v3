@@ -751,6 +751,8 @@ export class LokartaApp {
   upgradeShopItem(source, index) {
     const entry = this.collectUpgradableItems().find(e => e.source === source && String(e.index) === String(index));
     if (!entry) {
+      soundFX.play('uiBack');
+      this.logCombat('That gear cannot be upgraded further.', 'warning');
       this.openShop();
       return;
     }

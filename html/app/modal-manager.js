@@ -680,6 +680,39 @@ export class ModalManager {
     townEl.querySelector('.town-venue')?.focus();
   }
 
+  /**
+   * One Upgrade Gear button. The `data-upgrade-slot` payload is
+   * `source:index`, where `index` is a numeric list position for pack/action-bar
+   * items but a paperdoll slot *name* (`main_hand`, `off_hand`, `armor`,
+   * `relic`) for equipment. It must therefore round-trip as a raw string and
+   * never be coerced with `Number()` (LIV-31).
+   *
+   * An unaffordable entry stays clickable so the handler can log the exact
+   * shortfall instead of silently no-opping; it is dimmed and marked
+   * `aria-disabled` for the affordance.
+   */
+  static _upgradeEntryHtml(entry, gold) {
+    const affordable = gold >= entry.cost;
+    const icon = HUDManager.renderItemIcon(entry.item);
+    const reason = affordable ? '' : `Need ${entry.cost} gold — you have ${gold}`;
+    const attr = affordable
+      ? ''
+      : ` aria-disabled="true" title="${reason}"`;
+    return `
+      <button class="shop-entry upgrade-entry${affordable ? '' : ' is-unaffordable'}" data-upgrade-slot="${entry.source}:${entry.index}"${attr}>
+        <span class="shop-icon">${icon}</span>
+        <span class="shop-name">${entry.item.name} <em>Rank ${entry.rank}</em></span>
+        <span class="shop-price">${entry.cost}g</span>
+      </button>`;
+  }
+
+  /** Splits a rendered `source:index` shop ref, preserving a string slot index. */
+  static _splitShopRef(encoded) {
+    const ref = String(encoded ?? '');
+    const sep = ref.indexOf(':');
+    return sep < 0 ? [ref, ''] : [ref.slice(0, sep), ref.slice(sep + 1)];
+  }
+
   /** Shop subpanel inside the persistent Town screen (D1 §4.3). */
   static renderTownShop(townEl, app, callbacks = {}) {
     if (!townEl) return;
@@ -724,15 +757,7 @@ export class ModalManager {
         <div class="shop-upgrades" id="shop-upgrades">
           ${upgradeList.length === 0
             ? '<div class="shop-empty">No upgradable gear in your pack.</div>'
-            : upgradeList.map(entry => {
-                const icon = HUDManager.renderItemIcon(entry.item);
-                return `
-                  <button class="shop-entry upgrade-entry" data-upgrade-slot="${entry.source}:${entry.index}" ${gold < entry.cost ? 'disabled' : ''}>
-                    <span class="shop-icon">${icon}</span>
-                    <span class="shop-name">${entry.item.name} <em>Rank ${entry.rank}</em></span>
-                    <span class="shop-price">${entry.cost}g</span>
-                  </button>`;
-              }).join('')}
+            : upgradeList.map(entry => ModalManager._upgradeEntryHtml(entry, gold)).join('')}
         </div>
         <div class="modal-actions">
           <button class="action-btn" id="shop-back">Back to Town</button>
@@ -744,14 +769,14 @@ export class ModalManager {
     });
     townEl.querySelectorAll('.shop-entry[data-pawn-slot]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const [source, index] = btn.getAttribute('data-pawn-slot').split(':');
+        const [source, index] = ModalManager._splitShopRef(btn.getAttribute('data-pawn-slot'));
         callbacks.onPawn?.(source, Number(index));
       });
     });
     townEl.querySelectorAll('.shop-entry[data-upgrade-slot]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const [source, index] = btn.getAttribute('data-upgrade-slot').split(':');
-        callbacks.onUpgrade?.(source, Number(index));
+        const [source, index] = ModalManager._splitShopRef(btn.getAttribute('data-upgrade-slot'));
+        callbacks.onUpgrade?.(source, index);
       });
     });
     townEl.querySelector('#shop-back')?.addEventListener('click', () => { soundFX.play('uiBack'); callbacks.onBack?.(); });
@@ -849,15 +874,7 @@ export class ModalManager {
         <div class="shop-upgrades" id="shop-upgrades">
           ${upgradeList.length === 0
             ? '<div class="shop-empty">No upgradable gear in your pack.</div>'
-            : upgradeList.map(entry => {
-                const icon = HUDManager.renderItemIcon(entry.item);
-                return `
-                  <button class="shop-entry upgrade-entry" data-upgrade-slot="${entry.source}:${entry.index}" ${gold < entry.cost ? 'disabled' : ''}>
-                    <span class="shop-icon">${icon}</span>
-                    <span class="shop-name">${entry.item.name} <em>Rank ${entry.rank}</em></span>
-                    <span class="shop-price">${entry.cost}g</span>
-                  </button>`;
-              }).join('')}
+            : upgradeList.map(entry => ModalManager._upgradeEntryHtml(entry, gold)).join('')}
         </div>
         <div class="modal-actions">
           <button class="action-btn" id="shop-back">Back to Town</button>
@@ -873,8 +890,8 @@ export class ModalManager {
     });
     modalOverlayEl.querySelectorAll('.shop-entry[data-upgrade-slot]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const [source, index] = btn.getAttribute('data-upgrade-slot').split(':');
-        callbacks.onUpgrade?.(source, Number(index));
+        const [source, index] = ModalManager._splitShopRef(btn.getAttribute('data-upgrade-slot'));
+        callbacks.onUpgrade?.(source, index);
       });
     });
     modalOverlayEl.querySelector('#shop-back')?.addEventListener('click', () => {
