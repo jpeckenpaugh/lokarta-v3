@@ -139,33 +139,6 @@
     "solidGear": true,
     "slotRole": "equipment"
   },
-  "hunter_quiver": {
-    "item_id": "hunter_quiver",
-    "name": "Hunter's Quiver",
-    "type": "offhand",
-    "slot": "off_hand",
-    "stat_bonus": 3,
-    "vocationAffinity": "archer",
-    "icon": "🏹",
-    "svgCode": "1F3F9",
-    "actionKey": "poison_tip",
-    "cooldown": 8,
-    "manaCost": 2,
-    "poisonDps": 2,
-    "poisonDurationSec": 3,
-    "poisonArrows": 5,
-    "poisonBuffSec": 10,
-    "maxStack": 1,
-    "upgradeSpec": {
-      "poisonDpsInc": 1,
-      "statBonusTextPattern": "Poison +1 Dmg/s",
-      "descriptionPattern": "Level Up Hunter's Quiver (Rank {prevRank} ➔ {nextRank}): Poison Tip deals +1 poison damage per second."
-    },
-    "lootTier": 1,
-    "lootTierEligible": true,
-    "legacyTier": true,
-    "slotRole": "equipment"
-  },
   "grey_stalker_quiver": {
     "item_id": "grey_stalker_quiver",
     "name": "Grey Stalker Quiver",
@@ -178,12 +151,20 @@
     "vocationAffinity": "archer",
     "icon": "🏹",
     "svgCode": "1F3F9",
+    "actionKey": "poison_tip",
+    "cooldown": 8,
+    "manaCost": 2,
+    "poisonDps": 2,
+    "poisonDurationSec": 3,
+    "poisonArrows": 5,
+    "poisonBuffSec": 10,
     "maxStack": 1,
     "upgradeSpec": {
       "arrowCapacityInc": 5,
       "ammoRegenSecReduction": 0.5,
-      "statBonusTextPattern": "+5 Cap, Faster Regen",
-      "descriptionPattern": "Level Up Grey Stalker Quiver (Rank {prevRank} ➔ {nextRank}): +5 Arrow Capacity, Arrow Regen interval reduced by 0.5s."
+      "poisonDpsInc": 1,
+      "statBonusTextPattern": "Poison +1 Dmg/s, +5 Cap, Faster Regen",
+      "descriptionPattern": "Level Up Grey Stalker Quiver (Rank {prevRank} ➔ {nextRank}): Poison Tip deals +1 poison damage per second; +5 Arrow Capacity, Arrow Regen interval reduced by 0.5s."
     },
     "lootTier": 2,
     "lootTierEligible": true,
@@ -401,24 +382,6 @@
     "solidGear": true,
     "slotRole": "equipment"
   },
-  "buckler": {
-    "item_id": "buckler",
-    "name": "Reinforced Buckler",
-    "type": "offhand",
-    "slot": "off_hand",
-    "stat_bonus": 4,
-    "vocationAffinity": [
-      "fighter",
-      "paladin"
-    ],
-    "icon": "🛡️",
-    "svgCode": "1F6E1",
-    "maxStack": 1,
-    "lootTier": 1,
-    "lootTierEligible": true,
-    "legacyTier": true,
-    "slotRole": "equipment"
-  },
   "plate_armor": {
     "item_id": "plate_armor",
     "name": "Knight Plate Armor",
@@ -515,174 +478,6 @@
     "lootTier": 3,
     "lootTierEligible": true,
     "slotRole": "equipment"
-  },
-  "spell_wand_spark": {
-    "item_id": "spell_wand_spark",
-    "name": "Spark Wand",
-    "type": "spell",
-    "slot": "off_hand",
-    "stat_bonus": 14,
-    "manaCost": 1,
-    "cooldown": 1,
-    "vocationAffinity": "magician",
-    "icon": "✨",
-    "svgCode": "2728",
-    "actionKey": "wand_spark",
-    "maxStack": 1,
-    "upgradeSpec": {
-      "randomDamageInc": [
-        4,
-        6
-      ],
-      "rangeInc": 1,
-      "manaCostInc": 1,
-      "statBonusTextPattern": "+{dmgInc} Dmg, +1 Range (+1 MP)",
-      "descriptionPattern": "Level Up Spark Wand (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Damage, +1 Targeting Range, +1 MP Cost."
-    },
-    "lootTier": 1,
-    "lootTierEligible": true,
-    "slotRole": "equipment"
-  },
-  "spell_energy_beam": {
-    "item_id": "spell_energy_beam",
-    "name": "Beam Staff",
-    "type": "spell",
-    "slot": "main_hand",
-    "stat_bonus": 35,
-    "manaCost": 5,
-    "cooldown": 3,
-    "vocationAffinity": "magician",
-    "icon": "🦯",
-    "svgCode": "1F9AF",
-    "actionKey": "energy_beam",
-    "maxStack": 1,
-    "upgradeSpec": {
-      "stepDamageInc": 5,
-      "rangeInc": 1,
-      "manaCostInc": 5,
-      "statBonusTextPattern": "+5 Wave Dmg, +1 Range (+5 MP)",
-      "descriptionPattern": "Level Up Beam Staff (Rank {prevRank} ➔ {nextRank}): +5 Wave Dmg, +1 Wave Range, +5 MP Cost."
-    },
-    "lootTier": 2,
-    "lootTierEligible": true,
-    "slotRole": "equipment"
-  },
-  "spell_bow_shot": {
-    "item_id": "spell_bow_shot",
-    "name": "Bow Shot",
-    "type": "spell",
-    "stat_bonus": 16,
-    "cooldown": 1,
-    "vocationAffinity": "archer",
-    "icon": "🏹",
-    "svgCode": "1F3F9",
-    "actionKey": "bow_shot",
-    "grantedAmmo": {
-      "item_id": "arrows",
-      "quantity": 20
-    },
-    "maxStack": 1,
-    "slotRole": "active"
-  },
-  "spell_power_shot": {
-    "item_id": "spell_power_shot",
-    "name": "Power Shot",
-    "type": "spell",
-    "stat_bonus": 37,
-    "cooldown": 4,
-    "vocationAffinity": "archer",
-    "icon": "🎯",
-    "svgCode": "1F3AF",
-    "actionKey": "power_shot",
-    "grantedAmmo": {
-      "item_id": "arrows",
-      "quantity": 20
-    },
-    "maxStack": 1,
-    "slotRole": "active"
-  },
-  "spell_slash": {
-    "item_id": "spell_slash",
-    "name": "Sword Slash",
-    "type": "spell",
-    "stat_bonus": 18,
-    "cooldown": 0.8,
-    "vocationAffinity": "fighter",
-    "icon": "⚔️",
-    "svgCode": "2694",
-    "actionKey": "slash",
-    "maxStack": 1,
-    "slotRole": "active"
-  },
-  "spell_cleave": {
-    "item_id": "spell_cleave",
-    "name": "Sweeping Cleave",
-    "type": "spell",
-    "stat_bonus": 28,
-    "manaCost": 10,
-    "cooldown": 2.5,
-    "vocationAffinity": "fighter",
-    "icon": "🌪️",
-    "svgCode": "1F32A",
-    "actionKey": "cleave",
-    "maxStack": 1,
-    "slotRole": "active"
-  },
-  "spell_fortify": {
-    "item_id": "spell_fortify",
-    "name": "Fortify Stance",
-    "type": "spell",
-    "stat_bonus": 50,
-    "manaCost": 15,
-    "cooldown": 12,
-    "vocationAffinity": "fighter",
-    "icon": "🛡️",
-    "svgCode": "1F6E1",
-    "actionKey": "fortify",
-    "maxStack": 1,
-    "slotRole": "active"
-  },
-  "spell_holy_strike": {
-    "item_id": "spell_holy_strike",
-    "name": "Holy Strike",
-    "type": "spell",
-    "stat_bonus": 22,
-    "manaCost": 10,
-    "cooldown": 1.2,
-    "vocationAffinity": "paladin",
-    "icon": "🔨",
-    "svgCode": "2692",
-    "actionKey": "holy_strike",
-    "maxStack": 1,
-    "slotRole": "active"
-  },
-  "spell_healing_prayer": {
-    "item_id": "spell_healing_prayer",
-    "name": "Healing Prayer",
-    "type": "spell",
-    "stat_bonus": 42,
-    "manaCost": 25,
-    "cooldown": 6,
-    "vocationAffinity": "paladin",
-    "icon": "💖",
-    "svgCode": "1F496",
-    "actionKey": "healing_prayer",
-    "maxStack": 1,
-    "slotRole": "active"
-  },
-  "spell_holy_radiance": {
-    "item_id": "spell_holy_radiance",
-    "name": "Holy Radiance",
-    "type": "spell",
-    "stat_bonus": 25,
-    "manaCost": 30,
-    "cooldown": 8,
-    "vocationAffinity": "paladin",
-    "icon": "☀️",
-    "svgCode": "2600",
-    "actionKey": "holy_radiance",
-    "maxStack": 1,
-    "slotRole": "active"
   },
   "key_copper": {
     "item_id": "key_copper",

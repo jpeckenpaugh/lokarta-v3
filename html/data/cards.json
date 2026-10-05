@@ -52,44 +52,6 @@
     }
   },
   {
-    "id": "card_bow_shot",
-    "name": "Hunting Bow & Shot",
-    "rarity": "common",
-    "icon": "🏹",
-    "description": "Fire a precision physical arrow at distant monsters within line-of-sight (14–18 damage).",
-    "statBonusText": "14–18 Dmg (1 Arrow)",
-    "vocationAffinity": "archer",
-    "item": {
-      "item_id": "spell_bow_shot",
-      "name": "Bow Shot",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 16,
-      "cooldown": 1.0,
-      "icon": "🏹",
-      "grantedAmmo": { "item_id": "arrows", "quantity": 20 }
-    }
-  },
-  {
-    "id": "card_power_shot",
-    "name": "Power Shot",
-    "rarity": "rare",
-    "icon": "🎯",
-    "description": "Draw bow to full tension for a devastating burst strike dealing 32–42 damage.",
-    "statBonusText": "32–42 Dmg (4s CD)",
-    "vocationAffinity": "archer",
-    "item": {
-      "item_id": "spell_power_shot",
-      "name": "Power Shot",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 37,
-      "cooldown": 4.0,
-      "icon": "🎯",
-      "grantedAmmo": { "item_id": "arrows", "quantity": 20 }
-    }
-  },
-  {
     "id": "card_quiver_arrows",
     "name": "Quiver of Arrows",
     "rarity": "common",
@@ -129,29 +91,12 @@
     "name": "Grey Stalker Quiver",
     "rarity": "rare",
     "icon": "🏹",
-    "description": "A hunting quiver that regenerates arrows over time: starts full (25/25) and regrows 1 arrow every 5 seconds.",
-    "statBonusText": "25 Arrows, Regen 1/5s",
+    "description": "A hunting quiver that regenerates arrows over time: starts full (25/25) and regrows 1 arrow every 5 seconds. Poison Tip (2 MP) coats your next 5 arrows so hits poison for 3s (8s cooldown).",
+    "statBonusText": "25 Arrows, Regen 1/5s, Poison Tip (2 MP)",
     "vocationAffinity": "archer",
     "item": {
       "item_id": "grey_stalker_quiver",
       "name": "Grey Stalker Quiver",
-      "type": "offhand",
-      "quantity": 1,
-      "stat_bonus": 3,
-      "icon": "🏹"
-    }
-  },
-  {
-    "id": "card_hunter_quiver",
-    "name": "Hunter's Quiver",
-    "rarity": "common",
-    "icon": "🏹",
-    "description": "A fletched quiver of spare arrows worn at the hip. Poison Tip (2 MP) coats your next 5 arrows so hits poison for 3s (8s cooldown).",
-    "statBonusText": "+3 Armor, Poison Tip (2 MP)",
-    "vocationAffinity": "archer",
-    "item": {
-      "item_id": "hunter_quiver",
-      "name": "Hunter's Quiver",
       "type": "offhand",
       "quantity": 1,
       "stat_bonus": 3,
@@ -193,62 +138,6 @@
     }
   },
   {
-    "id": "card_iron_shortsword",
-    "name": "Iron Shortsword & Slash",
-    "rarity": "common",
-    "icon": "⚔️",
-    "description": "Swift melee blade strike dealing 16–22 physical damage to adjacent foes.",
-    "statBonusText": "16–22 Melee Dmg",
-    "vocationAffinity": "fighter",
-    "item": {
-      "item_id": "spell_slash",
-      "name": "Sword Slash",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 18,
-      "cooldown": 0.8,
-      "icon": "⚔️"
-    }
-  },
-  {
-    "id": "card_fighter_cleave",
-    "name": "Whirlwind Cleave",
-    "rarity": "rare",
-    "icon": "🌪️",
-    "description": "Sweeping wide arc slashing all adjacent monsters for 24–34 physical damage.",
-    "statBonusText": "24–34 Multi Dmg (10 MP)",
-    "vocationAffinity": "fighter",
-    "item": {
-      "item_id": "spell_cleave",
-      "name": "Sweeping Cleave",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 28,
-      "manaCost": 10,
-      "cooldown": 2.5,
-      "icon": "🌪️"
-    }
-  },
-  {
-    "id": "card_fighter_fortify",
-    "name": "Shield Wall / Fortify",
-    "rarity": "common",
-    "icon": "🛡️",
-    "description": "Assume an unyielding defensive stance reducing incoming damage by 50% for 10 seconds.",
-    "statBonusText": "-50% Dmg Taken (15 MP)",
-    "vocationAffinity": "fighter",
-    "item": {
-      "item_id": "spell_fortify",
-      "name": "Fortify Stance",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 50,
-      "manaCost": 15,
-      "cooldown": 12.0,
-      "icon": "🛡️"
-    }
-  },
-  {
     "id": "card_broadsword",
     "name": "Tempered Broadsword",
     "rarity": "epic",
@@ -280,63 +169,6 @@
       "quantity": 1,
       "stat_bonus": 6,
       "icon": "🪖"
-    }
-  },
-  {
-    "id": "card_holy_strike",
-    "name": "Holy Warhammer Strike",
-    "rarity": "common",
-    "icon": "🔨",
-    "description": "Smite an adjacent monster with consecrated golden power for 18–26 holy damage.",
-    "statBonusText": "18–26 Holy Dmg (10 MP)",
-    "vocationAffinity": "paladin",
-    "item": {
-      "item_id": "spell_holy_strike",
-      "name": "Holy Strike",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 22,
-      "manaCost": 10,
-      "cooldown": 1.2,
-      "icon": "🔨"
-    }
-  },
-  {
-    "id": "card_healing_prayer",
-    "name": "Healing Prayer",
-    "rarity": "common",
-    "icon": "✨",
-    "description": "Channel sacred light to restore 35–50 Health points immediately.",
-    "statBonusText": "Heal 35–50 HP (25 MP)",
-    "vocationAffinity": "paladin",
-    "item": {
-      "item_id": "spell_healing_prayer",
-      "name": "Healing Prayer",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 42,
-      "manaCost": 25,
-      "cooldown": 6.0,
-      "icon": "💖"
-    }
-  },
-  {
-    "id": "card_holy_radiance",
-    "name": "Holy Radiance",
-    "rarity": "rare",
-    "icon": "☀️",
-    "description": "Unleash a burst of sanctified radiance, damaging all surrounding undead monsters for 20–30 damage.",
-    "statBonusText": "20–30 Area Dmg (30 MP)",
-    "vocationAffinity": "paladin",
-    "item": {
-      "item_id": "spell_holy_radiance",
-      "name": "Holy Radiance",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 25,
-      "manaCost": 30,
-      "cooldown": 8.0,
-      "icon": "☀️"
     }
   },
   {
@@ -433,23 +265,6 @@
     "item": {
       "item_id": "aegis_shield",
       "name": "Aegis Shield",
-      "type": "offhand",
-      "quantity": 1,
-      "stat_bonus": 4,
-      "icon": "🛡️"
-    }
-  },
-  {
-    "id": "card_iron_buckler",
-    "name": "Reinforced Buckler",
-    "rarity": "common",
-    "icon": "🛡️",
-    "description": "A sturdy iron-rimmed off-hand buckler absorbing blows.",
-    "statBonusText": "+4 Armor",
-    "vocationAffinity": ["fighter", "paladin"],
-    "item": {
-      "item_id": "buckler",
-      "name": "Reinforced Buckler",
       "type": "offhand",
       "quantity": 1,
       "stat_bonus": 4,

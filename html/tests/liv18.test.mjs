@@ -94,7 +94,7 @@ describe('LIV-18 #1 duplicate chest loot levels up the owned item', () => {
   it('findOwnedItem resolves by item_id and shared actionKey, paperdoll first', () => {
     const player = createPlayer('magician');
     player.action_bar[0] = { item_id: 'apprentice_wand', actionKey: 'wand_spark', itemLevel: 1 };
-    player.paperdoll.off_hand = { item_id: 'spell_wand_spark', actionKey: 'wand_spark', itemLevel: 2 };
+    player.paperdoll.off_hand = { item_id: 'golden_wand_base', actionKey: 'wand_spark', itemLevel: 2 };
 
     // Exact held id resolves the held copy.
     assert.equal(findOwnedItem(player, { item_id: 'apprentice_wand' }), player.action_bar[0]);

@@ -715,7 +715,7 @@ describe('InventorySystem & Stacking', () => {
   it('equips items to 4 paperdoll slots (main_hand, off_hand, armor, relic)', () => {
     const player = createPlayer('fighter');
     player.action_bar[0] = { item_id: 'tempered_broadsword', name: 'Broadsword', type: 'weapon', quantity: 1 };
-    player.action_bar[1] = { item_id: 'buckler', name: 'Buckler', type: 'offhand', quantity: 1 };
+    player.action_bar[1] = { item_id: 'vanguard_shield', name: 'Vanguard Shield', type: 'offhand', quantity: 1 };
     player.action_bar[2] = { item_id: 'plate_armor', name: 'Plate Armor', type: 'armor', quantity: 1 };
     player.action_bar[3] = { item_id: 'relic_champions_crest', name: "Champion's Crest", type: 'relic', quantity: 1 };
 
@@ -725,15 +725,15 @@ describe('InventorySystem & Stacking', () => {
     InventorySystem.equipItem(player, 'action_bar', 3);
 
     assert.equal(player.paperdoll.main_hand.item_id, 'tempered_broadsword');
-    assert.equal(player.paperdoll.off_hand.item_id, 'buckler');
+    assert.equal(player.paperdoll.off_hand.item_id, 'vanguard_shield');
     assert.equal(player.paperdoll.armor.item_id, 'plate_armor');
     assert.equal(player.paperdoll.relic.item_id, 'relic_champions_crest');
   });
 
   it('rejects vocation-locked gear for the wrong class and accepts the correct class (array-aware)', () => {
-    // Buckler/plate/crest are shared fighter+paladin gear (array affinity ["fighter","paladin"])
+    // Plate/crest are shared fighter+paladin gear (array affinity ["fighter","paladin"])
     const archer = createPlayer('archer');
-    archer.action_bar[0] = { item_id: 'buckler', name: 'Reinforced Buckler', type: 'offhand', slot: 'off_hand', quantity: 1 };
+    archer.action_bar[0] = { item_id: 'vanguard_shield', name: 'Vanguard Shield', type: 'offhand', slot: 'off_hand', quantity: 1 };
     const rejectArcher = InventorySystem.equipItem(archer, 'action_bar', 0);
     assert.equal(rejectArcher.success, false);
     assert.ok(rejectArcher.message.includes('Only a'));
@@ -745,10 +745,10 @@ describe('InventorySystem & Stacking', () => {
 
     // Both Fighter and Paladin can equip the shared fighter/paladin gear
     const fighter = createPlayer('fighter');
-    fighter.action_bar[0] = { item_id: 'buckler', name: 'Reinforced Buckler', type: 'offhand', slot: 'off_hand', quantity: 1 };
+    fighter.action_bar[0] = { item_id: 'vanguard_shield', name: 'Vanguard Shield', type: 'offhand', slot: 'off_hand', quantity: 1 };
     const fRes = InventorySystem.equipItem(fighter, 'action_bar', 0);
     assert.equal(fRes.success, true);
-    assert.equal(fighter.paperdoll.off_hand.item_id, 'buckler');
+    assert.equal(fighter.paperdoll.off_hand.item_id, 'vanguard_shield');
 
     const paladin = createPlayer('paladin');
     paladin.action_bar[0] = { item_id: 'plate_armor', name: 'Knight Plate Armor', type: 'armor', slot: 'armor', quantity: 1 };
@@ -884,10 +884,10 @@ describe('FateGrantSystem', () => {
       FateGrantSystem.CARD_DATABASE = [
         { id: 'c_main', name: 'Broadsword', rarity: 'common', icon: 'x', vocationAffinity: 'fighter', item: { item_id: 'tempered_broadsword' } },
         { id: 'c_f1', name: 'Potion', rarity: 'common', icon: 'x', item: { item_id: 'mana_potion' } },
-        { id: 'c_f2', name: 'Cleave', rarity: 'common', icon: 'x', item: { item_id: 'spell_cleave' } },
+        { id: 'c_f2', name: 'Arrows', rarity: 'common', icon: 'x', item: { item_id: 'arrows' } },
         { id: 'c_f3', name: 'Potion', rarity: 'common', icon: 'x', item: { item_id: 'health_potion' } },
-        { id: 'c_f4', name: 'Fortify', rarity: 'common', icon: 'x', item: { item_id: 'spell_fortify' } },
-        { id: 'c_off', name: 'Buckler', rarity: 'common', icon: 'x', vocationAffinity: ['fighter', 'paladin'], item: { item_id: 'buckler' } },
+        { id: 'c_f4', name: 'Potion', rarity: 'common', icon: 'x', item: { item_id: 'mana_potion' } },
+        { id: 'c_off', name: 'Vanguard Shield', rarity: 'common', icon: 'x', vocationAffinity: ['fighter', 'paladin'], item: { item_id: 'vanguard_shield' } },
       ];
       FateGrantSystem.shuffle = () => {};
 
@@ -910,12 +910,12 @@ describe('FateGrantSystem', () => {
 
   it('converts duplicate wand/staff offers into Level Up upgrades up to Rank 5', () => {
     const player = createPlayer('magician');
-    player.action_bar[0] = { item_id: 'spell_wand_spark', name: 'Spark Wand', type: 'spell', damage: 14, range: 5, manaCost: 1, itemLevel: 1 };
+    player.action_bar[0] = { item_id: 'apprentice_wand', name: 'Spark Wand', type: 'weapon', damage: 14, range: 5, manaCost: 1, itemLevel: 1 };
 
     let wandCard = null;
     for (let attempt = 0; attempt < 20; attempt++) {
       const offer = FateGrantSystem.generateDraftOffer(player, 2);
-      wandCard = offer.cards.find(c => c.targetItemId === 'spell_wand_spark');
+      wandCard = offer.cards.find(c => c.targetItemId === 'apprentice_wand');
       if (wandCard) break;
     }
     assert.ok(wandCard);
@@ -932,7 +932,7 @@ describe('FateGrantSystem', () => {
     // Max rank cap check at Rank 5
     wand.itemLevel = 5;
     const maxOffer = FateGrantSystem.generateDraftOffer(player, 6);
-    const hasSpark = maxOffer.cards.some(c => c.targetItemId === 'spell_wand_spark' || c.item?.item_id === 'spell_wand_spark');
+    const hasSpark = maxOffer.cards.some(c => c.targetItemId === 'apprentice_wand' || c.item?.item_id === 'apprentice_wand');
     assert.equal(hasSpark, false);
   });
 

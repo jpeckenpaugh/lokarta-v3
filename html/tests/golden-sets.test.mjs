@@ -306,7 +306,7 @@ describe('LOK-15 Golden Sets — Fighter (Iron Vanguard)', () => {
   it('fortify is registered and halves incoming damage while active', () => {
     const fgt = equipGoldenSet('fighter');
     fgt.mana = 100;
-    fgt.action_bar[0] = { item_id: 'spell_fortify', name: 'Fortify Stance', type: 'spell', manaCost: 15, cooldown: 12, actionKey: 'fortify' };
+    fgt.action_bar[0] = { item_id: 'fortify_stance', name: 'Fortify Stance', type: 'spell', manaCost: 15, cooldown: 12, actionKey: 'fortify' };
     const res = CombatSystem.executeFortify(fgt, fgt.action_bar[0]);
     assert.equal(res.success, true);
     assert.equal(fgt.fortifyActive, true);
@@ -383,7 +383,7 @@ describe('LOK-15 Golden Sets — Paladin (Radiant Crusader)', () => {
 
   it('healPowerPct scales Healing Prayer', () => {
     const pal = equipGoldenSet('paladin');
-    pal.action_bar[0] = { item_id: 'spell_healing_prayer', name: 'Healing Prayer', type: 'spell', manaCost: 25 };
+    pal.action_bar[0] = { item_id: 'healing_prayer', name: 'Healing Prayer', type: 'spell', manaCost: 25 };
     pal.hp = 50;
     pal.mana = 200;
     const res = CombatSystem.executeHealingPrayer(pal);

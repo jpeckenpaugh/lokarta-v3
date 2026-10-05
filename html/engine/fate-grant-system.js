@@ -206,7 +206,7 @@ export class FateGrantSystem {
       if (!itemToPlace.itemLevel) itemToPlace.itemLevel = 1;
 
       // Roll fixed damage stats for items with random ranges when offered/drafted
-      if ((itemToPlace.item_id === 'apprentice_wand' || itemToPlace.item_id === 'spell_wand_spark') && !itemToPlace.damage) {
+      if (itemToPlace.item_id === 'apprentice_wand' && !itemToPlace.damage) {
         itemToPlace.damage = Math.floor(Math.random() * (16 - 12 + 1)) + 12;
       }
 

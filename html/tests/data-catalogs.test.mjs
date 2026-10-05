@@ -26,7 +26,8 @@ test('JSON Data Catalogs', async (t) => {
   await t.test('loads and validates cards.json catalog', () => {
     assert.ok(Array.isArray(CARDS_CATALOG), 'CARDS_CATALOG must be an array');
     // LIV-34: the "Radiant Light Spell" (card_light_spell) draft card was removed.
-    assert.equal(CARDS_CATALOG.length, 29, 'CARDS_CATALOG must contain 29 draft cards');
+    // LIV-40: retired 8 inert spell_* cards, card_hunter_quiver, and card_iron_buckler.
+    assert.equal(CARDS_CATALOG.length, 19, 'CARDS_CATALOG must contain 19 draft cards');
     assert.ok(
       !CARDS_CATALOG.some(c => c.id === 'card_light_spell' || c.item?.item_id === 'spell_light' || /radiant light/i.test(c.name)),
       'the Radian Light Spell card must be absent'
@@ -58,7 +59,7 @@ test('JSON Data Catalogs', async (t) => {
   });
 
   await t.test('loads and validates items.json catalog', () => {
-    assert.ok(Object.keys(ITEMS_CATALOG).length >= 24, 'ITEMS_CATALOG must contain at least 24 items');
+    assert.ok(Object.keys(ITEMS_CATALOG).length >= 23, 'ITEMS_CATALOG must contain at least 23 items');
 
     const essentialItems = ['health_potion', 'mana_potion', 'arrows', 'apprentice_wand', 'tempered_broadsword'];
     for (const key of essentialItems) {
@@ -73,6 +74,16 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(ITEMS_CATALOG.torch, undefined, 'Wooden Torch must be removed');
     assert.equal(ITEMS_CATALOG.spell_light, undefined, 'Radiant Light Spell item must be removed');
 
+    // LIV-40 removals: the 8 inert spell_* items, buckler, and the two
+    // duplicate casters. Core abilities now map to exactly one item each.
+    for (const retired of [
+      'spell_slash', 'spell_cleave', 'spell_fortify', 'spell_holy_strike',
+      'spell_healing_prayer', 'spell_holy_radiance', 'spell_bow_shot', 'spell_power_shot',
+      'buckler', 'spell_wand_spark', 'spell_energy_beam', 'hunter_quiver',
+    ]) {
+      assert.equal(ITEMS_CATALOG[retired], undefined, `${retired} must be removed`);
+    }
+
     assert.equal(ITEMS_CATALOG['arrows'].maxStack, 99);
     assert.equal(ITEMS_CATALOG['health_potion'].maxStack, 99);
     assert.equal(ITEMS_CATALOG['mana_potion'].maxStack, 99);
@@ -82,7 +93,7 @@ test('JSON Data Catalogs', async (t) => {
   await t.test('loads the 5 new vocation-locked items with required fields', () => {
     const requiredFields = ['name', 'type', 'slot', 'stat_bonus', 'icon', 'svgCode', 'vocationAffinity', 'maxStack'];
     const newItems = {
-      hunter_quiver: { slot: 'off_hand', type: 'offhand', affinity: 'archer' },
+      grey_stalker_quiver: { slot: 'off_hand', type: 'offhand', affinity: 'archer' },
       hunter_leathers: { slot: 'armor', type: 'armor', affinity: 'archer' },
       ranger_talisman: { slot: 'relic', type: 'relic', affinity: 'archer' },
       iron_helm: { slot: 'relic', type: 'relic', affinity: 'fighter' },

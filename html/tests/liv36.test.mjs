@@ -2,7 +2,7 @@
  * LIV-36 regression suite (LIV-32 browser-pass follow-up, Archer primaries).
  *
  * Covers the four board items:
- *  1. Hunter's Quiver levels 1->5 and its "Poison Tip" active applies a
+ *  1. Grey Stalker Quiver levels 1->5 and its "Poison Tip" active applies a
  *     rank-scaled poison DoT to arrows.
  *  2. Hunter's Leathers is renamed "Vampiric Cloak" and gains "Life Siphon"
  *     (drain + heal in a 2-tile radius).
@@ -44,8 +44,8 @@ function giveArrows(player, quantity = 20) {
 // ---------------------------------------------------------------------------
 
 test('LIV-36 archer primary catalog wiring', async t => {
-  await t.test("Hunter's Quiver levels and carries the Poison Tip active", () => {
-    const quiver = ITEMS_CATALOG.hunter_quiver;
+  await t.test("Grey Stalker Quiver levels and carries the Poison Tip active", () => {
+    const quiver = ITEMS_CATALOG.grey_stalker_quiver;
     assert.ok(quiver.upgradeSpec, 'quiver must expose an upgradeSpec (no longer a no-op)');
     assert.equal(quiver.actionKey, 'poison_tip');
     assert.equal(quiver.cooldown, 8);
@@ -114,10 +114,10 @@ test('LIV-36 archer primary catalog wiring', async t => {
 // 2. Quiver leveling
 // ---------------------------------------------------------------------------
 
-test("LIV-36 Hunter's Quiver levels 1 -> 5", async t => {
+test("LIV-36 Grey Stalker Quiver levels 1 -> 5", async t => {
   await t.test('ranks to 5 with a visible Poison dps increase', () => {
     const player = createPlayer('archer');
-    const quiver = clone('hunter_quiver');
+    const quiver = clone('grey_stalker_quiver');
     assert.equal(canUpgradeItem(quiver), true, 'quiver can rank up');
 
     const notes = [];
@@ -136,16 +136,16 @@ test("LIV-36 Hunter's Quiver levels 1 -> 5", async t => {
     const originalDb = FateGrantSystem.CARD_DATABASE;
     const originalShuffle = FateGrantSystem.shuffle;
     try {
-      FateGrantSystem.CARD_DATABASE = [CARDS_CATALOG.find(c => c.id === 'card_hunter_quiver')];
+      FateGrantSystem.CARD_DATABASE = [CARDS_CATALOG.find(c => c.id === 'card_grey_stalker_quiver')];
       FateGrantSystem.shuffle = () => {};
 
       const player = createPlayer('archer');
-      player.paperdoll.off_hand = { ...clone('hunter_quiver'), itemLevel: 1 };
+      player.paperdoll.off_hand = { ...clone('grey_stalker_quiver'), itemLevel: 1 };
       const offer = FateGrantSystem.generateDraftOffer(player, 2);
       assert.equal(offer.cards.length, 1);
       const card = offer.cards[0];
       assert.equal(card.isUpgrade, true);
-      assert.match(card.name, /LEVEL UP: Hunter's Quiver \(Rank 2\)/);
+      assert.match(card.name, /LEVEL UP: Grey Stalker Quiver \(Rank 2\)/);
       assert.match(card.description, /Poison Tip deals \+1 poison damage/);
       assert.match(card.statBonusText, /Poison \+1 Dmg\/s/);
     } finally {
@@ -162,7 +162,7 @@ test("LIV-36 Hunter's Quiver levels 1 -> 5", async t => {
 test('LIV-36 Poison Tip (quiver, W key)', async t => {
   await t.test('arms for 2 MP, 5 arrows / 10s, with an 8s cooldown', () => {
     const player = createPlayer('archer');
-    const quiver = clone('hunter_quiver');
+    const quiver = clone('grey_stalker_quiver');
 
     const res = CombatSystem.executePoisonTip(player, quiver);
     assert.equal(res.success, true);
@@ -178,7 +178,7 @@ test('LIV-36 Poison Tip (quiver, W key)', async t => {
 
   await t.test('arrows apply a 3s / 2 dmg-per-sec poison to a living enemy', () => {
     const player = createPlayer('archer');
-    player.paperdoll.off_hand = { ...clone('hunter_quiver'), itemLevel: 1 };
+    player.paperdoll.off_hand = { ...clone('grey_stalker_quiver'), itemLevel: 1 };
     player.paperdoll.main_hand = { ...clone('composite_bow'), itemLevel: 1, damage: 16 };
     giveArrows(player);
 
@@ -206,7 +206,7 @@ test('LIV-36 Poison Tip (quiver, W key)', async t => {
 
   await t.test('poison can slay a low-HP enemy and reports it as defeated', () => {
     const player = createPlayer('archer');
-    const quiver = { ...clone('hunter_quiver'), itemLevel: 1 };
+    const quiver = { ...clone('grey_stalker_quiver'), itemLevel: 1 };
     player.paperdoll.off_hand = quiver;
     CombatSystem.executePoisonTip(player, quiver);
 
@@ -220,7 +220,7 @@ test('LIV-36 Poison Tip (quiver, W key)', async t => {
 
   await t.test('poison dps scales with rank', () => {
     const player = createPlayer('archer');
-    const quiver = clone('hunter_quiver');
+    const quiver = clone('grey_stalker_quiver');
     applyItemRankUp(player, quiver);
     applyItemRankUp(player, quiver);
     assert.equal(quiver.itemLevel, 3);
@@ -367,7 +367,7 @@ function makeFakeSlot(label) {
 test('LIV-36 all four archer primaries paint the recharge overlay', async t => {
   const cases = [
     ['main_hand', 'composite_bow', 'bow_shot', 'Main hand, key Q'],
-    ['off_hand', 'hunter_quiver', 'poison_tip', 'Off hand, key W'],
+    ['off_hand', 'grey_stalker_quiver', 'poison_tip', 'Off hand, key W'],
     ['armor', 'hunter_leathers', 'life_siphon', 'Armor, key E'],
     ['relic', 'ranger_talisman', 'hunters_mark', 'Relic, key R'],
   ];
