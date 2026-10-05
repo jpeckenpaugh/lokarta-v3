@@ -24,10 +24,13 @@ const readSlots = () => page.evaluate(async () => {
 });
 const advancePastFateDraft = async () => {
   await page.waitForTimeout(2200);
-  if (await page.locator('.fate-card').count()) {
-    await page.locator('.fate-card').first().click();
+  const cards = page.locator('.fate-card');
+  if (await cards.count()) {
+    // LIV-35: the Fate Grant screen auto-applies the draft once exactly two
+    // cards are checked; there is no Confirm button to click.
+    await cards.nth(0).click();
     await page.waitForTimeout(200);
-    await page.locator('#btn-confirm-draft').click();
+    await cards.nth(1).click();
     await page.waitForTimeout(1100);
   }
 };

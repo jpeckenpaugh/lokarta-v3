@@ -28,6 +28,41 @@ const ENTITY_BARS = (() => {
   };
 })();
 
+/**
+ * Cached presentation tokens for player status VFX (LIV-35): the silver Shock
+ * Shield barrier and the Luminous Prayer healing orbs. Resolved once from
+ * `ui.json.playerVfx` so the per-frame draw path allocates nothing.
+ */
+const PLAYER_VFX = (() => {
+  const v = UI_CATALOG?.playerVfx || {};
+  const s = v.shockShield || {};
+  const p = v.luminousPrayer || {};
+  const num = (val, fallback) => (Number.isFinite(Number(val)) ? Number(val) : fallback);
+  return {
+    shield: {
+      color: s.color || '#e2e8f0',
+      rimColor: s.rimColor || '#f8fafc',
+      radiusScale: num(s.radiusScale, 0.62),
+      lineWidthPx: num(s.lineWidthPx, 3),
+      pulseHz: num(s.pulseHz, 1.4),
+      baseAlpha: num(s.baseAlpha, 0.6),
+      pulseAlpha: num(s.pulseAlpha, 0.3),
+      fillAlpha: num(s.fillAlpha, 0.16),
+    },
+    prayer: {
+      orbCount: Math.max(2, Math.floor(num(p.orbCount, 5))),
+      orbRadiusPx: num(p.orbRadiusPx, 3.5),
+      glowRadiusPx: num(p.glowRadiusPx, 9),
+      orbitRadiusScale: num(p.orbitRadiusScale, 0.7),
+      orbitHz: num(p.orbitHz, 0.9),
+      bobScale: num(p.bobScale, 0.03),
+      color: p.color || '#fde68a',
+      coreColor: p.coreColor || '#fffbeb',
+      fadeSec: num(p.fadeSec, 0.45),
+    },
+  };
+})();
+
 /** True when a DOOR or GATED_DOOR tile sits within `radius` of (x, y). */
 function isNearDoor(gridMap, x, y, radius) {
   for (let dy = -radius; dy <= radius; dy++) {
@@ -312,6 +347,11 @@ export class CanvasRenderer {
     // Small health + mana bars above the player (LIV-22 item 2).
     this.drawActorBars(ctx, player, playerScreenX, playerScreenY, true);
 
+    // 6b. Player status VFX (LIV-35): Shock Shield silver barrier and Luminous
+    //     Prayer healing orbs. Drawn after the player + light mask so both read
+    //     clearly over the existing lighting.
+    this.renderPlayerVfx(ctx, player, playerScreenX, playerScreenY);
+
     // 7. Projectiles & Impact Particles (after the mask, so they read at range)
     this.renderProjectiles(ctx, projectiles);
     this.renderParticles(ctx, particles);
@@ -364,6 +404,88 @@ export class CanvasRenderer {
       ctx.fillRect(x, y, w, h);
       ctx.fillStyle = ENTITY_BARS.mp;
       ctx.fillRect(x, y, Math.max(0, Math.round(w * mpPct)), h);
+    }
+  }
+
+  /**
+   * Draws the player's active status VFX (LIV-35) with cached, allocation-free
+   * canvas primitives:
+   *
+   *  - Shock Shield: a pulsing silver barrier ring while a deflect charge is
+   *    armed (`player.shockShieldCharges > 0`). It disappears the moment the
+   *    charge is consumed by a deflect (or the shield is otherwise cleared).
+   *  - Luminous Prayer: small glowing healing orbs orbiting the player while
+   *    `player.luminousPrayerVfxSec > 0`, fading out over the final
+   *    `fadeSec` before the timer reaches 0.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {object} player
+   * @param {number} screenX @param {number} screenY
+   */
+  renderPlayerVfx(ctx, player, screenX, screenY) {
+    if (!player) return;
+    const size = CONFIG.GRID_SIZE;
+    const cx = screenX + size / 2;
+    const cy = screenY + size / 2;
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+
+    if (player.shockShieldCharges > 0) {
+      const s = PLAYER_VFX.shield;
+      const pulse = 0.5 + 0.5 * Math.sin((now / 1000) * s.pulseHz * Math.PI * 2);
+      const radius = size * s.radiusScale + size * 0.03 * pulse;
+      const alpha = s.baseAlpha + s.pulseAlpha * pulse;
+
+      ctx.save();
+      // Translucent silver field inside the barrier.
+      ctx.globalAlpha = alpha * s.fillAlpha;
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outer silver ring, then a brighter inner rim for a polished sheen.
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.lineWidthPx;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.globalAlpha = Math.min(1, alpha + 0.15);
+      ctx.strokeStyle = s.rimColor;
+      ctx.lineWidth = Math.max(1, s.lineWidthPx * 0.5);
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.max(0, radius - s.lineWidthPx * 0.6), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (player.luminousPrayerVfxSec > 0) {
+      const p = PLAYER_VFX.prayer;
+      const fade = Math.min(1, player.luminousPrayerVfxSec / p.fadeSec);
+      const orbit = size * p.orbitRadiusScale;
+      const spin = (now / 1000) * p.orbitHz * Math.PI * 2;
+      const step = (Math.PI * 2) / p.orbCount;
+
+      ctx.save();
+      for (let i = 0; i < p.orbCount; i++) {
+        const angle = spin + i * step;
+        const ox = cx + Math.cos(angle) * orbit;
+        const oy = cy + Math.sin(angle) * orbit + Math.sin(spin * 2 + i) * size * p.bobScale;
+
+        ctx.globalAlpha = 0.35 * fade;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(ox, oy, p.glowRadiusPx, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = p.coreColor;
+        ctx.beginPath();
+        ctx.arc(ox, oy, p.orbRadiusPx, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
     }
   }
 

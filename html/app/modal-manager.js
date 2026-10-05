@@ -43,6 +43,16 @@ const PIXEL_SCALE_OPTIONS = [
 
 export class ModalManager {
   /**
+   * Delay before the auto-applied draft fades out once exactly 2 Fate Grant
+   * cards are checked (LIV-35 item 3a). Overridable in tests so auto-confirm
+   * can run synchronously.
+   */
+  static FATE_AUTO_CONFIRM_DELAY_MS = 260;
+
+  /** Fate Grant fade-out duration; kept in sync with `modals.css`. */
+  static FATE_FADE_MS = 180;
+
+  /**
    * Removes the single modal-scoped keydown handler registered on `window`,
    * if any. Every modal render and close funnels through here so that no
    * navigation path (mouse click, back button, programmatic close) can leave a
@@ -954,7 +964,7 @@ export class ModalManager {
       <div class="fate-grant-modal">
         <div class="modal-header">
           <h2><img class="openmoji-icon title-icon" src="./assets/openmoji/1F56F.svg" alt="Candle" /> FATE GRANT (Level ${level})</h2>
-          <div class="subtitle">Select exactly 2 cards to fortify your Action Slots and Backpack</div>
+          <div class="subtitle">Choose 2 cards to fortify your Action Slots and Backpack — the draft is applied automatically</div>
         </div>
         <div class="fate-cards-grid" id="fate-cards-grid" role="group" aria-label="Fate Grant cards">
           ${offer.cards
@@ -974,16 +984,18 @@ export class ModalManager {
             )
             .join('')}
         </div>
-        <div class="fate-modal-actions">
-          <button class="confirm-draft-btn" id="btn-confirm-draft" aria-disabled="true">Confirm Selections (0/2)</button>
-        </div>
         <div class="sr-only" id="fate-selection-status" aria-live="polite">0 of 2 selected</div>
       </div>
     `;
 
+    const modalEl = modalOverlayEl.querySelector('.fate-grant-modal');
     const cardEls = Array.from(modalOverlayEl.querySelectorAll('.fate-card'));
-    const confirmBtn = modalOverlayEl.querySelector('#btn-confirm-draft');
     const statusEl = modalOverlayEl.querySelector('#fate-selection-status');
+    const reduceMotion = !!(app && app.reduceMotionResolved);
+    const autoConfirmDelayMs = reduceMotion ? 0 : ModalManager.FATE_AUTO_CONFIRM_DELAY_MS;
+
+    let isResolving = false;
+    let autoConfirmTimer = null;
 
     // Transient animation class; removed on animationend and with a timeout
     // fallback so it never persists (incl. under reduced motion).
@@ -1006,54 +1018,25 @@ export class ModalManager {
       cardEls[focusIndex].focus({ preventScroll: true });
     };
 
-    const updateConfirm = () => {
+    const updateStatus = () => {
       const count = selectedCards.size;
-      const enabled = count === 2;
-      confirmBtn.textContent = `Confirm Selections (${count}/2)`;
-      confirmBtn.setAttribute('aria-disabled', enabled ? 'false' : 'true');
-      if (statusEl) statusEl.textContent = `${count} of 2 selected`;
-    };
-
-    const toggleCard = el => {
-      if (!el) return;
-      const cardId = el.getAttribute('data-card-id');
-      const cardObj = offer.cards.find(c => c.id === cardId);
-      if (!cardObj) return;
-
-      if (selectedCards.has(cardObj)) {
-        selectedCards.delete(cardObj);
-        el.classList.remove('selected');
-        el.setAttribute('aria-checked', 'false');
-        soundFX.play('click');
-      } else if (selectedCards.size < 2) {
-        selectedCards.add(cardObj);
-        el.classList.add('selected');
-        el.setAttribute('aria-checked', 'true');
-        soundFX.play('click');
-        flash(el, 'card-activating');
-      } else {
-        // A 3rd selection is rejected (no silent eviction): red flash + back.
-        soundFX.play('uiBack');
-        flash(el, 'card-reject');
-        return;
+      if (statusEl) {
+        statusEl.textContent = count === 2 ? '2 of 2 selected — applying draft' : `${count} of 2 selected`;
       }
-      updateConfirm();
     };
 
-    cardEls.forEach((el, idx) => {
-      // Click moves the keyboard cursor to the card, then toggles (pointer and
-      // keyboard stay in sync). Hover stays a pure CSS affordance.
-      el.addEventListener('click', () => {
-        focusCard(idx);
-        toggleCard(el);
-      });
-    });
-
-    confirmBtn.addEventListener('click', async () => {
-      // `aria-disabled` keeps Confirm focusable for the Up/Down path, so the
-      // activation guard must live here too.
-      if (confirmBtn.getAttribute('aria-disabled') === 'true') return;
-      if (selectedCards.size !== 2) return;
+    /**
+     * Applies the two drafted cards, then fades the screen out and closes it.
+     * Exactly-2 is enforced by both callers, so this is the single mutation
+     * seam. `isResolving` latches so a stray click cannot double-apply.
+     */
+    const applyDraft = () => {
+      if (isResolving || selectedCards.size !== 2) return;
+      isResolving = true;
+      if (autoConfirmTimer) {
+        clearTimeout(autoConfirmTimer);
+        autoConfirmTimer = null;
+      }
       soundFX.play('equip');
 
       const chosen = Array.from(selectedCards);
@@ -1069,19 +1052,87 @@ export class ModalManager {
         app.logCombat(`Inventory full: ${floorItem} placed on floor.`, 'warning');
       }
 
+      void closeDraft();
+    };
+
+    /**
+     * Fades the screen out (unless reduced motion) and then hides it. The
+     * draft is mandatory, so there is no cancel path — only auto-confirm.
+     */
+    const closeDraft = async () => {
+      this._clearKeyHandler(modalOverlayEl);
+      if (modalEl && !reduceMotion) {
+        modalEl.classList.add('fate-leaving');
+        await new Promise(resolve => setTimeout(resolve, ModalManager.FATE_FADE_MS));
+      }
       this._close(modalOverlayEl);
       if (app) app.isPaused = false;
       app.updateHUD();
       await app.persistSave();
+    };
+
+    /** Arms auto-confirm once exactly 2 cards are checked (LIV-35 item 3a). */
+    const maybeAutoConfirm = () => {
+      if (isResolving || selectedCards.size !== 2) return;
+      if (autoConfirmTimer) return;
+      if (autoConfirmDelayMs <= 0) {
+        applyDraft();
+        return;
+      }
+      // Brief pause so the second check mark is visible before the fade.
+      autoConfirmTimer = setTimeout(() => {
+        autoConfirmTimer = null;
+        applyDraft();
+      }, autoConfirmDelayMs);
+    };
+
+    const toggleCard = el => {
+      if (!el || isResolving) return;
+      const cardId = el.getAttribute('data-card-id');
+      const cardObj = offer.cards.find(c => c.id === cardId);
+      if (!cardObj) return;
+
+      if (selectedCards.has(cardObj)) {
+        selectedCards.delete(cardObj);
+        el.classList.remove('selected');
+        el.setAttribute('aria-checked', 'false');
+        soundFX.play('click');
+        // A de-selection cancels a pending auto-confirm.
+        if (autoConfirmTimer) {
+          clearTimeout(autoConfirmTimer);
+          autoConfirmTimer = null;
+        }
+      } else if (selectedCards.size < 2) {
+        selectedCards.add(cardObj);
+        el.classList.add('selected');
+        el.setAttribute('aria-checked', 'true');
+        soundFX.play('click');
+        flash(el, 'card-activating');
+      } else {
+        // A 3rd selection is rejected (no silent eviction): red flash + back.
+        soundFX.play('uiBack');
+        flash(el, 'card-reject');
+        return;
+      }
+      updateStatus();
+      maybeAutoConfirm();
+    };
+
+    cardEls.forEach((el, idx) => {
+      // Click moves the keyboard cursor to the card, then toggles (pointer and
+      // keyboard stay in sync). Hover stays a pure CSS affordance.
+      el.addEventListener('click', () => {
+        focusCard(idx);
+        toggleCard(el);
+      });
     });
 
-    updateConfirm();
+    updateStatus();
     focusCard(0);
 
     const keyHandler = e => {
-      const onConfirm = typeof document !== 'undefined' && document.activeElement === confirmBtn;
+      if (isResolving) return;
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        if (onConfirm) return; // arrows only rove the card row
         e.preventDefault();
         soundFX.play('uiMove', 0.5);
         focusCard(focusIndex + (e.key === 'ArrowRight' ? 1 : -1));
@@ -1089,19 +1140,8 @@ export class ModalManager {
         e.preventDefault();
         toggleCard(cardEls[focusIndex]);
       } else if (e.key === 'Enter' || e.key === ' ') {
-        // Enter/Space on the focused Confirm activates it; otherwise they
-        // toggle the focused card (same as `q`).
         e.preventDefault();
-        if (onConfirm) confirmBtn.click();
-        else toggleCard(cardEls[focusIndex]);
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        soundFX.play('uiMove', 0.5);
-        confirmBtn.focus({ preventScroll: true });
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        soundFX.play('uiMove', 0.5);
-        focusCard(focusIndex);
+        toggleCard(cardEls[focusIndex]);
       }
       // Escape is intentionally a no-op: the draft is mandatory.
     };

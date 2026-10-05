@@ -330,6 +330,31 @@
   flex-direction: column;
   gap: 16px;
   text-align: center;
+  /* LIV-35 item 3b: fade/scale in on open. */
+  animation: fate-modal-in 200ms ease-out;
+}
+
+/* LIV-35 item 3b: fade out on close; `forwards` holds the faded state until
+   the manager swaps the overlay to `hidden`. */
+.fate-grant-modal.fate-leaving {
+  animation: fate-modal-out 180ms ease-in forwards;
+}
+
+@keyframes fate-modal-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fate-modal-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fate-grant-modal,
+  .fate-grant-modal.fate-leaving {
+    animation-duration: 0.001ms;
+  }
 }
 
 .fate-grant-modal .modal-header h2 {
@@ -460,44 +485,6 @@
   border-color: #7dd3fc;
   color: #041226;
   font-weight: bold;
-}
-
-.fate-modal-actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-
-.confirm-draft-btn {
-  background: linear-gradient(180deg, #1d4ed8, #1e3a8a);
-  border: 1px solid #60a5fa;
-  color: #fff;
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  letter-spacing: 1.5px;
-  padding: 10px 24px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.confirm-draft-btn:hover:not([aria-disabled='true']) {
-  background: linear-gradient(180deg, #2563eb, #1d4ed8);
-  box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
-  transform: translateY(-1px);
-}
-
-/* `aria-disabled` (not native `disabled`) so Confirm stays focusable and the
-   Up/Down arrow path can always reach it; activation is guarded in JS. */
-.confirm-draft-btn[aria-disabled='true'] {
-  opacity: 0.5;
-  cursor: not-allowed;
-  border-color: #475569;
-}
-
-.confirm-draft-btn[aria-disabled='true']:hover {
-  transform: none;
-  box-shadow: none;
 }
 
 /* Guide / How to Play Modal */

@@ -61,6 +61,30 @@
     "playerShowWhen": "always",
     "enemyShowWhen": "damaged"
   },
+  "playerVfx": {
+    "shockShield": {
+      "color": "#e2e8f0",
+      "rimColor": "#f8fafc",
+      "radiusScale": 0.62,
+      "lineWidthPx": 3,
+      "pulseHz": 1.4,
+      "baseAlpha": 0.6,
+      "pulseAlpha": 0.3,
+      "fillAlpha": 0.16
+    },
+    "luminousPrayer": {
+      "orbCount": 5,
+      "orbRadiusPx": 3.5,
+      "glowRadiusPx": 9,
+      "orbitRadiusScale": 0.7,
+      "orbitHz": 0.9,
+      "bobScale": 0.03,
+      "color": "#fde68a",
+      "coreColor": "#fffbeb",
+      "durationSec": 1.6,
+      "fadeSec": 0.45
+    }
+  },
   "town": {
     "title": "Havenreach",
     "subtitle": "The town beneath the Crown Spire",

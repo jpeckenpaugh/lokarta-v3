@@ -65,6 +65,12 @@ const FLOATING_STAGGER_PX = Number(FLOATING_TEXT.staggerPx) || 0;
 const FLOATING_MAX_ACTIVE = Number(FLOATING_TEXT.maxActive) || 48;
 
 /**
+ * Lifetime (seconds) of the Luminous Prayer orb VFX after each heal pulse
+ * (LIV-35), resolved from `ui.json.playerVfx.luminousPrayer`.
+ */
+const LUMINOUS_PRAYER_VFX_SEC = Number(UI_CATALOG?.playerVfx?.luminousPrayer?.durationSec) || 1.6;
+
+/**
  * Special ground-pickup dispatch keyed by an item's catalog `pickupType`.
  * Normal inventory items fall through to `InventorySystem.pickUpItem`. Keeps
  * currency and keys out of the backpack so gold credits the purse and a key
@@ -980,6 +986,12 @@ export class LokartaApp {
       }
     }
 
+    // Luminous Prayer orb VFX decay (LIV-35): presentation-only timer that
+    // keeps the healing orbs visible briefly after each prayer pulse.
+    if (this.player.luminousPrayerVfxSec > 0) {
+      this.player.luminousPrayerVfxSec = Math.max(0, this.player.luminousPrayerVfxSec - deltaSec);
+    }
+
     // Grey Stalker quiver arrow regen: +1 arrow per ammoRegenSec (5 s base)
     // while below capacity. The accumulator resets on regen and on quiver swap.
     const quiver = this.player.paperdoll?.off_hand;
@@ -1066,6 +1078,7 @@ export class LokartaApp {
 
         if (hpRestored > 0 || manaRestored > 0) {
           soundFX.play('holyChime');
+          this.player.luminousPrayerVfxSec = LUMINOUS_PRAYER_VFX_SEC;
           let text = '';
           if (hpRestored > 0 && manaRestored > 0) text = `+${hpRestored} HP / +${manaRestored} MP`;
           else if (hpRestored > 0) text = `+${hpRestored} HP`;
@@ -1783,6 +1796,7 @@ export class LokartaApp {
         const res = CombatSystem.executeLuminousPrayer(this.player, item);
         if (res.success) {
           soundFX.play('holyChime');
+          this.player.luminousPrayerVfxSec = LUMINOUS_PRAYER_VFX_SEC;
           this.logCombat(res.message, 'spell');
           if (res.hpRestored > 0) this.addFloatingText(`+${res.hpRestored} HP`, this.player.x, this.player.y, '#22c55e');
           if (res.mpRestored > 0) this.addFloatingText(`+${res.mpRestored} MP`, this.player.x, this.player.y, '#3b82f6');
