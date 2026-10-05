@@ -10,6 +10,16 @@ if [ ! -d "$APP_DIR" ]; then
     exit 1
 fi
 
+# Generate a per-run build id so restarting the server (a "redeploy" locally)
+# busts browser caches and resets stale client state on the next load.
+if command -v node >/dev/null 2>&1; then
+    if ! node "$SCRIPT_DIR/tools/write-build-id.mjs"; then
+        echo "[!] Could not generate build id; serving without cache-flush metadata."
+    fi
+else
+    echo "[!] node not found; skipping build id generation (cache-flush disabled)."
+fi
+
 SERVER_PID=""
 
 cleanup() {

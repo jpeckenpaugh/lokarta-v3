@@ -52,6 +52,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Generated per-deployment build manifest (see tools/write-build-id.mjs)
+html/build-id.json
+
 # Database & local state
 *.db
 *.sqlite

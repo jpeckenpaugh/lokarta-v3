@@ -12,8 +12,10 @@ import {
   normalizeSlotToTower,
   migratePlayerToTower,
 } from './save-slots.js';
+import { LOKARTA_DATABASE_NAMES } from './build-version.js';
 
-export const DB_NAME = 'lokarta_browser_db';
+/** Single source of truth is the flush guard's database-name list. */
+export const DB_NAME = LOKARTA_DATABASE_NAMES[0];
 export const DB_VERSION = 2;
 
 export const STORES = {

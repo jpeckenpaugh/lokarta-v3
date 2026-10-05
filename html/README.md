@@ -36,6 +36,21 @@ Open [http://localhost:3000](http://localhost:3000) in any modern browser.
 npx serve html -l 3000
 ```
 
+> **If you serve `html/` directly without `run.sh`**, first run
+> `node tools/write-build-id.mjs` so the per-deployment cache flush has a build
+> id to compare against.
+
+---
+
+## ♻️ Cache & Build Versioning
+
+Every rebuild gets a generated `build-id.json` (see `tools/write-build-id.mjs`).
+On load, `boot.js` compares the deployed id with the id the browser last ran; on
+a mismatch it flushes `localStorage`, `sessionStorage`, IndexedDB, CacheStorage,
+and stale service workers, then clean-reloads once into the new build. A
+network-first service worker keeps nested ES module imports from being pinned to
+a stale HTTP cache. Full details: [`docs/build-versioning.md`](../docs/build-versioning.md).
+
 ---
 
 ## 🧪 Running Automated Tests

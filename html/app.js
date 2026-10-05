@@ -9,7 +9,7 @@ import { showSplash } from './app/splash-screen.js';
 export * from './app/index.js';
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('DOMContentLoaded', () => {
+  const startApp = () => {
     const prefersReduced = typeof window.matchMedia === 'function'
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
       : false;
@@ -21,5 +21,13 @@ if (typeof window !== 'undefined') {
     // zero perceived load time; init() awaits it before showing the title.
     app.splashPromise = splashPromise;
     window.lokarta = app;
-  });
+  };
+
+  // `boot.js` imports this bundle after the build-version check, which can land
+  // after DOMContentLoaded has already fired. Handle both timings.
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', startApp, { once: true });
+  } else {
+    startApp();
+  }
 }
