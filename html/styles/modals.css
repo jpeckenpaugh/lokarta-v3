@@ -298,6 +298,22 @@
   box-shadow: 0 0 10px var(--gold-glow);
 }
 
+/* LIV-30 item 3: a greyed, non-interactive button (e.g. temple at full HP/MP). */
+.action-btn:disabled,
+.action-btn[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+.action-btn:disabled:hover,
+.action-btn[aria-disabled='true']:hover {
+  background: linear-gradient(180deg, #2b324d, #171b2b);
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
 /* ==========================================================================
    Fate Grant Draft Modal (5 Cards)
    ========================================================================== */
@@ -1083,6 +1099,10 @@
 
 .temple-heal-btn {
   border-color: var(--gold-accent) !important;
+}
+
+.temple-heal-btn:disabled {
+  border-color: var(--border-color) !important;
 }
 
 .backpack-slots-grid {

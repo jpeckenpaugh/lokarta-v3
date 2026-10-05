@@ -760,6 +760,19 @@ export class ModalManager {
     };
   }
 
+  /**
+   * True when the player is already at full HP and MP, so a temple blessing
+   * would do nothing (LIV-30 item 3). Missing/zero maxima read as not-full.
+   */
+  static templeAtFull(player) {
+    if (!player) return false;
+    const hp = Number(player.hp) || 0;
+    const maxHp = Number(player.max_hp) || 0;
+    const mana = Number(player.mana) || 0;
+    const maxMana = Number(player.max_mana) || 0;
+    return hp >= maxHp && mana >= maxMana;
+  }
+
   /** Temple subpanel inside the persistent Town screen (D1 §4.4). */
   static renderTownTemple(townEl, app, callbacks = {}) {
     if (!townEl) return;
@@ -767,6 +780,13 @@ export class ModalManager {
     const cost = app?.templeCost ?? 0;
     const gold = Number(player.gold) || 0;
     const free = cost === 0;
+    // LIV-30 item 3: at full HP and MP the blessing does nothing — show a
+    // "not in need" message and grey out the button until HP/MP is missing.
+    const atFull = ModalManager.templeAtFull(player);
+    const costMessage = atFull
+      ? 'You are not in need of our services at this time.'
+      : (free ? 'The temple offers its blessing freely.' : `Offering: <strong>${cost}</strong> gold`);
+    const healDisabled = atFull || (!free && gold < cost);
     townEl.hidden = false;
     townEl.innerHTML = `
       <div class="town-modal">
@@ -776,11 +796,11 @@ export class ModalManager {
         </div>
         <div class="temple-body">
           <p>HP ${player.hp}/${player.max_hp} · MP ${player.mana}/${player.max_mana}</p>
-          <p class="temple-cost">${free ? 'The temple offers its blessing freely.' : `Offering: <strong>${cost}</strong> gold`}</p>
+          <p class="temple-cost">${costMessage}</p>
         </div>
         <div class="modal-actions">
           <button class="action-btn" id="temple-back">Back to Town</button>
-          <button class="action-btn temple-heal-btn" id="temple-heal" ${!free && gold < cost ? 'disabled' : ''}>${free ? 'Receive Blessing' : `Heal (${cost}g)`}</button>
+          <button class="action-btn temple-heal-btn" id="temple-heal" ${healDisabled ? 'disabled' : ''}>${free ? 'Receive Blessing' : `Heal (${cost}g)`}</button>
         </div>
       </div>
     `;
@@ -869,6 +889,12 @@ export class ModalManager {
     const cost = app?.templeCost ?? 0;
     const gold = Number(player.gold) || 0;
     const free = cost === 0;
+    // LIV-30 item 3: full HP/MP => "not in need" message + disabled button.
+    const atFull = ModalManager.templeAtFull(player);
+    const costMessage = atFull
+      ? 'You are not in need of our services at this time.'
+      : (free ? 'The temple offers its blessing freely.' : `Offering: <strong>${cost}</strong> gold`);
+    const healDisabled = atFull || (!free && gold < cost);
 
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
@@ -880,11 +906,11 @@ export class ModalManager {
         </div>
         <div class="temple-body">
           <p>HP ${player.hp}/${player.max_hp} · MP ${player.mana}/${player.max_mana}</p>
-          <p class="temple-cost">${free ? 'The temple offers its blessing freely.' : `Offering: <strong>${cost}</strong> gold`}</p>
+          <p class="temple-cost">${costMessage}</p>
         </div>
         <div class="modal-actions">
           <button class="action-btn" id="temple-back">Back to Town</button>
-          <button class="action-btn temple-heal-btn" id="temple-heal" ${!free && gold < cost ? 'disabled' : ''}>${free ? 'Receive Blessing' : `Heal (${cost}g)`}</button>
+          <button class="action-btn temple-heal-btn" id="temple-heal" ${healDisabled ? 'disabled' : ''}>${free ? 'Receive Blessing' : `Heal (${cost}g)`}</button>
         </div>
       </div>
     `;
