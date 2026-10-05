@@ -862,6 +862,45 @@
   color: var(--blue-accent);
 }
 
+/* Loadout cooldown "recharge" (D1 §2.5, LIV-33). The grey scrim sits above
+   the icon/name (z 1) but below the key/class badges (z 2), so the keybinding
+   label stays legible; the scrim wipes top -> bottom as the ability readies. */
+.loadout-slot .cooldown-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: var(--slot-cooldown-overlay);
+  pointer-events: none;
+  clip-path: inset(var(--cd-inset, 0%) 0 0 0);
+  transition: clip-path var(--slot-cooldown-step) linear;
+}
+
+.loadout-slot.on-cooldown .cooldown-overlay {
+  display: block;
+}
+
+.loadout-slot.on-cooldown .key-badge {
+  color: var(--gold-accent); /* 5.16:1 on the composited grey */
+}
+
+.loadout-slot.on-cooldown .slot-class-badge {
+  z-index: 2;
+  color: var(--text-primary); /* 7.7:1 */
+}
+
+/* Gold refill front at the grey boundary. */
+.loadout-slot.on-cooldown .cooldown-overlay::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--cd-inset, 0%);
+  height: 2px;
+  background: var(--slot-cooldown-edge);
+  box-shadow: 0 0 6px var(--gold-glow);
+}
+
 /* Named slot states (D1 §2.3) */
 .loadout-slot.slot-dragging,
 .backpack-slot.slot-dragging {

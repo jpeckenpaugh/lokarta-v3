@@ -51,7 +51,6 @@
   "stock": [
     { "itemId": "health_potion", "price": 15, "maxPurchases": 0 },
     { "itemId": "mana_potion", "price": 20, "maxPurchases": 0 },
-    { "itemId": "torch", "price": 10, "maxPurchases": 0 },
     { "itemId": "arrows", "quantity": 20, "price": 12, "maxPurchases": 0 },
     { "itemId": "apprentice_wand", "price": 120, "maxPurchases": 1, "vocationAffinity": "magician" },
     { "itemId": "astral_scepter", "price": 220, "maxPurchases": 1, "vocationAffinity": "magician" },

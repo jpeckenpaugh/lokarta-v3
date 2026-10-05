@@ -96,9 +96,18 @@ export class FateGrantSystem {
       FateGrantSystem.guaranteeLevelOneHandSlots(chosenCards, eligibleCards, vocation);
     }
 
+    // Board rule (LIV-32 1c): the player must select exactly 2 cards. If a
+    // future catalog ever offered fewer than 2, fall back to requiring every
+    // offered card so the draft cannot dead-end. The current 5-card offer
+    // guarantee makes that fallback unreachable in practice.
+    const requiredCount = Math.min(2, chosenCards.length);
+    if (chosenCards.length < 2) {
+      console.warn(`FateGrantSystem: only ${chosenCards.length} card(s) offered; requiring all.`);
+    }
+
     return {
       cards: chosenCards,
-      requiredSelections: { min: 1, max: 2 },
+      requiredSelections: { min: requiredCount, max: requiredCount },
     };
   }
 

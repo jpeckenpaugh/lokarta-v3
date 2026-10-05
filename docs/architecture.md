@@ -121,11 +121,11 @@ html/
 - **Map Dimensions:** Grid size = 64px, Width = 40 tiles, Height = 40 tiles.
 - **Simulation Timing:** Fixed tick interval = 100 ms (10 Hz).
 - **Inventory Layout:** 10 Action Bar slots (0–9), 6 Backpack slots, 4 Paperdoll slots (`main_hand`, `off_hand`, `armor`, `relic`).
-- **Lighting Radii:** Base FOV = 10 tiles, Torch = +2 radius (12 tiles), Light Spell = +3/+2/+1 degrading radius (30s duration), Ambient = 4 tiles.
+- **Lighting Radii:** Base FOV = 10 tiles, `lightSpellTimer` = +3/+2/+1 degrading engine seam (30s duration), Ambient = 4 tiles. (LIV-34 removed the Torch item and the standalone Light Spell item.)
 - **Vocation-Locked Equipment:** Every equippable item carries a `vocationAffinity` (`"magician"`, `"archer"`, `"fighter"`, `"paladin"`, `"neutral"`, or an array like `["fighter","paladin"]`) in `items.json`; only the matching vocation can equip/use it. Damage/healing scales solely from `skillBoosts.damageMultiplier` — there is **no** class multiplier.
 
 ### 3.3 Character Archetypes & Stat Growth
-- **Magician:** Base HP 60 (+8/level), Base MP 150 (+16/level). Native: Arcane Wands, Wand Spark, Light, Energy Beam.
+- **Magician:** Base HP 60 (+8/level), Base MP 150 (+16/level). Native: Arcane Wands, Wand Spark, Energy Beam, Shock Shield (Cape `E`), Luminous Prayer (Amulet `R`).
 - **Archer:** Base HP 90 (+14/level), Base MP 80 (+8/level). Native: Bows/Crossbows, Bow Shot, Power Shot, Arrows.
 - **Fighter:** Base HP 140 (+18/level), Base MP 30 (+4/level). Native: Heavy Swords, Shields, Heavy Plate Armor, Slash, Cleave.
 - **Paladin:** Base HP 120 (+15/level), Base MP 90 (+10/level). Native: Warhammers, Relics, Holy Strike, Healing Prayer.

@@ -7,7 +7,7 @@
  * `#sidebar-hud` drives both drag and click-to-swap.
  */
 
-import { InventorySystem, LightingSystem, DoorSystem } from '../engine/index.js';
+import { InventorySystem, LightingSystem, DoorSystem, CombatSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG, DOORS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 import { EQUIPMENT_KEY_MAP, ACTIVE_SLOT_KEYS, INVENTORY_CONFIG } from '../engine/config.js';
@@ -405,10 +405,10 @@ export class HUDManager {
       const kind = el.getAttribute('data-kind');
       if (kind === 'active') {
         const i = parseInt(el.getAttribute('data-index') || '-1', 10);
-        HUDManager._paintSlot(el, actionBar[i] || null);
+        HUDManager._paintSlot(el, actionBar[i] || null, app);
       } else {
         const slotName = el.getAttribute('data-slot');
-        HUDManager._paintSlot(el, paperdoll[slotName] || null);
+        HUDManager._paintSlot(el, paperdoll[slotName] || null, app);
       }
     });
   }
@@ -455,7 +455,7 @@ export class HUDManager {
   }
 
   /** Diffs one slot element to an item (or null) without rebuilding DOM. */
-  static _paintSlot(el, item) {
+  static _paintSlot(el, item, app = null) {
     const isOccupied = Boolean(item);
     el.classList.toggle('slot-empty', !isOccupied);
     el.classList.toggle('slot-occupied', isOccupied);
@@ -491,6 +491,48 @@ export class HUDManager {
     }
 
     el.title = HUDManager._tooltip(item);
+    HUDManager._paintCooldown(el, item, app);
+  }
+
+  /**
+   * D1 §2.5 (LIV-33): paint a loadout slot's "recharge" overlay. The grey scrim
+   * wipes top -> bottom over the effective cooldown `D`; progress is
+   * `1 - remaining / D`. No-op for slots without an overlay or an item whose
+   * catalog entry has no `actionKey`/`cooldown`.
+   */
+  static _paintCooldown(el, item, app = null) {
+    const overlay = el.querySelector('.cooldown-overlay');
+    if (!overlay) return;
+
+    const baseLabel = el.dataset.baseLabel || el.getAttribute('aria-label') || '';
+    if (!el.dataset.baseLabel) el.dataset.baseLabel = baseLabel;
+
+    const catalogItem = item ? ITEMS_CATALOG[item.item_id] : null;
+    const actionKey = item?.actionKey || catalogItem?.actionKey || null;
+    const effectiveCooldown = item ? CombatSystem.getEffectiveCooldown(item) : null;
+    const remaining = (actionKey && app?.player?.cooldowns)
+      ? (app.player.cooldowns[actionKey] ?? 0)
+      : 0;
+
+    if (!item || !actionKey || typeof effectiveCooldown !== 'number' || remaining <= 0) {
+      if (el.classList.contains('on-cooldown')) el.classList.remove('on-cooldown');
+      if (overlay.style.display !== 'none') overlay.style.display = 'none';
+      el.style.removeProperty('--cd-inset');
+      if (baseLabel && el.getAttribute('aria-label') !== baseLabel) {
+        el.setAttribute('aria-label', baseLabel);
+      }
+      return;
+    }
+
+    const progress = Math.max(0, Math.min(1, 1 - remaining / effectiveCooldown));
+    el.style.setProperty('--cd-inset', `${(progress * 100).toFixed(1)}%`);
+    if (overlay.style.display !== 'block') overlay.style.display = 'block';
+    el.classList.add('on-cooldown');
+
+    const rechargingLabel = `${baseLabel}, recharging`;
+    if (el.getAttribute('aria-label') !== rechargingLabel) {
+      el.setAttribute('aria-label', rechargingLabel);
+    }
   }
 
   static _classInfo(item) {

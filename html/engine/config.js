@@ -63,7 +63,6 @@ export const CONFIG = {
 
   // Lighting
   BASE_LIGHT_RADIUS: 10,
-  TORCH_LIGHT_RADIUS: 12,
   LIGHT_SPELL_RADIUS: ABILITIES_CATALOG.magician_light.lightRadius || 13,
   LIGHT_SPELL_DURATION_SEC: ABILITIES_CATALOG.magician_light.durationSec || 30,
   AMBIENT_LIGHT_RADIUS: 4,

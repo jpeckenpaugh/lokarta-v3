@@ -37,7 +37,7 @@ The **Procedural Tower Floor Generator** produces deterministic, $40 \times 40$ 
 
 ### 3.4 Entity & Loot Placement
 - **Monster Population:** Tier-specific monster scaling based on floor depth (Giant Rats and Bone Sentries $\rightarrow$ Shadow Cultists $\rightarrow$ Elite Cultists, and the final Spire Warden guardian).
-- **Chest & Item Spawns:** Places chests, health/mana potions, torches, and arrows in carved rooms with floor-scaled drop tables.
+- **Chest & Item Spawns:** Places chests, health/mana potions, and arrows in carved rooms with floor-scaled drop tables.
 
 ---
 

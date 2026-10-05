@@ -30,6 +30,10 @@
   --slot-empty-border: #23273e;
   --slot-radius: 4px;
   --gold-accent-soft: rgba(229, 185, 92, 0.25);
+  /* D1 §2.5 loadout cooldown recharge (LIV-33) */
+  --slot-cooldown-overlay: rgba(100, 116, 139, 0.55); /* --class-neutral #64748b @ 55% */
+  --slot-cooldown-edge: var(--gold-accent);            /* refill leading edge */
+  --slot-cooldown-step: 100ms;                         /* = CONFIG.TICK_INTERVAL_MS */
   /* D1 §1.2 / §6.4 class colorways (mirror vocations.json renderTheme) */
   --class-fighter: #475569;
   --class-fighter-accent: #94a3b8;
@@ -79,6 +83,19 @@ html.input-locked {
 :where(button, [role='button'], a[href], input, select, textarea, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring-color);
   outline-offset: var(--focus-ring-offset);
+}
+
+/* Visually hidden but exposed to assistive tech (live regions, labels). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 * {

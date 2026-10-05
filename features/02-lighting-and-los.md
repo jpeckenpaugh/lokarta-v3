@@ -22,8 +22,11 @@ The **Dynamic Lighting and Line-of-Sight (LOS)** system calculates player vision
 
 ### 3.2 Dynamic Vision Radii Calculation
 - **Base Sight Radius:** 10 tiles default field-of-view (FOV).
-- **Torch Boost:** Adds +2 radius (12 tiles total) when a Torch item is equipped or on the action bar.
-- **Light Spell Boost:** Magician *Light Spell* skill expands FOV radius dynamically by +3 (30–20s -> 13 tiles), +2 (19–10s -> 12 tiles), and +1 (<10s -> 11 tiles).
+- **Torch Boost:** Removed in LIV-34 — the Wooden Torch item is no longer in the game.
+  The catalog `lightRadiusBonus` seam remains available for future light-bearing items.
+- **Light Spell Boost (engine seam):** The `lightSpellTimer` FOV expansion still degrades
+  by +3 (30–20s -> 13 tiles), +2 (19–10s -> 12 tiles), and +1 (<10s -> 11 tiles), but as of
+  LIV-34 no equippable item or draft card grants it (the Radiant Light Spell was removed).
 
 ### 3.3 Circular Radius Illumination Engine
 - Evaluates spatial distance $d = \sqrt{\Delta x^2 + \Delta y^2}$ from player grid coordinates $(x_p, y_p)$ to boundary targets within current FOV radius.

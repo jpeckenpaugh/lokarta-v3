@@ -79,21 +79,12 @@
     "lootTable": [
       {
         "minRoll": 0.0,
-        "maxRoll": 0.6,
+        "maxRoll": 1.0,
         "item_id": "mana_potion",
         "name": "Mana Potion",
         "type": "consumable",
         "quantity": 1,
         "stat_bonus": 40
-      },
-      {
-        "minRoll": 0.6,
-        "maxRoll": 1.0,
-        "item_id": "torch",
-        "name": "Wooden Torch",
-        "type": "offhand",
-        "quantity": 1,
-        "stat_bonus": 14
       }
     ]
   },
@@ -116,21 +107,12 @@
     "lootTable": [
       {
         "minRoll": 0.0,
-        "maxRoll": 0.6,
+        "maxRoll": 1.0,
         "item_id": "mana_potion",
         "name": "Mana Potion",
         "type": "consumable",
         "quantity": 1,
         "stat_bonus": 40
-      },
-      {
-        "minRoll": 0.6,
-        "maxRoll": 1.0,
-        "item_id": "torch",
-        "name": "Wooden Torch",
-        "type": "offhand",
-        "quantity": 1,
-        "stat_bonus": 14
       }
     ]
   },

@@ -24,8 +24,17 @@ The **Tactical Combat and Vocation Abilities** feature governs turn-based combat
 ### 3.2 Vocation Abilities & Skill System
 - **Magician Skills:**
   - *Wand Spark:* Single-target ranged magic attack.
-  - *Light Spell:* Expands vision radius to 12 tiles and illuminates surrounding area.
   - *Energy Beam:* Penetrating line-of-sight ranged spell striking multiple aligned targets.
+  - *Shock Shield* (Apprentice's Cape active, `E` key): costs 2 MP, arms a one-charge
+    electro shield that deflects the next incoming enemy attack and stuns the attacker
+    for 5 s (10 s cooldown). Rank scaling: +1 s stun and -1 s cooldown per rank
+    (Rank 5: 9 s stun / 6 s cooldown). Implemented in `CombatSystem.executeShockShield`.
+  - *Luminous Prayer* (Luminous Amulet active, `R` key): channels the relic's stored
+    light to restore 5 HP and 5 MP per rank on a 20 s cooldown (-2 s per rank, 0 MP).
+    Implemented in `CombatSystem.executeLuminousPrayer`.
+  - The former standalone *Light Spell* active item (the "Radiant Light Spell" draft
+    card, `spell_light`) was removed per LIV-32; the passive `lightSpellTimer` lighting
+    seam remains available to other sources.
 - **Archer Skills:**
   - *Bow Shot:* Standard physical ranged attack requiring equipped arrows.
   - *Power Shot:* High-damage physical ranged strike consuming extra MP and ammo.

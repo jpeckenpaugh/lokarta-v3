@@ -165,9 +165,11 @@ export class EntityAI {
         monster.attackCooldown = monster.attackCadence || 1.5;
         const damage = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
         // LOK-12 damage-intercept seam: dodge / fortify / mitigation / bubble absorb.
-        const hit = CombatSystem.applyIncomingDamage(player, damage);
+        const hit = CombatSystem.applyIncomingDamage(player, damage, monster);
         let message;
-        if (hit.dodged) {
+        if (hit.deflected) {
+          message = `Your Shock Shield deflects ${monster.name}! ${monster.name} is stunned for ${hit.attackerStunSec}s.`;
+        } else if (hit.dodged) {
           message = `${monster.name} lunges at you, but you dodge it!`;
         } else {
           message = `${monster.name} attacks you for ${damage} physical damage!`;
@@ -176,6 +178,8 @@ export class EntityAI {
           damageToPlayer: hit.damageToPlayer,
           absorbed: hit.absorbed,
           dodged: hit.dodged,
+          deflected: hit.deflected,
+          attackerStunSec: hit.attackerStunSec,
           message,
           sourceMonster: monster,
         };
@@ -217,7 +221,7 @@ export class EntityAI {
       const maxDmg = mData?.damageMax ?? (cultist.type === 'elite_cultist' ? 22 : CONFIG.CULTIST_DAMAGE_MAX);
       const damage = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
       // LOK-12 damage-intercept seam: dodge / fortify / mitigation / bubble absorb.
-      const hit = CombatSystem.applyIncomingDamage(player, damage);
+      const hit = CombatSystem.applyIncomingDamage(player, damage, cultist);
 
       const projectile = {
         id: `proj_shadow_${Date.now()}_${Math.random()}`,
@@ -233,14 +237,18 @@ export class EntityAI {
         color: '#9933ff',
       };
 
-      const message = hit.dodged
-        ? `${cultist.name} hurls a Shadow Bolt at you, but you dodge it!`
-        : `${cultist.name} casts Shadow Bolt at you for ${damage} dark damage!`;
+      const message = hit.deflected
+        ? `Your Shock Shield deflects ${cultist.name}'s Shadow Bolt! ${cultist.name} is stunned for ${hit.attackerStunSec}s.`
+        : hit.dodged
+          ? `${cultist.name} hurls a Shadow Bolt at you, but you dodge it!`
+          : `${cultist.name} casts Shadow Bolt at you for ${damage} dark damage!`;
 
       return {
         damageToPlayer: hit.damageToPlayer,
         absorbed: hit.absorbed,
         dodged: hit.dodged,
+        deflected: hit.deflected,
+        attackerStunSec: hit.attackerStunSec,
         message,
         projectiles: [projectile],
         sourceMonster: cultist,

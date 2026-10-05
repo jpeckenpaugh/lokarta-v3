@@ -294,10 +294,10 @@ describe('E2 Floor Generator — 5-level tower', () => {
     assert.ok(dist <= 10, `starter cache should be near the entry, was ${dist} tiles away`);
   });
 
-  it('grants health potion + torch as the levels 2-5 starter cache', () => {
+  it('grants only the health potion as the levels 2-5 starter cache (torch removed)', () => {
     for (const level of [2, 3, 4, 5]) {
       const ids = generateFloor(level).items.map(i => i.item_id).sort();
-      assert.deepEqual(ids, ['health_potion', 'torch']);
+      assert.deepEqual(ids, ['health_potion']);
     }
   });
 

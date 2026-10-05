@@ -946,6 +946,7 @@ export class ModalManager {
 
     const offer = FateGrantSystem.generateDraftOffer(app.player, level);
     const selectedCards = new Set();
+    let focusIndex = 0;
 
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
@@ -953,59 +954,106 @@ export class ModalManager {
       <div class="fate-grant-modal">
         <div class="modal-header">
           <h2><img class="openmoji-icon title-icon" src="./assets/openmoji/1F56F.svg" alt="Candle" /> FATE GRANT (Level ${level})</h2>
-          <div class="subtitle">Select 1 or 2 cards to fortify your Action Slots and Backpack</div>
+          <div class="subtitle">Select exactly 2 cards to fortify your Action Slots and Backpack</div>
         </div>
-        <div class="fate-cards-grid" id="fate-cards-grid">
+        <div class="fate-cards-grid" id="fate-cards-grid" role="group" aria-label="Fate Grant cards">
           ${offer.cards
             .map(
               (card, idx) => {
                 const iconCode = HUDManager.emojiToOpenMojiCode(card.icon);
                 return `
-            <div class="fate-card rarity-${card.rarity}" data-card-id="${card.id}" data-idx="${idx}">
-              <div class="card-select-badge">✓</div>
-              <div class="card-icon"><img class="openmoji-icon card-emoji" src="./assets/openmoji/${iconCode}.svg" alt="${card.name}" /></div>
-              <div class="card-title">${card.name}</div>
-              <div class="card-stat-bonus">${card.statBonusText || ''}</div>
-              <div class="card-desc">${card.description}</div>
-            </div>
+            <button type="button" class="fate-card rarity-${card.rarity}" role="checkbox" aria-checked="false" data-card-id="${card.id}" data-idx="${idx}" tabindex="-1">
+              <span class="card-select-badge" aria-hidden="true">✓</span>
+              <span class="card-icon"><img class="openmoji-icon card-emoji" src="./assets/openmoji/${iconCode}.svg" alt="${card.name}" /></span>
+              <span class="card-title">${card.name}</span>
+              <span class="card-stat-bonus">${card.statBonusText || ''}</span>
+              <span class="card-desc">${card.description}</span>
+            </button>
           `;
               }
             )
             .join('')}
         </div>
         <div class="fate-modal-actions">
-          <button class="confirm-draft-btn" id="btn-confirm-draft" disabled>Confirm Selections (0/2)</button>
+          <button class="confirm-draft-btn" id="btn-confirm-draft" aria-disabled="true">Confirm Selections (0/2)</button>
         </div>
+        <div class="sr-only" id="fate-selection-status" aria-live="polite">0 of 2 selected</div>
       </div>
     `;
 
-    const cardEls = modalOverlayEl.querySelectorAll('.fate-card');
-    const confirmBtn = document.getElementById('btn-confirm-draft');
+    const cardEls = Array.from(modalOverlayEl.querySelectorAll('.fate-card'));
+    const confirmBtn = modalOverlayEl.querySelector('#btn-confirm-draft');
+    const statusEl = modalOverlayEl.querySelector('#fate-selection-status');
 
-    cardEls.forEach(el => {
-      el.addEventListener('click', () => {
+    // Transient animation class; removed on animationend and with a timeout
+    // fallback so it never persists (incl. under reduced motion).
+    const flash = (el, cls) => {
+      if (!el) return;
+      el.classList.remove(cls);
+      void el.offsetWidth;
+      el.classList.add(cls);
+      el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
+      setTimeout(() => el.classList.remove(cls), 400);
+    };
+
+    const focusCard = idx => {
+      if (!cardEls.length) return;
+      focusIndex = (idx + cardEls.length) % cardEls.length;
+      cardEls.forEach((el, i) => {
+        el.classList.toggle('card-focused', i === focusIndex);
+        el.tabIndex = i === focusIndex ? 0 : -1;
+      });
+      cardEls[focusIndex].focus({ preventScroll: true });
+    };
+
+    const updateConfirm = () => {
+      const count = selectedCards.size;
+      const enabled = count === 2;
+      confirmBtn.textContent = `Confirm Selections (${count}/2)`;
+      confirmBtn.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+      if (statusEl) statusEl.textContent = `${count} of 2 selected`;
+    };
+
+    const toggleCard = el => {
+      if (!el) return;
+      const cardId = el.getAttribute('data-card-id');
+      const cardObj = offer.cards.find(c => c.id === cardId);
+      if (!cardObj) return;
+
+      if (selectedCards.has(cardObj)) {
+        selectedCards.delete(cardObj);
+        el.classList.remove('selected');
+        el.setAttribute('aria-checked', 'false');
         soundFX.play('click');
-        const cardId = el.getAttribute('data-card-id');
-        const cardObj = offer.cards.find(c => c.id === cardId);
+      } else if (selectedCards.size < 2) {
+        selectedCards.add(cardObj);
+        el.classList.add('selected');
+        el.setAttribute('aria-checked', 'true');
+        soundFX.play('click');
+        flash(el, 'card-activating');
+      } else {
+        // A 3rd selection is rejected (no silent eviction): red flash + back.
+        soundFX.play('uiBack');
+        flash(el, 'card-reject');
+        return;
+      }
+      updateConfirm();
+    };
 
-        if (selectedCards.has(cardObj)) {
-          selectedCards.delete(cardObj);
-          el.classList.remove('selected');
-        } else {
-          if (selectedCards.size < 2) {
-            selectedCards.add(cardObj);
-            el.classList.add('selected');
-          }
-        }
-
-        const count = selectedCards.size;
-        confirmBtn.disabled = count === 0;
-        confirmBtn.textContent = `Confirm Selections (${count}/2)`;
+    cardEls.forEach((el, idx) => {
+      // Click moves the keyboard cursor to the card, then toggles (pointer and
+      // keyboard stay in sync). Hover stays a pure CSS affordance.
+      el.addEventListener('click', () => {
+        focusCard(idx);
+        toggleCard(el);
       });
     });
 
     confirmBtn.addEventListener('click', async () => {
-      if (selectedCards.size === 0) return;
+      // `aria-disabled` keeps Confirm focusable for the Up/Down path, so the
+      // activation guard must live here too.
+      if (confirmBtn.getAttribute('aria-disabled') === 'true') return;
+      if (selectedCards.size !== 2) return;
       soundFX.play('equip');
 
       const chosen = Array.from(selectedCards);
@@ -1026,6 +1074,38 @@ export class ModalManager {
       app.updateHUD();
       await app.persistSave();
     });
+
+    updateConfirm();
+    focusCard(0);
+
+    const keyHandler = e => {
+      const onConfirm = typeof document !== 'undefined' && document.activeElement === confirmBtn;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        if (onConfirm) return; // arrows only rove the card row
+        e.preventDefault();
+        soundFX.play('uiMove', 0.5);
+        focusCard(focusIndex + (e.key === 'ArrowRight' ? 1 : -1));
+      } else if (e.code === 'KeyQ' || e.key === 'q' || e.key === 'Q') {
+        e.preventDefault();
+        toggleCard(cardEls[focusIndex]);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        // Enter/Space on the focused Confirm activates it; otherwise they
+        // toggle the focused card (same as `q`).
+        e.preventDefault();
+        if (onConfirm) confirmBtn.click();
+        else toggleCard(cardEls[focusIndex]);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        soundFX.play('uiMove', 0.5);
+        confirmBtn.focus({ preventScroll: true });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        soundFX.play('uiMove', 0.5);
+        focusCard(focusIndex);
+      }
+      // Escape is intentionally a no-op: the draft is mandatory.
+    };
+    this._setKeyHandler(modalOverlayEl, keyHandler);
   }
 
   static showVictoryModal(modalOverlayEl, player, callbacks = {}) {

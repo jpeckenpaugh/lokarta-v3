@@ -14,7 +14,6 @@
         { "itemId": "health_potion", "quantity": [1, 1], "weight": 30 },
         { "itemId": "mana_potion", "quantity": [1, 1], "weight": 15 },
         { "itemId": "arrows", "quantity": [8, 16], "weight": 30 },
-        { "itemId": "torch", "quantity": [1, 1], "weight": 15 },
         { "vocationGear": true, "lootTier": [1, 1], "quantity": [1, 1], "weight": 10 }
       ]
     },
@@ -24,7 +23,6 @@
         { "itemId": "health_potion", "quantity": [2, 2], "weight": 18 },
         { "itemId": "mana_potion", "quantity": [2, 2], "weight": 15 },
         { "itemId": "arrows", "quantity": [20, 32], "weight": 22 },
-        { "itemId": "torch", "quantity": [1, 1], "weight": 10 },
         { "itemId": "relic_luminous_amulet", "quantity": [1, 1], "weight": 8 },
         { "vocationGear": true, "lootTier": [1, 2], "quantity": [1, 1], "weight": 27 }
       ]

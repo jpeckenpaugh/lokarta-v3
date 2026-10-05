@@ -80,12 +80,12 @@ describe('LIV-22 #1 inventory/hotbar cleanup', () => {
     assert.equal(player.action_bar[0], null, 'active slot stays empty');
   });
 
-  it('routes an active-role item (torch) into an active slot', () => {
+  it('routes an active-role item (health potion) into an active slot', () => {
     const player = createPlayer('fighter');
-    player.backpack[0] = { ...ITEMS_CATALOG.torch, item_id: 'torch', quantity: 1 };
+    player.backpack[0] = { ...ITEMS_CATALOG.health_potion, item_id: 'health_potion', quantity: 1 };
     const res = InventorySystem.swapKeyedItem(player, 'backpack:0', 'Digit1');
     assert.equal(res.success, true);
-    assert.equal(player.action_bar[0].item_id, 'torch');
+    assert.equal(player.action_bar[0].item_id, 'health_potion');
   });
 });
 

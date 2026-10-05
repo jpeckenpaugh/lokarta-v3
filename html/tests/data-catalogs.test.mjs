@@ -25,7 +25,12 @@ import {
 test('JSON Data Catalogs', async (t) => {
   await t.test('loads and validates cards.json catalog', () => {
     assert.ok(Array.isArray(CARDS_CATALOG), 'CARDS_CATALOG must be an array');
-    assert.equal(CARDS_CATALOG.length, 30, 'CARDS_CATALOG must contain 30 draft cards');
+    // LIV-34: the "Radiant Light Spell" (card_light_spell) draft card was removed.
+    assert.equal(CARDS_CATALOG.length, 29, 'CARDS_CATALOG must contain 29 draft cards');
+    assert.ok(
+      !CARDS_CATALOG.some(c => c.id === 'card_light_spell' || c.item?.item_id === 'spell_light' || /radiant light/i.test(c.name)),
+      'the Radian Light Spell card must be absent'
+    );
 
     for (const card of CARDS_CATALOG) {
       assert.ok(card.id, 'Card must have id');
@@ -55,7 +60,7 @@ test('JSON Data Catalogs', async (t) => {
   await t.test('loads and validates items.json catalog', () => {
     assert.ok(Object.keys(ITEMS_CATALOG).length >= 24, 'ITEMS_CATALOG must contain at least 24 items');
 
-    const essentialItems = ['torch', 'health_potion', 'mana_potion', 'arrows', 'apprentice_wand', 'tempered_broadsword'];
+    const essentialItems = ['health_potion', 'mana_potion', 'arrows', 'apprentice_wand', 'tempered_broadsword'];
     for (const key of essentialItems) {
       const item = ITEMS_CATALOG[key];
       assert.ok(item, `Missing item definition for ${key}`);
@@ -63,6 +68,10 @@ test('JSON Data Catalogs', async (t) => {
       assert.ok(item.icon, `Item ${key} must have an icon`);
       assert.ok(typeof item.maxStack === 'number', `Item ${key} must specify maxStack`);
     }
+
+    // LIV-34 removals: Wooden Torch and the Radiant Light Spell item.
+    assert.equal(ITEMS_CATALOG.torch, undefined, 'Wooden Torch must be removed');
+    assert.equal(ITEMS_CATALOG.spell_light, undefined, 'Radiant Light Spell item must be removed');
 
     assert.equal(ITEMS_CATALOG['arrows'].maxStack, 99);
     assert.equal(ITEMS_CATALOG['health_potion'].maxStack, 99);

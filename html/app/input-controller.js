@@ -3,7 +3,13 @@
  */
 
 import { GestureEngine } from '../engine/index.js';
+import { EQUIPMENT_KEY_MAP } from '../engine/config.js';
 import { soundFX } from '../audio/index.js';
+
+/** `{ KeyQ: 'main_hand', KeyE: 'armor', ... }` from `keybindings.json`. */
+const EQUIPMENT_KEY_CODE_MAP = Object.fromEntries(
+  Object.entries(EQUIPMENT_KEY_MAP || {}).map(([key, slot]) => [`Key${String(key).toUpperCase()}`, slot])
+);
 
 export class InputController {
   constructor(app) {
@@ -31,19 +37,20 @@ export class InputController {
       // Only gameplay surfaces own movement / combat keys.
       if (!this.app.isInGameplay) return;
 
+      // Modal-owned surfaces (pause, town, temple, fate grant) pause the
+      // simulation; never let a gameplay hotkey leak through while paused.
+      if (this.app.isPaused) return;
+
       this.app.keysDown.add(e.code);
 
-      if (e.code === 'KeyQ') {
+      // Equipment abilities: q/w/e/r map to main_hand/off_hand/armor/relic
+      // (keybindings.json.keySlots.equipment). Only the equipped item's
+      // catalog `actionKey` produces an effect.
+      const equipmentSlot = EQUIPMENT_KEY_CODE_MAP[e.code];
+      if (equipmentSlot) {
         e.preventDefault();
         soundFX.init();
-        this.app.executeHandCombat('main_hand');
-        return;
-      }
-
-      if (e.code === 'KeyW') {
-        e.preventDefault();
-        soundFX.init();
-        this.app.executeHandCombat('off_hand');
+        this.app.executeHandCombat(equipmentSlot);
         return;
       }
 

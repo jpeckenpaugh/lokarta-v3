@@ -8,7 +8,7 @@ The **Inventory, Paperdoll Equipment, and Offline Storage** feature governs item
 
 ## 2. Mapped Codebase Modules
 
-- [html/engine.js](file:///Users/jarad/git/lokarta-v3/html/engine.js) — `InventorySystem`, item definitions (`health_potion`, `mana_potion`, `torch`, `arrow`, weapons, armor, relics).
+- [html/engine.js](file:///Users/jarad/git/lokarta-v3/html/engine.js) — `InventorySystem`, item definitions (`health_potion`, `mana_potion`, `arrow`, weapons, armor, relics).
 - [html/storage.js](file:///Users/jarad/git/lokarta-v3/html/storage.js) — `openStorage`, `read`, `put`, `getAll`, `clearStore`, `STORES` (`profile`, `characters`, `dungeon_floors`, `game_settings`).
 - [html/game-worker.js](file:///Users/jarad/git/lokarta-v3/html/game-worker.js) — Persistence request handling (`handleSaveCharacter`, `handleBootstrap`, `handleLoadFloor`).
 
@@ -17,7 +17,7 @@ The **Inventory, Paperdoll Equipment, and Offline Storage** feature governs item
 ## 3. Discrete Capabilities & Key Mechanics
 
 ### 3.1 Inventory & Action Bar Layout
-- **10-Slot Action Bar (Slots 0–9):** Hotbar mapped to keyboard keys `1`–`9` and `0` for instant activation of consumable potions, torches, or vocation skills.
+- **10-Slot Action Bar (Slots 0–9):** Hotbar mapped to keyboard keys `1`–`9` and `0` for instant activation of consumable potions or vocation skills.
 - **6-Slot Backpack:** Extra inventory capacity for non-hotbar loot, spare equipment, and surplus supplies.
 - **Item Drag & Drop / Swap:** Enables moving and swapping items between action bar slots and backpack slots.
 
@@ -30,7 +30,7 @@ The **Inventory, Paperdoll Equipment, and Offline Storage** feature governs item
 - **Stat Application:** Equipping or unequipping items dynamically modifies player Attack, Defense, Max HP, and Max MP attributes.
 
 ### 3.3 Stacking Rules & Limits
-- **Consumable Potions & Torches:** Stack up to **9 items** per slot.
+- **Consumable Potions:** Stack up to **9 items** per slot.
 - **Arrows:** Stack up to **99 items** per slot.
 - **Equipment & Relics:** Non-stackable (**1 item** per slot).
 

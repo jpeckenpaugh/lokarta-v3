@@ -65,10 +65,10 @@ node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/subm
 ### Verified Test Suites (104 Tests / 14 Suites / 0 Fail):
 1. **Floor Generator (ascent levels):** Deterministic Mulberry32 seed generation, 40×40 boundary constraints, spawn at `(2,2)`, exit stairs at `(35,35)`, full BFS room/corridor connectivity, tier-based monster scaling, catalog-driven encounter density parameters (`dungeons.json`, `encounters.json`), and final guardian (The Spire Warden) boss stats (600 HP, 20 ATK, 6 DEF).
 2. **GridMap & Tile Bounds:** Walkability, walls, stairs, doors, coordinate boundaries, ground item stack management, and $O(1)$ `CODE_TO_TILE_TYPE` lookup.
-3. **LightingSystem & FOV:** Dynamic light radii (Base 10, Torch +2, degrading Light Spell +3/+2/+1), spatial circle lighting without wall occlusion, and light-triggered monster aggro.
+3. **LightingSystem & FOV:** Dynamic light radii (Base 10, degrading `lightSpellTimer` +3/+2/+1 engine seam), spatial circle lighting without wall occlusion, and light-triggered monster aggro. (LIV-34 removed the Wooden Torch and the standalone Light Spell item.)
 4. **ProgressionSystem & Leveling:** XP formulas (`level * 100`), monster kill XP, 4-vocation stat growth (Magician, Archer, Fighter, Paladin with `eyeColor` and `regenResource` from `vocations.json`), skill boosts, and Level 20 cap.
-5. **CombatSystem & Abilities:** Catalog-driven ability attributes (`abilities.json`), Wand Spark, Light Spell, piercing Energy Beam, Bow Shot (with arrow depletion), Power Shot, Holy Strike, Healing Prayer, vocation affinity checks (`vocationAffinity`), and monster loot tables (`monsters.json`).
-6. **InventorySystem & Stacking:** 10-slot Action Bar, 6-slot Backpack limit, 4-slot Paperdoll equipment mechanics (main_hand, off_hand, armor, relic), 9-item stack limit for Potions/Torches, and 99-item limit for Arrows (`items.json`).
+5. **CombatSystem & Abilities:** Catalog-driven ability attributes (`abilities.json`), Wand Spark, piercing Energy Beam, Bow Shot (with arrow depletion), Power Shot, Holy Strike, Healing Prayer, Shock Shield (Apprentice's Cape `E`), Luminous Prayer (Luminous Amulet `R`), vocation affinity checks (`vocationAffinity`), and monster loot tables (`monsters.json`).
+6. **InventorySystem & Stacking:** 10-slot Action Bar, 6-slot Backpack limit, 4-slot Paperdoll equipment mechanics (main_hand, off_hand, armor, relic), 9-item stack limit for Potions, and 99-item limit for Arrows (`items.json`).
 7. **GameClient & Worker Protocol:** Asynchronous command serialization, request/response lifecycle, timeout protection, and error propagation.
 8. **JSON Data Catalogs:** Schema validation and completeness tests across all 11 JSON catalogs (`abilities.json`, `biomes.json`, `cards.json`, `dungeons.json`, `encounters.json`, `items.json`, `keybindings.json`, `monsters.json`, `sounds.json`, `tile_themes.json`, `vocations.json`).
 
@@ -95,7 +95,7 @@ node --test html/tests/engine.test.mjs html/tests/audio.test.mjs html/tests/subm
 - **Select Vocation:** Magician (ranged magic & illumination), Archer (high single-target damage & ammo management), Fighter (melee powerhouse & high HP), or Paladin (holy melee/magic hybrid & healing)
 - **Abilities:**
   - **Key `1`:** Primary Skill (*Wand Spark* / *Bow Shot*)
-  - **Key `2`:** Utility Skill (*Light Spell* / *Power Shot*)
+  - **Key `2`:** Utility Skill (*Power Shot*); equipment actives on `Q`/`W`/`E`/`R` (e.g. Shock Shield, Luminous Prayer)
   - **Key `3`:** Ultimate Skill (*Energy Beam* - piercing line damage)
 - **Items & Interaction:**
   - **Key `E` or `Space`:** Pick up item from ground tile into backpack

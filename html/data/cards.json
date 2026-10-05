@@ -38,8 +38,8 @@
     "name": "Apprentice's Cape",
     "rarity": "rare",
     "icon": "🧥",
-    "description": "Woven silk cloak granting Power Pulse ability (+1 MP / 20s).",
-    "statBonusText": "+1 MP / 20s Power Pulse",
+    "description": "Woven silk cloak. Shock Shield (2 MP) deflects one hit and stuns the attacker for 5s; Power Pulse restores +1 MP / 20s.",
+    "statBonusText": "Shock Shield 5s Stun (10s CD), +1 MP/20s",
     "vocationAffinity": "magician",
     "item": {
       "item_id": "apprentice_cape",
@@ -49,25 +49,6 @@
       "stat_bonus": 2,
       "itemLevel": 1,
       "icon": "🧥"
-    }
-  },
-  {
-    "id": "card_light_spell",
-    "name": "Radiant Light Spell",
-    "rarity": "common",
-    "icon": "💡",
-    "description": "Expand illuminated line-of-sight to 12 tiles for 30 seconds.",
-    "statBonusText": "12-Tile Vision (15 MP)",
-    "vocationAffinity": "magician",
-    "item": {
-      "item_id": "spell_light",
-      "name": "Light Spell",
-      "type": "spell",
-      "quantity": 1,
-      "stat_bonus": 12,
-      "manaCost": 15,
-      "cooldown": 5.0,
-      "icon": "💡"
     }
   },
   {
@@ -497,8 +478,8 @@
     "name": "Luminous Relic Amulet",
     "rarity": "epic",
     "icon": "📿",
-    "description": "Sacred charm granting +5 Max HP/MP and auto-restoring 2 combined HP/MP every 10 seconds.",
-    "statBonusText": "+5 HP/MP, Auto-Prayer",
+    "description": "Sacred charm granting +5 Max HP/MP and auto-restoring 2 combined HP/MP every 10 seconds. Use (R) for Luminous Prayer.",
+    "statBonusText": "+5 HP/MP, Auto-Prayer, Luminous Prayer",
     "item": {
       "item_id": "relic_luminous_amulet",
       "name": "Luminous Amulet",

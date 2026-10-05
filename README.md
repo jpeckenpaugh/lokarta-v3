@@ -13,7 +13,7 @@
 - **Zero-Backend Architecture:** Self-contained static client application. Runs directly in any modern browser via standard HTTP static file servers.
 - **Off-Thread Simulation & Worker RPC:** Procedural floor generation and state persistence run off the UI thread in a dedicated Web Worker (`game-worker.js`), communicated via a Promise-wrapped RPC client bridge (`game-client.js`).
 - **Procedural Tower Ascent & 5 Tiers:** Deterministic Mulberry32 PRNG tower generation on a $40 \times 40$ tile matrix with Breadth-First Search (BFS) connectivity verification. Ascends five tiers (The Gatehouse, The Hall of Banners, The Bell Keep, The Solar Gallery, The Crown Spire) culminating in the final Spire Warden boss fight.
-- **Dynamic Line-of-Sight (LOS) Lighting:** Circular radius field-of-view algorithm driven by JSON catalog specs (Base FOV: 10 tiles, Torch: +2 radius, degrading Light Spell: +3/+2/+1 radius).
+- **Dynamic Line-of-Sight (LOS) Lighting:** Circular radius field-of-view algorithm driven by JSON catalog specs (Base FOV: 10 tiles, degrading `lightSpellTimer` +3/+2/+1 engine seam).
 - **4 Playable Vocations & Vocation-Locked Equipment:** Play as Magician, Archer, Fighter, or Paladin with unique stat growth curves. The class advantage comes from **exclusive access to vocation-locked gear** — weapons, armor, and relics can only be equipped by their appropriate vocation.
 - **Fate Grant Leveling System:** 5-card draft reward selection upon leveling up (up to Level 20 cap), offering vocation-aligned skills, stat boosts, and gear.
 - **Data-Driven JSON Catalogs:** Clean JSON data structures under `html/data/` defining 11 decoupled catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tile_themes.json`, and `keybindings.json`.
@@ -73,7 +73,7 @@ The glob covers all 9 suites (`engine`, `audio`, `submodules`, `app-modules`, `d
 
 - **Floor Generator:** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, tier mapping, and final guardian (The Spire Warden) stats (600 HP, 20 ATK, 6 DEF).
 - **GridMap & Tile Bounds:** Tests matrix initialization, tile opacity/walkability checks, and item placement/removal.
-- **LightingSystem & 10-Tile FOV:** Verifies FOV radius calculations (Base 10, Torch +2, degrading Light Spell +3/+2/+1), spatial circle lighting without wall occlusion.
+- **LightingSystem & 10-Tile FOV:** Verifies FOV radius calculations (Base 10, degrading `lightSpellTimer` +3/+2/+1 engine seam), spatial circle lighting without wall occlusion.
 - **ProgressionSystem & 4 Vocations:** Verifies initial archetype vitals, XP level curves (`level * 100`), and stat growth from `vocations.json`.
 - **CombatSystem (No Class Multiplier) & Vocation-Locked Equipment:** Verifies damage/healing uses only `skillBoosts.damageMultiplier` (no legacy class multiplier), Archer arrow consumption, Paladin prayers/strikes, and that vocation-locked gear (including shared `["fighter","paladin"]` arrays) is rejected for the wrong class and accepted for the right one.
 - **InventorySystem & Stacking:** Tests item pickup priorities (Action Slots 0–9 before Backpack), paperdoll equipment slots, unequip logic, and stack limits from `items.json`.

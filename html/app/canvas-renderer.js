@@ -644,15 +644,12 @@ export class CanvasRenderer {
     ctx.fillStyle = darkGrad;
     ctx.fillRect(0, 0, viewportWidth, viewportHeight);
 
-    // 3. Subtle aura for active spells / torches
+    // 3. Subtle aura for active light spells
     const hasActiveSpell = player.lightSpellTimer > 0;
-    const hasTorch = player.paperdoll?.main_hand?.item_id === 'torch' ||
-                     player.paperdoll?.off_hand?.item_id === 'torch' ||
-                     player.action_bar?.some(i => i?.item_id === 'torch');
 
-    if (hasActiveSpell || hasTorch) {
-      const auraRadius = hasActiveSpell ? 2.5 * CONFIG.GRID_SIZE : 1.5 * CONFIG.GRID_SIZE;
-      const auraColor = hasActiveSpell ? 'rgba(56, 189, 248, 0.22)' : 'rgba(251, 191, 36, 0.18)';
+    if (hasActiveSpell) {
+      const auraRadius = 2.5 * CONFIG.GRID_SIZE;
+      const auraColor = 'rgba(56, 189, 248, 0.22)';
 
       const grad = ctx.createRadialGradient(
         playerScreenX,

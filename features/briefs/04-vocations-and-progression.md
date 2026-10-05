@@ -14,7 +14,7 @@ The 4 playable vocations (`DEFAULT_ARCHETYPES` in `engine.js`) possess initial v
 - **Magician:**
   - Base Vitals: 60 HP, 150 MP.
   - Per-Level Growth: +8 HP, +16 MP.
-  - Locked Gear & Abilities: Arcane Wands, Beam Staff, Apprentice's Cape (native equipment: `apprentice_wand`, `astral_scepter`, `apprentice_cape`); Wand Spark, Light Spell, Energy Beam.
+  - Locked Gear & Abilities: Arcane Wands, Beam Staff, Apprentice's Cape (native equipment: `apprentice_wand`, `astral_scepter`, `apprentice_cape`); Wand Spark, Energy Beam, Shock Shield (Apprentice's Cape `E`), Luminous Prayer (Luminous Amulet `R`).
 - **Archer:**
   - Base Vitals: 90 HP, 80 MP.
   - Per-Level Growth: +14 HP, +8 MP.

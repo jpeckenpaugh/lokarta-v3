@@ -95,15 +95,32 @@ export class CombatSystem {
    *
    * @returns {{ damageToPlayer: number, absorbed: number, dodged: boolean, rawDamage: number }}
    */
-  static applyIncomingDamage(player, damage) {
+  static applyIncomingDamage(player, damage, attacker = null) {
     if (!player || damage <= 0) {
-      return { damageToPlayer: 0, absorbed: 0, dodged: false, rawDamage: damage || 0 };
+      return { damageToPlayer: 0, absorbed: 0, dodged: false, deflected: false, rawDamage: damage || 0 };
+    }
+
+    // 0. Shock Shield (Apprentice's Cape): deflect exactly one incoming
+    //    attack (zero damage) and stun the attacker for the rank-scaled
+    //    duration. The charge is consumed on the first hit only.
+    if (player.shockShieldCharges > 0) {
+      player.shockShieldCharges -= 1;
+      const stunSec = player.shockShieldStunSec || 5;
+      if (attacker) attacker.stunTimer = Math.max(attacker.stunTimer || 0, stunSec);
+      return {
+        damageToPlayer: 0,
+        absorbed: 0,
+        dodged: false,
+        deflected: true,
+        attackerStunSec: stunSec,
+        rawDamage: damage,
+      };
     }
 
     // 1. Dodge: chance to avoid the hit entirely from equipped dodgePct.
     const dodgePct = CombatSystem.getEquippedStat(player, 'dodgePct');
     if (dodgePct > 0 && Math.random() * 100 < dodgePct) {
-      return { damageToPlayer: 0, absorbed: 0, dodged: true, rawDamage: damage };
+      return { damageToPlayer: 0, absorbed: 0, dodged: true, deflected: false, rawDamage: damage };
     }
 
     let dmg = damage;
@@ -135,6 +152,7 @@ export class CombatSystem {
       damageToPlayer: Math.min(finalDamage, player.hp === 0 && finalDamage > 0 ? finalDamage : finalDamage),
       absorbed,
       dodged: false,
+      deflected: false,
       rawDamage: damage,
     };
   }
@@ -980,6 +998,94 @@ export class CombatSystem {
       shieldAbsorb: player.shieldAbsorb,
       shieldDurationSec: player.shieldDurationSec,
       manaCost,
+    };
+  }
+
+  /**
+   * Executes the Magician's Shock Shield (Apprentice's Cape active, `e` key).
+   * Costs `item.manaCost` MP (2 base) and arms a one-charge electro shield:
+   * the next incoming attack is deflected (0 damage) and its attacker is
+   * stunned for `item.stunSec` seconds. The cooldown is rank-scaled through
+   * `getEffectiveCooldown` (base 10 s, -1 s per rank, min 1 s); the stun is
+   * bumped +1 s per rank via `upgradeSpec.stunInc` on rank-up.
+   */
+  static executeShockShield(player, item = null) {
+    if (!item) {
+      return { success: false, message: 'No armor equipped for Shock Shield.' };
+    }
+
+    if (player.cooldowns?.shock_shield > 0) {
+      return { success: false, message: 'Shock Shield is on cooldown.' };
+    }
+
+    const manaCost = (typeof item.manaCost === 'number') ? item.manaCost : 2;
+    if (player.mana < manaCost) {
+      return { success: false, message: `Not enough Mana to cast Shock Shield (${manaCost} MP).` };
+    }
+
+    const effectiveCooldown = CombatSystem.getEffectiveCooldown(item) ?? 10;
+    const stunSec = item.stunSec || 5;
+
+    player.mana -= manaCost;
+    if (!player.cooldowns) player.cooldowns = {};
+    player.cooldowns.shock_shield = effectiveCooldown;
+    player.shockShieldCharges = 1;
+    player.shockShieldStunSec = stunSec;
+
+    return {
+      success: true,
+      message: `Shock Shield crackles around you! Deflects the next hit and stuns the attacker for ${stunSec}s (${manaCost} MP, ${effectiveCooldown}s CD).`,
+      manaCost,
+      stunSec,
+      cooldownSet: effectiveCooldown,
+      charges: player.shockShieldCharges,
+    };
+  }
+
+  /**
+   * Executes the Luminous Amulet's Luminous Prayer active (`r` key).
+   * Channels the amulet's stored light to restore `healPerRank` HP and MP per
+   * item rank (5 per rank base), gated on its rank-scaled cooldown (base 20 s,
+   * -2 s per rank via `upgradeSpec.cooldownReductionSec`). Costs 0 MP — the
+   * relic draws on ambient light rather than the caster's mana pool.
+   */
+  static executeLuminousPrayer(player, item = null) {
+    if (!item) {
+      return { success: false, message: 'No relic equipped for Luminous Prayer.' };
+    }
+
+    if (player.cooldowns?.luminous_prayer > 0) {
+      return { success: false, message: 'Luminous Prayer is on cooldown.' };
+    }
+
+    const manaCost = (typeof item.manaCost === 'number') ? item.manaCost : 0;
+    if (player.mana < manaCost) {
+      return { success: false, message: `Not enough Mana for Luminous Prayer (${manaCost} MP).` };
+    }
+
+    if (player.hp >= player.max_hp && player.mana >= player.max_mana) {
+      return { success: false, message: 'Luminous Prayer finds nothing to mend — HP and MP are full.' };
+    }
+
+    const effectiveCooldown = CombatSystem.getEffectiveCooldown(item) ?? 20;
+    const rank = item.itemLevel || 1;
+    const heal = (item.healPerRank || 5) * rank;
+
+    player.mana -= manaCost;
+    const hpRestored = Math.min(heal, Math.max(0, player.max_hp - player.hp));
+    const mpRestored = Math.min(heal, Math.max(0, player.max_mana - player.mana));
+    player.hp = Math.min(player.max_hp, player.hp + hpRestored);
+    player.mana = Math.min(player.max_mana, player.mana + mpRestored);
+
+    if (!player.cooldowns) player.cooldowns = {};
+    player.cooldowns.luminous_prayer = effectiveCooldown;
+
+    return {
+      success: true,
+      message: `Luminous Prayer channels sustaining light (+${hpRestored} HP / +${mpRestored} MP) [${effectiveCooldown}s CD].`,
+      hpRestored,
+      mpRestored,
+      cooldownSet: effectiveCooldown,
     };
   }
 

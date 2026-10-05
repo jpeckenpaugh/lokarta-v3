@@ -1113,7 +1113,10 @@ export class LokartaApp {
       if (res.sourceMonster && (res.dodged || (res.damageToPlayer && res.damageToPlayer > 0) || (res.absorbed && res.absorbed > 0))) {
         setAnimState(res.sourceMonster, 'attack', this.nowMs());
       }
-      if (res.dodged) {
+      if (res.deflected) {
+        soundFX.play('lightSpell');
+        this.addFloatingText('DEFLECTED!', this.player.x, this.player.y, '#38bdf8');
+      } else if (res.dodged) {
         soundFX.play('monsterAttack');
         this.addFloatingText('DODGE!', this.player.x, this.player.y, '#22c55e');
       } else if (res.damageToPlayer && res.damageToPlayer > 0) {
@@ -1652,9 +1655,14 @@ export class LokartaApp {
 
   executeHandCombat(hand = 'main_hand') {
     const item = this.player.paperdoll?.[hand];
-    const handLabel = hand === 'main_hand' ? 'Main Hand (Q)' : 'Off Hand (W)';
+    const handLabel = {
+      main_hand: 'Main Hand (Q)',
+      off_hand: 'Off Hand (W)',
+      armor: 'Armor (E)',
+      relic: 'Relic (R)',
+    }[hand] || String(hand || '').replace('_', ' ');
     if (!item) {
-      this.logCombat(`No weapon, staff, or wand equipped in ${handLabel}.`, 'warning');
+      this.logCombat(`No item equipped in ${handLabel}.`, 'warning');
       return;
     }
 
@@ -1760,6 +1768,27 @@ export class LokartaApp {
         soundFX.play('lightSpell');
         const res = CombatSystem.executeHolyShield(this.player, item);
         this.handleCombatResult(res, null, null);
+      },
+      shock_shield: () => {
+        soundFX.play('lightSpell');
+        const res = CombatSystem.executeShockShield(this.player, item);
+        if (res.success) {
+          this.logCombat(res.message, 'spell');
+          this.addFloatingText('Shock Shield!', this.player.x, this.player.y, '#38bdf8');
+        } else {
+          this.logCombat(res.message, 'warning');
+        }
+      },
+      luminous_prayer: () => {
+        const res = CombatSystem.executeLuminousPrayer(this.player, item);
+        if (res.success) {
+          soundFX.play('holyChime');
+          this.logCombat(res.message, 'spell');
+          if (res.hpRestored > 0) this.addFloatingText(`+${res.hpRestored} HP`, this.player.x, this.player.y, '#22c55e');
+          if (res.mpRestored > 0) this.addFloatingText(`+${res.mpRestored} MP`, this.player.x, this.player.y, '#3b82f6');
+        } else {
+          this.logCombat(res.message, 'warning');
+        }
       },
       fortify: () => {
         soundFX.play('lightSpell');

@@ -272,7 +272,8 @@ describe('Floor Generator (1-20)', () => {
       'arrows starter cache must stay near the player spawn'
     );
 
-    // Levels 2-5 use the health_potion + torch starter cache from the catalog.
+    // Levels 2-5 use the health_potion starter cache from the catalog.
+    // LIV-34: the Wooden Torch was removed, so no torch may be granted.
     for (const level of [2, 3, 4, 5]) {
       const floor = generateFloor(level);
       assert.ok(
@@ -280,8 +281,8 @@ describe('Floor Generator (1-20)', () => {
         `level ${level} starter cache must include a health potion`
       );
       assert.ok(
-        floor.items.some(i => i.item_id === 'torch'),
-        `level ${level} starter cache must include a torch`
+        !floor.items.some(i => i.item_id === 'torch'),
+        `level ${level} starter cache must not include a removed torch`
       );
     }
   });
@@ -318,7 +319,7 @@ describe('GridMap & Tile Bounds', () => {
 
   it('manages tile items (add, get, pop, remove)', () => {
     const grid = new GridMap(10, 10);
-    const item1 = { item_id: 'torch', name: 'Torch', quantity: 1 };
+    const item1 = { item_id: 'health_potion', name: 'Potion', quantity: 1 };
     const item2 = { item_id: 'potion', name: 'Potion', quantity: 2 };
 
     grid.addItem(3, 3, item1);
@@ -337,22 +338,18 @@ describe('GridMap & Tile Bounds', () => {
 // ============================================================================
 
 describe('LightingSystem & 10-Tile FOV', () => {
-  it('computes player vision radius correctly (base: 10, torch: +2, degrading light spell: +3 -> +2 -> +1)', () => {
+  it('computes player vision radius correctly (base: 10, degrading light spell: +3 -> +2 -> +1)', () => {
     const player = createPlayer('magician');
 
     // 1. Base vision: 10 tiles
     assert.equal(LightingSystem.computePlayerRadius(player), 10);
 
-    // 2. Torch in action_bar -> 12 tiles (+2)
+    // 2. LIV-34: the Wooden Torch was removed from the catalog, so a stray
+    //    legacy torch stack no longer grants any light bonus.
     player.action_bar[0] = { item_id: 'torch' };
-    assert.equal(LightingSystem.computePlayerRadius(player), 12);
+    assert.equal(LightingSystem.computePlayerRadius(player), 10);
 
-    // 3. Torch in action_bar -> 12 tiles (+2)
-    player.paperdoll.off_hand = null;
-    player.action_bar[0] = { item_id: 'torch' };
-    assert.equal(LightingSystem.computePlayerRadius(player), 12);
-
-    // 4. Light spell active degrading (+3 -> +2 -> +1)
+    // 3. Light spell active degrading (+3 -> +2 -> +1)
     player.action_bar[0] = null;
     player.lightSpellTimer = 25; // 30-20s -> 13 tiles
     assert.equal(LightingSystem.computePlayerRadius(player), 13);
@@ -814,7 +811,7 @@ describe('FateGrantSystem', () => {
     for (const v of vocations) {
       const offer = FateGrantSystem.generateDraftOffer(v, 1);
       assert.equal(offer.cards.length, 5);
-      assert.equal(offer.requiredSelections.min, 1);
+      assert.equal(offer.requiredSelections.min, 2);
       assert.equal(offer.requiredSelections.max, 2);
 
       const invalidOffClass = offer.cards.some(c => {
@@ -872,7 +869,7 @@ describe('FateGrantSystem', () => {
       assert.equal(player.paperdoll.relic, null, `${v} relic must not be auto-equipped`);
       assert.ok(player.action_bar.every((s) => s === null), `${v} action_bar must stay empty`);
       assert.ok(player.backpack.every((s) => s === null), `${v} backpack must stay empty`);
-      assert.equal(offer.requiredSelections.min, 1);
+      assert.equal(offer.requiredSelections.min, 2);
       assert.equal(offer.requiredSelections.max, 2);
     }
   });
@@ -886,7 +883,7 @@ describe('FateGrantSystem', () => {
       // card that sits at the end. Only the level-1 guard may inject it.
       FateGrantSystem.CARD_DATABASE = [
         { id: 'c_main', name: 'Broadsword', rarity: 'common', icon: 'x', vocationAffinity: 'fighter', item: { item_id: 'tempered_broadsword' } },
-        { id: 'c_f1', name: 'Light', rarity: 'common', icon: 'x', item: { item_id: 'spell_light' } },
+        { id: 'c_f1', name: 'Potion', rarity: 'common', icon: 'x', item: { item_id: 'mana_potion' } },
         { id: 'c_f2', name: 'Cleave', rarity: 'common', icon: 'x', item: { item_id: 'spell_cleave' } },
         { id: 'c_f3', name: 'Potion', rarity: 'common', icon: 'x', item: { item_id: 'health_potion' } },
         { id: 'c_f4', name: 'Fortify', rarity: 'common', icon: 'x', item: { item_id: 'spell_fortify' } },

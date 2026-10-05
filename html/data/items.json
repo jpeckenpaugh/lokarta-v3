@@ -1,15 +1,4 @@
 {
-  "torch": {
-    "item_id": "torch",
-    "name": "Wooden Torch",
-    "type": "item",
-    "stat_bonus": 12,
-    "lightRadiusBonus": 2,
-    "icon": "🔥",
-    "svgCode": "1F525",
-    "maxStack": 9,
-    "slotRole": "active"
-  },
   "health_potion": {
     "item_id": "health_potion",
     "name": "Health Potion",
@@ -434,15 +423,20 @@
     "slot": "armor",
     "stat_bonus": 2,
     "itemLevel": 1,
+    "actionKey": "shock_shield",
+    "cooldown": 10,
+    "manaCost": 2,
+    "stunSec": 5,
     "vocationAffinity": "magician",
     "icon": "🧥",
     "svgCode": "1F9E5",
     "maxStack": 1,
     "upgradeSpec": {
       "mpPulseInc": 1,
-      "cooldownReductionSec": 2,
-      "statBonusTextPattern": "+{nextRank} MP / {cooldownSec}s",
-      "descriptionPattern": "Level Up Apprentice's Cape (Rank {prevRank} ➔ {nextRank}): Power Pulse restores +{nextRank} MP every {cooldownSec} seconds."
+      "stunInc": 1,
+      "cooldownReductionSec": 1,
+      "statBonusTextPattern": "Shock Shield +1s Stun, -1s CD",
+      "descriptionPattern": "Level Up Apprentice's Cape (Rank {prevRank} ➔ {nextRank}): Shock Shield stuns +1s longer and recharges 1s faster; Power Pulse restores +{nextRank} MP every {cooldownSec}s."
     },
     "lootTier": 1,
     "lootTierEligible": true,
@@ -458,6 +452,10 @@
     "hpBonus": 5,
     "manaBonus": 5,
     "prayerPulseSec": 10,
+    "actionKey": "luminous_prayer",
+    "cooldown": 20,
+    "manaCost": 0,
+    "healPerRank": 5,
     "vocationAffinity": "neutral",
     "icon": "📿",
     "svgCode": "1F4FF",
@@ -465,8 +463,9 @@
     "upgradeSpec": {
       "maxHpInc": 5,
       "maxMpInc": 5,
-      "statBonusTextPattern": "+5 HP/MP, +2 Auto-Prayer",
-      "descriptionPattern": "Level Up Luminous Amulet (Rank {prevRank} ➔ {nextRank}): +5 Max HP/MP, Auto-Prayer restores +2 combined HP/MP."
+      "cooldownReductionSec": 2,
+      "statBonusTextPattern": "+5 HP/MP, +2 Auto-Prayer, -2s Prayer CD",
+      "descriptionPattern": "Level Up Luminous Amulet (Rank {prevRank} ➔ {nextRank}): +5 Max HP/MP, Auto-Prayer restores +2 combined HP/MP, Luminous Prayer recharges 2s faster."
     },
     "lootTier": 2,
     "lootTierEligible": true,
@@ -516,20 +515,6 @@
     "lootTier": 1,
     "lootTierEligible": true,
     "slotRole": "equipment"
-  },
-  "spell_light": {
-    "item_id": "spell_light",
-    "name": "Light Spell",
-    "type": "spell",
-    "stat_bonus": 12,
-    "manaCost": 15,
-    "cooldown": 5,
-    "vocationAffinity": "magician",
-    "icon": "💡",
-    "svgCode": "1F4A1",
-    "actionKey": "light_spell",
-    "maxStack": 1,
-    "slotRole": "active"
   },
   "spell_energy_beam": {
     "item_id": "spell_energy_beam",
