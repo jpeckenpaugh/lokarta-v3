@@ -388,8 +388,13 @@ describe('LOK-15 Golden Sets — Paladin (Radiant Crusader)', () => {
     pal.mana = 200;
     const res = CombatSystem.executeHealingPrayer(pal);
     assert.equal(res.success, true);
-    // 15% heal power: healed amount must exceed the raw un-boosted minimum.
-    const minBoosted = Math.round(CONFIG.PALADIN_HEAL_MIN * 1.0 * 1.15);
+    // Derive the floor from the paladin's live equipped healPowerPct instead of
+    // a hardcoded multiplier, so a golden-set swap (LIV-41: 15% -> 12%) cannot
+    // desync the assertion. `randomBetween` only ever rolls >= PALADIN_HEAL_MIN,
+    // so this floor is met on every roll and the test is no longer flaky.
+    const boost = 1 + CombatSystem.getEquippedStat(pal, 'healPowerPct') / 100;
+    assert.ok(boost > 1, 'paladin golden set must carry healPowerPct gear');
+    const minBoosted = Math.round(CONFIG.PALADIN_HEAL_MIN * boost);
     assert.ok(res.healAmount >= minBoosted, `heal power must scale the prayer (healed ${res.healAmount})`);
   });
 });
