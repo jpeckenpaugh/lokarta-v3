@@ -111,7 +111,7 @@ describe('LIV-16 #4 doorways are a single tile wide', () => {
   });
 });
 
-describe('LIV-16 #5 auto-equip on pickup', () => {
+describe('LIV-22 #5 pickup banking (equipment banks into the backpack)', () => {
   function floorWithItemAt(itemId, qty = 1) {
     const grid = new GridMap(5, 5);
     for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) grid.tiles[y][x].type = TILE_TYPES.FLOOR;
@@ -120,46 +120,55 @@ describe('LIV-16 #5 auto-equip on pickup', () => {
     return grid;
   }
 
-  it('a vocation-appropriate weapon picked up equips into its empty slot', () => {
+  it('picked-up equipment banks into the backpack, never the paperdoll', () => {
     const player = createPlayer('magician');
     player.x = 2; player.y = 2;
     const grid = floorWithItemAt('astral_scepter');
 
     const res = InventorySystem.pickUpItem(player, grid);
     assert.equal(res.success, true);
-    assert.equal(player.paperdoll.main_hand?.item_id, 'astral_scepter', 'scepter auto-equipped');
+    assert.equal(player.paperdoll.main_hand, null, 'pickup does not auto-equip');
+    assert.ok(player.backpack.some(s => s && s.item_id === 'astral_scepter'), 'banked into the backpack');
     assert.equal(grid.getItems(2, 2).length, 0, 'item removed from the ground');
-    assert.ok(!player.action_bar.some(s => s && s.item_id === 'astral_scepter'), 'not left in the action bar');
   });
 
-  it('does not auto-equip a wrong-vocation item (left for manual use)', () => {
+  it('picked-up consumables auto-fill an empty active slot (1-4)', () => {
     const player = createPlayer('magician');
     player.x = 2; player.y = 2;
-    // composite_bow is archer-locked.
+    const grid = floorWithItemAt('health_potion', 2);
+
+    InventorySystem.pickUpItem(player, grid);
+    assert.equal(player.action_bar[0].item_id, 'health_potion', 'consumable fills active slot 1');
+    assert.equal(player.action_bar[0].quantity, 2);
+  });
+
+  it('wrong-vocation equipment also banks into the backpack (manual equip later)', () => {
+    const player = createPlayer('magician');
+    player.x = 2; player.y = 2;
     const grid = floorWithItemAt('composite_bow');
 
     InventorySystem.pickUpItem(player, grid);
     assert.equal(player.paperdoll.main_hand, null, 'wrong-vocation item must not auto-equip');
-    assert.ok(player.action_bar.some(s => s && s.item_id === 'composite_bow'), 'stored for manual equip');
+    assert.ok(player.backpack.some(s => s && s.item_id === 'composite_bow'), 'stored for manual equip');
   });
 
-  it('does not overwrite an occupied paperdoll slot', () => {
-    const player = createPlayer('magician');
-    player.x = 2; player.y = 2;
-    player.paperdoll.main_hand = { ...ITEMS_CATALOG.astral_scepter };
-    const grid = floorWithItemAt('apprentice_wand'); // off_hand magician wand
-
-    InventorySystem.pickUpItem(player, grid);
-    // off_hand is empty, so the wand still auto-equips there.
-    assert.equal(player.paperdoll.off_hand?.item_id, 'apprentice_wand');
-    assert.equal(player.paperdoll.main_hand?.item_id, 'astral_scepter', 'occupied slot untouched');
-  });
-
-  it('addItem (chest loot / rewards) auto-equips gear into an empty slot', () => {
+  it('addItem (chest loot / rewards) still auto-equips gear into an empty slot', () => {
     const player = createPlayer('archer');
     const res = InventorySystem.addItem(player, { ...ITEMS_CATALOG.hunter_leathers, item_id: 'hunter_leathers' });
     assert.equal(res.success, true);
     assert.equal(player.paperdoll.armor?.item_id, 'hunter_leathers');
+  });
+
+  it('a mouse swap banks a backpack item into any keyed slot', () => {
+    const player = createPlayer('magician');
+    player.backpack[0] = { ...ITEMS_CATALOG.astral_scepter, item_id: 'astral_scepter', quantity: 1 };
+    InventorySystem.swapKeyedItem(player, 'backpack:0', 'KeyQ');
+    assert.equal(player.paperdoll.main_hand?.item_id, 'astral_scepter', 'q slot now holds the banked staff');
+
+    // Swap it back out to the backpack via the keyed-slot source.
+    InventorySystem.swapKeyedItem(player, 'KeyQ', 'backpack:0');
+    assert.equal(player.paperdoll.main_hand, null);
+    assert.ok(player.backpack.some(s => s && s.item_id === 'astral_scepter'));
   });
 
   it('consumables and keys are never auto-equipped', () => {

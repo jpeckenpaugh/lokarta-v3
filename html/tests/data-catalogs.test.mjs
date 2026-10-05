@@ -19,6 +19,7 @@ import {
   TILE_THEMES_CATALOG,
   KEYBINDINGS_CATALOG,
   UI_CATALOG,
+  ECONOMY_CATALOG,
 } from '../data/index.js';
 
 test('JSON Data Catalogs', async (t) => {
@@ -349,8 +350,30 @@ test('JSON Data Catalogs', async (t) => {
   await t.test('loads and validates keybindings.json catalog', () => {
     assert.ok(KEYBINDINGS_CATALOG.movement);
     assert.ok(Array.isArray(KEYBINDINGS_CATALOG.movement.up));
-    assert.equal(KEYBINDINGS_CATALOG.actionBar.length, 10);
+    // LIV-22 inventory overhaul: 4 active digits (1-4) + 4 equipment keys (q/w/e/r).
+    assert.equal(KEYBINDINGS_CATALOG.actionBar.length, 4);
+    assert.equal(KEYBINDINGS_CATALOG.equipmentBar.length, 4);
+    assert.deepEqual(Object.keys(KEYBINDINGS_CATALOG.equipmentSlots).sort(), ['KeyE', 'KeyQ', 'KeyR', 'KeyW']);
     assert.ok(KEYBINDINGS_CATALOG.gestureTimings.tapMaxMs > 0);
+  });
+
+  await t.test('loads and validates the economy.json catalog (town/gold/springs)', () => {
+    assert.ok(ECONOMY_CATALOG.gold, 'economy.gold required');
+    assert.ok(Number.isFinite(ECONOMY_CATALOG.passiveRecovery.intervalSec));
+    assert.equal(ECONOMY_CATALOG.passiveRecovery.hpPerTick, 1);
+    assert.equal(ECONOMY_CATALOG.passiveRecovery.mpPerTick, 1);
+    assert.equal(ECONOMY_CATALOG.springs.healPerUse, 10);
+    assert.equal(ECONOMY_CATALOG.springs.manaPerUse, 10);
+    assert.equal(ECONOMY_CATALOG.springs.chargeSec, 60);
+    assert.ok(Array.isArray(ECONOMY_CATALOG.stock) && ECONOMY_CATALOG.stock.length > 0, 'shop stock required');
+    for (const entry of ECONOMY_CATALOG.stock) {
+      assert.ok(ITEMS_CATALOG[entry.itemId], `unknown shop item ${entry.itemId}`);
+      assert.ok(entry.price >= 0, `${entry.itemId} needs a non-negative price`);
+    }
+    for (const [type, range] of Object.entries(ECONOMY_CATALOG.monsterGold)) {
+      assert.ok(MONSTERS_CATALOG[type], `monsterGold references unknown monster ${type}`);
+      assert.ok(range.min >= 0 && range.max >= range.min, `${type} gold range invalid`);
+    }
   });
 
   await t.test('loads and validates ui.json presentation catalog', () => {
@@ -360,6 +383,32 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(UI_CATALOG.saveSlots.count, 5);
     assert.equal(UI_CATALOG.options.defaults.sfxVolume, 70);
     assert.equal(UI_CATALOG.options.ranges.pixelScale['3x'], 96);
+    // LIV-22: catalog-driven inventory + town presentation tokens.
+    assert.equal(UI_CATALOG.inventory.backpackSlots, 36);
+    assert.equal(UI_CATALOG.inventory.backpackColumns, 6);
+    assert.equal(UI_CATALOG.inventory.backpackRows, 6);
+    assert.equal(UI_CATALOG.inventory.activeSlots, 4);
+    assert.equal(UI_CATALOG.inventory.equipmentSlots, 4);
+    assert.ok(UI_CATALOG.hud.barWidthPx > 0);
+    assert.ok(UI_CATALOG.town.title);
+  });
+
+  await t.test('consolidates exactly one solid item per class per equipment slot', () => {
+    const slots = ['main_hand', 'off_hand', 'armor', 'relic'];
+    for (const voc of ['fighter', 'paladin', 'magician', 'archer']) {
+      const solid = VOCATIONS_CATALOG[voc].solidEquipment;
+      assert.ok(solid, `${voc} must declare solidEquipment`);
+      for (const slot of slots) {
+        const itemId = solid[slot];
+        assert.ok(itemId, `${voc}.${slot} must declare exactly one solid item`);
+        const item = ITEMS_CATALOG[itemId];
+        assert.ok(item, `${voc}.${slot} item ${itemId} must exist`);
+        assert.equal(item.solidGear, true, `${itemId} must be flagged solidGear`);
+        assert.ok(item.upgradeSpec, `${itemId} must be upgradeable (no flat stat stick)`);
+      }
+    }
+    // Paladin's warhammer must be usable: its MP cost is minimized to 0.
+    assert.ok((ITEMS_CATALOG.consecrated_warhammer.manaCost || 0) <= 1, 'warhammer MP cost must be <= 1');
   });
 });
 

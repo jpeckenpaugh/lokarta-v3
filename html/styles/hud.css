@@ -79,6 +79,127 @@
   font-weight: 600;
 }
 
+/* Gold counter (LIV-22 item 6) */
+.gold-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0 4px;
+  border-bottom: 1px solid #1e2230;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.gold-tag .gold-icon {
+  font-size: 0.9rem;
+}
+
+.gold-tag .gold-label {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.gold-tag .gold-val {
+  color: #fbbf24;
+}
+
+/* ==========================================================================
+   Keyed Slots (LIV-22 item 1): q w e r equipment, 1 2 3 4 active above
+   ========================================================================== */
+
+.keyed-slots-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+
+.keyed-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.keyed-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #0b0c12;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 5px 3px 3px;
+  min-height: 68px;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.keyed-slot:hover {
+  border-color: var(--gold-accent);
+  background-color: #161926;
+}
+
+.keyed-slot.selected {
+  border-color: var(--blue-accent);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.55);
+}
+
+.keyed-slot.active-slot {
+  border-style: dashed;
+}
+
+.keyed-slot .keyed-slot-key {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--gold-accent);
+}
+
+.keyed-slot .keyed-slot-content {
+  font-size: 20px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.keyed-slot .keyed-slot-content .openmoji-icon {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.keyed-slot .keyed-slot-name {
+  font-size: 0.6rem;
+  text-align: center;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.keyed-slot .keyed-slot-qty {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--blue-accent);
+  font-family: var(--font-mono);
+}
+
+.keyed-slot .keyed-slot-cost {
+  font-size: 0.56rem;
+  color: var(--blue-accent);
+  font-family: var(--font-mono);
+}
+
 .level-keys-row {
   display: flex;
   align-items: center;

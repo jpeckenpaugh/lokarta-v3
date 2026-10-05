@@ -408,9 +408,10 @@ describe('ProgressionSystem & 4 Vocations Leveling', () => {
       assert.equal(p.vocation, v);
       assert.equal(p.level, 1);
       assert.equal(p.xp, 0);
-      assert.equal(p.action_bar.length, 10);
+      // LIV-22: 4 active slots (1-4) + 36-slot backpack (6x6).
+      assert.equal(p.action_bar.length, 4);
       assert.ok(p.action_bar.every(s => s === null));
-      assert.equal(p.backpack.length, 6);
+      assert.equal(p.backpack.length, 36);
       assert.ok(p.backpack.every(s => s === null));
       assert.ok(p.paperdoll.main_hand === null);
       assert.ok(p.paperdoll.off_hand === null);
@@ -792,14 +793,14 @@ describe('InventorySystem & Stacking', () => {
     assert.equal(InventorySystem.equipItem(fighter2, 'action_bar', 0).success, false);
   });
 
-  it('unequips items from paperdoll back to action bar or backpack', () => {
+  it('unequips items from paperdoll into the backpack (bank rule)', () => {
     const player = createPlayer('magician');
     player.paperdoll.main_hand = { item_id: 'apprentice_wand', name: 'Apprentice Wand', type: 'weapon', quantity: 1 };
 
     const res = InventorySystem.unequipItem(player, 'main_hand');
     assert.equal(res.success, true);
     assert.equal(player.paperdoll.main_hand, null);
-    assert.equal(player.action_bar[0].item_id, 'apprentice_wand');
+    assert.equal(player.backpack[0].item_id, 'apprentice_wand', 'unequipped gear banks into the backpack');
   });
 });
 
@@ -1003,16 +1004,17 @@ describe('FateGrantSystem', () => {
 // ============================================================================
 
 describe('GestureEngine', () => {
-  it('maps number keys 1-9 and 0 to slot indices 0-9 accurately', () => {
+  it('maps number keys 1-4 to the 4 active slots (LIV-22); 5-0 are unbound', () => {
     assert.equal(GestureEngine.keyToSlotIndex('1'), 0);
     assert.equal(GestureEngine.keyToSlotIndex('2'), 1);
-    assert.equal(GestureEngine.keyToSlotIndex('9'), 8);
-    assert.equal(GestureEngine.keyToSlotIndex('0'), 9);
+    assert.equal(GestureEngine.keyToSlotIndex('4'), 3);
+    assert.equal(GestureEngine.keyToSlotIndex('5'), null);
+    assert.equal(GestureEngine.keyToSlotIndex('0'), null);
     assert.equal(GestureEngine.keyToSlotIndex('w'), null);
 
     assert.equal(GestureEngine.slotIndexToHotkey(0), '1');
-    assert.equal(GestureEngine.slotIndexToHotkey(8), '9');
-    assert.equal(GestureEngine.slotIndexToHotkey(9), '0');
+    assert.equal(GestureEngine.slotIndexToHotkey(3), '4');
+    assert.equal(GestureEngine.slotIndexToHotkey(4), '');
   });
 });
 

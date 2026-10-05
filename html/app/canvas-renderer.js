@@ -4,6 +4,24 @@
 
 import { CONFIG, LightingSystem, TILE_TYPES } from '../engine/index.js';
 import { SpriteRenderer, themeForFloor } from './sprite-renderer.js';
+import { UI_CATALOG } from '../data/index.js';
+
+/** Static HUD-bar token cache (no per-frame allocation). */
+const ACTOR_BAR = (() => {
+  const h = UI_CATALOG?.hud || {};
+  return {
+    width: Number(h.barWidthPx) || 26,
+    height: Number(h.barHeightPx) || 4,
+    offset: Number(h.barOffsetPx) || 6,
+    border: Number(h.barBorderPx) || 1,
+    hp: h.hpColor || '#22c55e',
+    hpLow: h.hpLowColor || '#ef4444',
+    hpLowPct: Number(h.hpLowPct) || 0.3,
+    hpBack: h.hpBackColor || 'rgba(5,6,8,0.85)',
+    mp: h.mpColor || '#3b82f6',
+    mpBack: h.mpBackColor || 'rgba(5,6,8,0.85)',
+  };
+})();
 
 /** True when a DOOR or GATED_DOOR tile sits within `radius` of (x, y). */
 function isNearDoor(gridMap, x, y, radius) {
@@ -137,6 +155,20 @@ export class CanvasRenderer {
           tileOpts.nearDoor = featureScan ? isNearDoor(gridMap, x, y, 2) : false;
         }
         SpriteRenderer.drawTile(ctx, tile.type, screenX, screenY, CONFIG.GRID_SIZE, tileOpts);
+
+        // Healing spring (LIV-22 item 7): a small cyan pool marker.
+        if (tile.type === TILE_TYPES.SPRING) {
+          const cx = screenX + CONFIG.GRID_SIZE / 2;
+          const cy = screenY + CONFIG.GRID_SIZE / 2;
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.55)';
+          ctx.beginPath();
+          ctx.arc(cx, cy, CONFIG.GRID_SIZE * 0.28, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(224, 242, 254, 0.85)';
+          ctx.beginPath();
+          ctx.arc(cx, cy, CONFIG.GRID_SIZE * 0.1, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
 
@@ -200,6 +232,8 @@ export class CanvasRenderer {
         monster._dim = isBoss ? 1 : Math.max(0.65, Math.min(1, 1 - 0.35 * d));
         SpriteRenderer.drawMonster(ctx, monster, screenX, screenY);
 
+        this.drawActorBars(ctx, monster, screenX, screenY, false);
+
         if (selectedMonsterId === monster.id) {
           ctx.strokeStyle = '#ef4444';
           ctx.lineWidth = 2;
@@ -221,6 +255,9 @@ export class CanvasRenderer {
     const playerScreenY = player.y * CONFIG.GRID_SIZE - this.cameraY;
     SpriteRenderer.drawPlayer(ctx, player, playerScreenX, playerScreenY);
 
+    // Small health + mana bars above the player (LIV-22 item 2).
+    this.drawActorBars(ctx, player, playerScreenX, playerScreenY, true);
+
     // 7. Projectiles & Impact Particles (after the mask, so they read at range)
     this.renderProjectiles(ctx, projectiles);
     this.renderParticles(ctx, particles);
@@ -233,6 +270,43 @@ export class CanvasRenderer {
    * Draws one prop layer (`decor` rugs or `prop` furniture) on lit, in-bounds
    * tiles. No per-frame allocation; props are static data (D4 §6.1/§6.3).
    */
+  /**
+   * Draws small HP (+MP for the player) bars above an actor. Pure fillRect()
+   * primitives with cached tokens — no per-frame allocations, so the 60 FPS
+   * loop stays GC-free (docs/agents.md §3).
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {object} actor - actor with hp/max_hp (and mana/max_mana for player)
+   * @param {number} screenX @param {number} screenY
+   * @param {boolean} withMana - draw the mana bar too (player only)
+   */
+  drawActorBars(ctx, actor, screenX, screenY, withMana) {
+    if (!actor || !Number.isFinite(actor.max_hp) || actor.max_hp <= 0) return;
+    const size = CONFIG.GRID_SIZE;
+    const w = ACTOR_BAR.width;
+    const h = ACTOR_BAR.height;
+    const gap = 1;
+    const x = Math.round(screenX + (size - w) / 2);
+    let y = Math.round(screenY - ACTOR_BAR.offset);
+
+    const hpPct = Math.max(0, Math.min(1, actor.hp / actor.max_hp));
+    const hpColor = hpPct <= ACTOR_BAR.hpLowPct ? ACTOR_BAR.hpLow : ACTOR_BAR.hp;
+
+    ctx.fillStyle = ACTOR_BAR.hpBack;
+    ctx.fillRect(x - ACTOR_BAR.border, y - ACTOR_BAR.border, w + ACTOR_BAR.border * 2, h + ACTOR_BAR.border * 2);
+    ctx.fillStyle = hpColor;
+    ctx.fillRect(x, y, Math.max(0, Math.round(w * hpPct)), h);
+
+    if (withMana && Number.isFinite(actor.max_mana) && actor.max_mana > 0) {
+      y += h + gap;
+      const mpPct = Math.max(0, Math.min(1, actor.mana / actor.max_mana));
+      ctx.fillStyle = ACTOR_BAR.mpBack;
+      ctx.fillRect(x - ACTOR_BAR.border, y - ACTOR_BAR.border, w + ACTOR_BAR.border * 2, h + ACTOR_BAR.border * 2);
+      ctx.fillStyle = ACTOR_BAR.mp;
+      ctx.fillRect(x, y, Math.max(0, Math.round(w * mpPct)), h);
+    }
+  }
+
   renderProps(ctx, props, layer, gridMap, startX, endX, startY, endY) {
     if (!props || props.length === 0) return;
     const wantDecor = layer === 'decor';

@@ -64,7 +64,8 @@
       "descriptionPattern": "Level Up Spark Wand (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Damage, +1 Targeting Range, +1 MP Cost."
     },
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "astral_scepter": {
     "item_id": "astral_scepter",
@@ -87,7 +88,8 @@
       "descriptionPattern": "Level Up Beam Staff (Rank {prevRank} ➔ {nextRank}): +5 Wave Dmg, +1 Wave Range, +5 MP Cost."
     },
     "lootTier": 2,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "wooden_bow": {
     "item_id": "wooden_bow",
@@ -105,7 +107,8 @@
     },
     "maxStack": 1,
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "legacyTier": true
   },
   "composite_bow": {
     "item_id": "composite_bow",
@@ -116,7 +119,7 @@
     "damageMin": 14,
     "damageMax": 18,
     "range": 6,
-    "cooldown": 1.0,
+    "cooldown": 1,
     "vocationAffinity": "archer",
     "icon": "🏹",
     "svgCode": "1F3F9",
@@ -136,7 +139,8 @@
       "descriptionPattern": "Level Up Composite Longbow (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Damage, +1 Targeting Range."
     },
     "lootTier": 2,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "hunter_quiver": {
     "item_id": "hunter_quiver",
@@ -149,7 +153,8 @@
     "svgCode": "1F3F9",
     "maxStack": 1,
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "legacyTier": true
   },
   "grey_stalker_quiver": {
     "item_id": "grey_stalker_quiver",
@@ -171,7 +176,8 @@
       "descriptionPattern": "Level Up Grey Stalker Quiver (Rank {prevRank} ➔ {nextRank}): +5 Arrow Capacity, Arrow Regen interval reduced by 0.5s."
     },
     "lootTier": 2,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "hunter_leathers": {
     "item_id": "hunter_leathers",
@@ -190,7 +196,8 @@
       "descriptionPattern": "Level Up Hunter's Leathers (Rank {prevRank} ➔ {nextRank}): +2% Dodge chance."
     },
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "archer_hood": {
     "item_id": "archer_hood",
@@ -211,7 +218,8 @@
       "descriptionPattern": "Level Up Archer's Hood (Rank {prevRank} ➔ {nextRank}): +1% Crit Chance, +0.05 Crit Multiplier."
     },
     "lootTier": 2,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "tempered_broadsword": {
     "item_id": "tempered_broadsword",
@@ -237,7 +245,8 @@
       "descriptionPattern": "Level Up Tempered Broadsword (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Slash Damage."
     },
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "iron_helm": {
     "item_id": "iron_helm",
@@ -256,7 +265,8 @@
       "descriptionPattern": "Level Up Iron Helm (Rank {prevRank} ➔ {nextRank}): +10 Max HP."
     },
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "vanguard_shield": {
     "item_id": "vanguard_shield",
@@ -267,7 +277,7 @@
     "actionKey": "shield_bash",
     "cooldown": 10,
     "pushbackRange": 1,
-    "stunSec": 1.0,
+    "stunSec": 1,
     "vocationAffinity": "fighter",
     "icon": "🛡️",
     "svgCode": "1F6E1",
@@ -279,7 +289,8 @@
       "descriptionPattern": "Level Up Vanguard Shield (Rank {prevRank} ➔ {nextRank}): +0.5s Bash Stun, -1s Shield Bash Cooldown."
     },
     "lootTier": 2,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "consecrated_warhammer": {
     "item_id": "consecrated_warhammer",
@@ -290,9 +301,10 @@
     "damageMin": 18,
     "damageMax": 26,
     "range": 2.5,
-    "manaCost": 10,
+    "manaCost": 0,
     "cooldown": 1.2,
     "vocationAffinity": "paladin",
+    "solidGear": true,
     "icon": "⚒️",
     "svgCode": "2692",
     "actionKey": "holy_strike",
@@ -327,7 +339,8 @@
       "descriptionPattern": "Level Up Holy Crown (Rank {prevRank} ➔ {nextRank}): +10 Max MP, +3% Healing Power."
     },
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "aegis_shield": {
     "item_id": "aegis_shield",
@@ -351,7 +364,8 @@
       "descriptionPattern": "Level Up Aegis Shield (Rank {prevRank} ➔ {nextRank}): +5 Bubble Absorb, +4s Bubble Duration, -2 MP Cost."
     },
     "lootTier": 2,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "buckler": {
     "item_id": "buckler",
@@ -367,7 +381,8 @@
     "svgCode": "1F6E1",
     "maxStack": 1,
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "legacyTier": true
   },
   "plate_armor": {
     "item_id": "plate_armor",
@@ -389,7 +404,8 @@
       "descriptionPattern": "Level Up Knight Plate Armor (Rank {prevRank} ➔ {nextRank}): +1% Damage Mitigation."
     },
     "lootTier": 2,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "apprentice_cape": {
     "item_id": "apprentice_cape",
@@ -409,7 +425,8 @@
       "descriptionPattern": "Level Up Apprentice's Cape (Rank {prevRank} ➔ {nextRank}): Power Pulse restores +{nextRank} MP every {cooldownSec} seconds."
     },
     "lootTier": 1,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "relic_luminous_amulet": {
     "item_id": "relic_luminous_amulet",
@@ -431,7 +448,8 @@
       "descriptionPattern": "Level Up Luminous Amulet (Rank {prevRank} ➔ {nextRank}): +5 Max HP/MP, Auto-Prayer restores +2 combined HP/MP."
     },
     "lootTier": 2,
-    "lootTierEligible": true
+    "lootTierEligible": true,
+    "solidGear": true
   },
   "relic_champions_crest": {
     "item_id": "relic_champions_crest",
@@ -456,7 +474,7 @@
     "slot": "off_hand",
     "stat_bonus": 14,
     "manaCost": 1,
-    "cooldown": 1.0,
+    "cooldown": 1,
     "vocationAffinity": "magician",
     "icon": "✨",
     "svgCode": "2728",
@@ -481,7 +499,7 @@
     "type": "spell",
     "stat_bonus": 12,
     "manaCost": 15,
-    "cooldown": 5.0,
+    "cooldown": 5,
     "vocationAffinity": "magician",
     "icon": "💡",
     "svgCode": "1F4A1",
@@ -495,7 +513,7 @@
     "slot": "main_hand",
     "stat_bonus": 35,
     "manaCost": 5,
-    "cooldown": 3.0,
+    "cooldown": 3,
     "vocationAffinity": "magician",
     "icon": "🦯",
     "svgCode": "1F9AF",
@@ -516,7 +534,7 @@
     "name": "Bow Shot",
     "type": "spell",
     "stat_bonus": 16,
-    "cooldown": 1.0,
+    "cooldown": 1,
     "vocationAffinity": "archer",
     "icon": "🏹",
     "svgCode": "1F3F9",
@@ -532,7 +550,7 @@
     "name": "Power Shot",
     "type": "spell",
     "stat_bonus": 37,
-    "cooldown": 4.0,
+    "cooldown": 4,
     "vocationAffinity": "archer",
     "icon": "🎯",
     "svgCode": "1F3AF",
@@ -574,7 +592,7 @@
     "type": "spell",
     "stat_bonus": 50,
     "manaCost": 15,
-    "cooldown": 12.0,
+    "cooldown": 12,
     "vocationAffinity": "fighter",
     "icon": "🛡️",
     "svgCode": "1F6E1",
@@ -600,7 +618,7 @@
     "type": "spell",
     "stat_bonus": 42,
     "manaCost": 25,
-    "cooldown": 6.0,
+    "cooldown": 6,
     "vocationAffinity": "paladin",
     "icon": "💖",
     "svgCode": "1F496",
@@ -613,7 +631,7 @@
     "type": "spell",
     "stat_bonus": 25,
     "manaCost": 30,
-    "cooldown": 8.0,
+    "cooldown": 8,
     "vocationAffinity": "paladin",
     "icon": "☀️",
     "svgCode": "2600",

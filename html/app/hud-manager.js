@@ -43,89 +43,105 @@ const EMOJI_TO_SVG_MAP = {
 export class HUDManager {
   static bindHUDEvents(elements, app) {
     if (!elements) return;
-    const { paperdollEl, backpackEl, hotbarEl } = elements;
+    const { paperdollEl, backpackEl } = elements;
 
-    if (hotbarEl && !hotbarEl._bound) {
-      hotbarEl._bound = true;
-
-      hotbarEl.addEventListener('pointerdown', e => {
-        const btn = e.target.closest('.action-slot-btn');
-        if (!btn) return;
-        e.preventDefault();
-        const slotIndex = parseInt(btn.getAttribute('data-slot-index') || '0', 10);
-        app.gestureEngine.handleInputDown(slotIndex);
-      });
-
-      hotbarEl.addEventListener('pointerup', e => {
-        const btn = e.target.closest('.action-slot-btn');
-        if (!btn) return;
-        e.preventDefault();
-        const slotIndex = parseInt(btn.getAttribute('data-slot-index') || '0', 10);
-        app.gestureEngine.handleInputUp(slotIndex);
-      });
-
-      hotbarEl.addEventListener('pointerout', e => {
-        const btn = e.target.closest('.action-slot-btn');
-        if (!btn) return;
-        if (e.relatedTarget && btn.contains(e.relatedTarget)) return;
-        const slotIndex = parseInt(btn.getAttribute('data-slot-index') || '0', 10);
-        app.gestureEngine.handleInputUp(slotIndex);
-      });
-    }
-
-    if (backpackEl && !backpackEl._bound) {
-      backpackEl._bound = true;
-
-      backpackEl.addEventListener('click', e => {
-        const useBtn = e.target.closest('.use-btn');
-        if (useBtn) {
-          e.stopPropagation();
-          const idx = parseInt(useBtn.getAttribute('data-index') || '-1', 10);
-          if (idx >= 0) {
-            const res = InventorySystem.useBackpackItem(app.player, idx);
-            if (res.success) {
-              soundFX.play('equip');
-              app.logCombat(res.message, 'loot');
-              app.updateHUD();
-              app.persistSave();
-            } else {
-              app.logCombat(res.message, 'warning');
-            }
-          }
-          return;
-        }
-
-        const dropBtn = e.target.closest('.drop-btn');
-        if (dropBtn) {
-          e.stopPropagation();
-          const idx = parseInt(dropBtn.getAttribute('data-index') || '-1', 10);
-          if (idx >= 0) app.handleDropItem('backpack', idx);
-          return;
-        }
-      });
-    }
-
-    if (paperdollEl && !paperdollEl._bound) {
-      paperdollEl._bound = true;
-
+    // Keyed slots (8): click to select/swap with a previously selected slot.
+    if (paperdollEl && !paperdollEl._boundKeyed) {
+      paperdollEl._boundKeyed = true;
       paperdollEl.addEventListener('click', e => {
-        const unequipBtn = e.target.closest('.unequip-btn');
-        if (unequipBtn) {
-          e.stopPropagation();
-          const slotKey = unequipBtn.getAttribute('data-slot');
-          if (slotKey) app.handleUnequip(slotKey);
+        const slot = e.target.closest('.keyed-slot');
+        if (!slot) return;
+        const keyed = slot.getAttribute('data-keyed');
+        HUDManager.handleSlotSelect(app, { source: 'keyed', keyed });
+      });
+    }
+
+    // Backpack (36 slots): click to select/swap; double-click to use/equip.
+    if (backpackEl && !backpackEl._boundBackpack) {
+      backpackEl._boundBackpack = true;
+      backpackEl.addEventListener('click', e => {
+        const slot = e.target.closest('.backpack-slot');
+        if (!slot) return;
+        const index = parseInt(slot.getAttribute('data-index') || '-1', 10);
+        if (index < 0) return;
+        HUDManager.handleSlotSelect(app, { source: 'backpack', index });
+      });
+      backpackEl.addEventListener('dblclick', e => {
+        const slot = e.target.closest('.backpack-slot');
+        if (!slot) return;
+        const index = parseInt(slot.getAttribute('data-index') || '-1', 10);
+        if (index < 0) return;
+        const res = InventorySystem.useBackpackItem(app.player, index);
+        if (res.success) {
+          soundFX.play('equip');
+          app.logCombat(res.message, 'loot');
+          app.updateHUD();
+          app.persistSave();
+        } else {
+          app.logCombat(res.message, 'warning');
         }
       });
     }
   }
 
+  /**
+   * Click-to-swap selection flow. A first click selects a source slot and
+   * highlights it; a second click on a different slot requests a swap (banked
+   * item -> any of the 8 keyed slots, or a keyed item -> backpack).
+   */
+  static handleSlotSelect(app, target) {
+    if (!app) return;
+    const current = app._selectedSlot || null;
+
+    if (!current) {
+      app._selectedSlot = target;
+      HUDManager._highlightSelection(app, target);
+      return;
+    }
+
+    // Clicking the same slot again clears the selection.
+    const same = current.source === target.source
+      && (current.source === 'keyed' ? current.keyed === target.keyed : current.index === target.index);
+    if (same) {
+      app._selectedSlot = null;
+      HUDManager._highlightSelection(app, null);
+      return;
+    }
+
+    // Only a banked (backpack) <-> keyed swap is supported by the bank rule.
+    const from = current.source === 'backpack' ? `backpack:${current.index}` : current.keyed;
+    const to = target.source === 'backpack' ? `backpack:${target.index}` : target.keyed;
+    const res = InventorySystem.swapKeyedItem(app.player, from, to);
+
+    app._selectedSlot = null;
+    HUDManager._highlightSelection(app, null);
+
+    if (res.success) {
+      soundFX.play('equip');
+      app.logCombat(res.message, 'loot');
+      app.updateHUD();
+      app.persistSave();
+    } else {
+      app.logCombat(res.message, 'warning');
+    }
+  }
+
+  static _highlightSelection(app, target) {
+    const root = app.modalOverlayEl ? document : document;
+    root.querySelectorAll('.keyed-slot.selected, .backpack-slot.selected').forEach(el => el.classList.remove('selected'));
+    if (!target) return;
+    const selector = target.source === 'backpack'
+      ? `.backpack-slot[data-index="${target.index}"]`
+      : `.keyed-slot[data-keyed="${target.keyed}"]`;
+    document.querySelector(selector)?.classList.add('selected');
+  }
+
   static updateHUD(elements, app) {
     HUDManager.bindHUDEvents(elements, app);
-    const { statusBarsEl, paperdollEl, backpackEl, hotbarEl } = elements;
+    const { statusBarsEl, paperdollEl, backpackEl } = elements;
     HUDManager.renderStatusBars(statusBarsEl, app.player, app.currentFloorName);
-    HUDManager.renderPaperdoll(paperdollEl, app);
+    HUDManager.renderKeyedSlots(paperdollEl, app);
     HUDManager.renderBackpack(backpackEl, app);
-    HUDManager.renderHotbar(hotbarEl, app);
   }
 
   static renderStatusBars(statusBarsEl, player, currentFloorName) {
@@ -143,6 +159,8 @@ export class HUDManager {
           <div class="vocation-tag"><span class="level-badge">Lv. ${player.level || 1}</span> <strong class="val">${vocationDisplay}</strong></div>
           <div class="floor-tag"><span class="label">Floor:</span> <strong class="val">${player.current_floor || 1} · ${currentFloorName}</strong></div>
         </div>
+
+        <div class="gold-tag"><span class="gold-icon">🪙</span> <span class="gold-label">GOLD</span> <strong class="gold-val">${Number(player.gold) || 0}</strong></div>
 
         ${HUDManager.renderKeyIndicators(player)}
 
@@ -236,87 +254,179 @@ export class HUDManager {
     `;
   }
 
-  static renderPaperdoll(paperdollEl, app) {
+  /**
+   * The 8 keyed slots (LIV-22 item 1): `q w e r` equipment row with the four
+   * active items (`1 2 3 4`) drawn directly above it. Slots are mouse
+   * drop/swap targets; rendering is skeleton-once + selective diff.
+   */
+  static renderKeyedSlots(paperdollEl, app) {
     if (!paperdollEl) return;
     HUDManager.bindHUDEvents({ paperdollEl }, app);
     const paperdoll = app.player.paperdoll || {};
-    const slots = [
-      { key: 'main_hand', label: 'Main Hand (Q)', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/2694.svg" alt="Main Hand" />' },
-      { key: 'off_hand', label: 'Off Hand (W)', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/1F6E1.svg" alt="Off Hand" />' },
-      { key: 'armor', label: 'Armor', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/1F9BA.svg" alt="Armor" />' },
-      { key: 'relic', label: 'Relic', iconPlaceholder: '<img class="openmoji-icon placeholder" src="./assets/openmoji/1F4FF.svg" alt="Relic" />' },
+    const actionBar = app.player.action_bar || [];
+
+    const equipmentSlots = [
+      { key: 'main_hand', hotkey: 'q', label: 'Main Hand', placeholder: '2694' },
+      { key: 'off_hand', hotkey: 'w', label: 'Off Hand', placeholder: '1F6E1' },
+      { key: 'armor', hotkey: 'e', label: 'Armor', placeholder: '1F9BA' },
+      { key: 'relic', hotkey: 'r', label: 'Relic', placeholder: '1F4FF' },
     ];
 
-    let html = `
-      <div class="panel-header">EQUIPMENT (4 SLOTS)</div>
-      <div class="paperdoll-slots-grid">
-    `;
-
-    for (const slot of slots) {
-      const item = paperdoll[slot.key];
-      const hasItem = Boolean(item);
-      const itemName = hasItem ? item.name : 'Empty';
-      const statBonus = hasItem && item.stat_bonus > 0 ? ` (+${item.stat_bonus})` : '';
-
+    let grid = paperdollEl.querySelector('.keyed-slots-grid');
+    if (!grid) {
+      let html = `
+        <div class="panel-header">KEYED SLOTS (EQUIPMENT &amp; ACTIVE)</div>
+        <div class="keyed-slots-grid">
+          <div class="keyed-row keyed-active-row">
+      `;
+      for (let i = 0; i < 4; i++) {
+        html += `
+            <div class="keyed-slot active-slot" data-keyed="active_${i}" data-kind="active" data-index="${i}" title="Active Slot ${i + 1}">
+              <div class="keyed-slot-key">${i + 1}</div>
+              <div class="keyed-slot-content"></div>
+              <div class="keyed-slot-name">Empty</div>
+            </div>`;
+      }
       html += `
-        <div class="paperdoll-slot ${hasItem ? 'occupied' : 'empty'}" data-slot="${slot.key}" title="${slot.label}: ${itemName}${statBonus}">
-          <div class="slot-label">${slot.key.replace('_', ' ').toUpperCase()}</div>
-          <div class="slot-content">
-            ${hasItem ? HUDManager.renderItemIcon(item) : `<span class="empty-icon">${slot.iconPlaceholder}</span>`}
           </div>
-          <div class="slot-item-name">${itemName}</div>
-          ${hasItem ? `<button class="unequip-btn" data-slot="${slot.key}" title="Unequip">✕</button>` : ''}
+          <div class="keyed-row keyed-equip-row">
+      `;
+      for (const slot of equipmentSlots) {
+        html += `
+            <div class="keyed-slot equip-slot" data-keyed="${slot.key}" data-kind="equipment" data-slot="${slot.key}" title="${slot.label}">
+              <div class="keyed-slot-key">${slot.hotkey}</div>
+              <div class="keyed-slot-content"><span class="empty-icon"><img class="openmoji-icon placeholder" src="./assets/openmoji/${slot.placeholder}.svg" alt="${slot.label}" /></span></div>
+              <div class="keyed-slot-name">Empty</div>
+            </div>`;
+      }
+      html += `
+          </div>
         </div>
       `;
+      paperdollEl.innerHTML = html;
+      grid = paperdollEl.querySelector('.keyed-slots-grid');
     }
 
-    html += `</div>`;
-    paperdollEl.innerHTML = html;
+    const paint = (el, item, hotkey) => {
+      const isOccupied = Boolean(item);
+      el.classList.toggle('occupied', isOccupied);
+      const nameEl = el.querySelector('.keyed-slot-name');
+      const newName = isOccupied ? item.name : 'Empty';
+      if (nameEl && nameEl.textContent !== newName) nameEl.textContent = newName;
+
+      const contentEl = el.querySelector('.keyed-slot-content');
+      const newIcon = isOccupied ? HUDManager.renderItemIcon(item) : '';
+      if (contentEl && contentEl.dataset.iconItem !== (item?.item_id || '')) {
+        contentEl.innerHTML = newIcon;
+        contentEl.dataset.iconItem = item?.item_id || '';
+      }
+
+      const qty = isOccupied && item.quantity > 1 ? `x${item.quantity}` : '';
+      let qtyEl = el.querySelector('.keyed-slot-qty');
+      if (qty) {
+        if (!qtyEl) {
+          qtyEl = document.createElement('div');
+          qtyEl.className = 'keyed-slot-qty';
+          el.appendChild(qtyEl);
+        }
+        if (qtyEl.textContent !== qty) qtyEl.textContent = qty;
+      } else if (qtyEl) {
+        qtyEl.remove();
+      }
+
+      const cost = isOccupied && item.manaCost ? `${item.manaCost} MP` : '';
+      let costEl = el.querySelector('.keyed-slot-cost');
+      if (cost) {
+        if (!costEl) {
+          costEl = document.createElement('div');
+          costEl.className = 'keyed-slot-cost';
+          el.appendChild(costEl);
+        }
+        if (costEl.textContent !== cost) costEl.textContent = cost;
+      } else if (costEl) {
+        costEl.remove();
+      }
+      el.title = isOccupied ? `${item.name} [${hotkey}]` : `${hotkey} (Empty)`;
+    };
+
+    grid.querySelectorAll('.keyed-slot[data-kind="active"]').forEach(el => {
+      const idx = parseInt(el.getAttribute('data-index') || '-1', 10);
+      paint(el, actionBar[idx] || null, String(idx + 1));
+    });
+    grid.querySelectorAll('.keyed-slot[data-kind="equipment"]').forEach(el => {
+      const slot = el.getAttribute('data-slot');
+      const hotkey = el.querySelector('.keyed-slot-key')?.textContent || '';
+      paint(el, paperdoll[slot] || null, hotkey);
+    });
   }
 
   static renderBackpack(backpackEl, app) {
     if (!backpackEl) return;
     HUDManager.bindHUDEvents({ backpackEl }, app);
-    const backpack = app.player.backpack || [null, null, null, null, null, null];
+    const layout = UI_CATALOG?.inventory || {};
+    const columns = Number(layout.backpackColumns) || 6;
+    const total = Number(layout.backpackSlots) || 36;
+    const backpack = app.player.backpack || new Array(total).fill(null);
     const occupiedCount = backpack.filter(Boolean).length;
 
-    let html = `
-      <div class="panel-header">
-        <span>BACKPACK (6 SLOTS)</span>
-        <span class="slot-count">${occupiedCount}/6</span>
-      </div>
-      <div class="backpack-slots-grid">
-    `;
-
-    for (let i = 0; i < 6; i++) {
-      const item = backpack[i] || null;
-      const isOccupied = item !== null;
-      const tooltip = isOccupied
-        ? `${item.name} (${item.type})${item.quantity > 1 ? ` x${item.quantity}` : ''}${item.stat_bonus > 0 ? ` [Stat: +${item.stat_bonus}]` : ''}`
-        : `Backpack Slot ${i + 1} (Empty)`;
-
-      html += `
-        <div class="backpack-slot ${isOccupied ? 'occupied' : 'empty'}" data-index="${i}" title="${tooltip}">
-          <div class="slot-num">#${i + 1}</div>
-          <div class="slot-content">
-            ${isOccupied ? HUDManager.renderItemIcon(item) : ''}
-          </div>
-          ${isOccupied && item.quantity > 1 ? `<div class="item-qty">x${item.quantity}</div>` : ''}
-          <div class="slot-item-name">${isOccupied ? item.name : 'Empty'}</div>
-          ${
-            isOccupied
-              ? `<div class="slot-actions">
-                  <button class="use-btn" data-index="${i}" title="Use / Equip">Use</button>
-                  <button class="drop-btn" data-index="${i}" title="Drop to ground">Drop</button>
-                </div>`
-              : ''
-          }
+    let grid = backpackEl.querySelector('.backpack-slots-grid');
+    if (!grid) {
+      let html = `
+        <div class="panel-header">
+          <span>BACKPACK (${total} SLOTS)</span>
+          <span class="slot-count" id="backpack-slot-count">${occupiedCount}/${total}</span>
         </div>
+        <div class="backpack-slots-grid" style="grid-template-columns: repeat(${columns}, 1fr);">
       `;
+      for (let i = 0; i < total; i++) {
+        html += `
+          <div class="backpack-slot" data-index="${i}" data-container="backpack" title="Backpack Slot ${i + 1} (Empty)">
+            <div class="slot-num">#${i + 1}</div>
+            <div class="slot-content"></div>
+          </div>`;
+      }
+      html += `</div>`;
+      backpackEl.innerHTML = html;
+      grid = backpackEl.querySelector('.backpack-slots-grid');
     }
 
-    html += `</div>`;
-    backpackEl.innerHTML = html;
+    const countEl = backpackEl.querySelector('#backpack-slot-count');
+    if (countEl) {
+      const label = `${occupiedCount}/${total}`;
+      if (countEl.textContent !== label) countEl.textContent = label;
+    }
+
+    grid.querySelectorAll('.backpack-slot').forEach(el => {
+      const i = parseInt(el.getAttribute('data-index') || '-1', 10);
+      const item = backpack[i] || null;
+      const isOccupied = item !== null;
+      el.classList.toggle('occupied', isOccupied);
+      el.classList.toggle('empty', !isOccupied);
+
+      const contentEl = el.querySelector('.slot-content');
+      const newIcon = isOccupied ? HUDManager.renderItemIcon(item) : '';
+      if (contentEl && contentEl.dataset.iconItem !== (item?.item_id || '')) {
+        contentEl.innerHTML = newIcon;
+        contentEl.dataset.iconItem = item?.item_id || '';
+      }
+
+      let qtyEl = el.querySelector('.item-qty');
+      const qty = isOccupied && item.quantity > 1 ? `x${item.quantity}` : '';
+      if (qty) {
+        if (!qtyEl) {
+          qtyEl = document.createElement('div');
+          qtyEl.className = 'item-qty';
+          el.appendChild(qtyEl);
+        }
+        if (qtyEl.textContent !== qty) qtyEl.textContent = qty;
+      } else if (qtyEl) {
+        qtyEl.remove();
+      }
+
+      el.title = isOccupied
+        ? `${item.name} (${item.type})${item.quantity > 1 ? ` x${item.quantity}` : ''}`
+        : `Backpack Slot ${i + 1} (Empty)`;
+    });
   }
 
   static renderHotbar(hotbarEl, app) {

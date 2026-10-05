@@ -14,6 +14,7 @@
     "selectToGame": { "ms": 380, "easing": "cubic-bezier(0.65,0,0.35,1)", "skippable": true },
     "floorAdvance": { "ms": 400, "easing": "ease-in-out", "skippable": false },
     "gameOverToRetry": { "ms": 340, "easing": "ease-out", "skippable": false },
+    "townVisit": { "ms": 320, "easing": "ease-in-out", "skippable": true },
     "toTitle": { "ms": 400, "easing": "ease-in-out", "skippable": true }
   },
   "titleAmbient": {
@@ -25,6 +26,39 @@
     "maxDpr": 1.5
   },
   "saveSlots": { "count": 5 },
+  "inventory": {
+    "backpackColumns": 6,
+    "backpackRows": 6,
+    "backpackSlots": 36,
+    "activeSlots": 4,
+    "equipmentSlots": 4,
+    "keyedSlots": 8
+  },
+  "economy": {
+    "startingGold": 0,
+    "goldStackCap": 999999
+  },
+  "hud": {
+    "barWidthPx": 26,
+    "barHeightPx": 4,
+    "barOffsetPx": 6,
+    "barBorderPx": 1,
+    "hpColor": "#22c55e",
+    "hpLowColor": "#ef4444",
+    "hpLowPct": 0.3,
+    "hpBackColor": "rgba(5,6,8,0.85)",
+    "mpColor": "#3b82f6",
+    "mpBackColor": "rgba(5,6,8,0.85)"
+  },
+  "town": {
+    "title": "Havenreach",
+    "subtitle": "The town beneath the Crown Spire",
+    "shopName": "Merchant's Stall",
+    "templeName": "Temple of the Dawn",
+    "enterTowerLabel": "Enter the Tower",
+    "healCostPerHp": 1,
+    "healCostPerMp": 1
+  },
   "options": {
     "defaults": {
       "soundEffects": true,

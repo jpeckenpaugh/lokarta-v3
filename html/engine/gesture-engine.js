@@ -25,20 +25,16 @@ export class GestureEngine {
 
   static keyToSlotIndex(key) {
     if (key >= '1' && key <= '9') {
-      return parseInt(key, 10) - 1; // '1' -> 0, ..., '9' -> 8
-    }
-    if (key === '0') {
-      return 9; // '0' -> 9
+      const idx = parseInt(key, 10) - 1;
+      // LIV-22: only the 1-4 active slots are keyed; 5-9/0 are unbound.
+      return idx < CONFIG.ACTION_BAR_SLOTS ? idx : null;
     }
     return null;
   }
 
   static slotIndexToHotkey(slotIndex) {
-    if (slotIndex >= 0 && slotIndex <= 8) {
+    if (slotIndex >= 0 && slotIndex < CONFIG.ACTION_BAR_SLOTS) {
       return `${slotIndex + 1}`;
-    }
-    if (slotIndex === 9) {
-      return '0';
     }
     return '';
   }

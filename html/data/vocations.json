@@ -9,15 +9,25 @@
     "max_mana": 150,
     "hpPerLevel": 8,
     "manaPerLevel": 16,
-    "damageStep": 0.10,
+    "damageStep": 0.1,
     "eyeColor": "#44ccff",
     "regenResource": "mana",
-    "nativeEquipment": ["apprentice_wand", "astral_scepter", "apprentice_cape"],
+    "nativeEquipment": [
+      "apprentice_wand",
+      "astral_scepter",
+      "apprentice_cape"
+    ],
     "description": "Master of radiant arcane energies and expansive illumination.",
     "renderTheme": {
       "primary": "#5c2d91",
       "accent": "#ffd700",
       "secondary": "#7a3cb8"
+    },
+    "solidEquipment": {
+      "main_hand": "astral_scepter",
+      "off_hand": "apprentice_wand",
+      "armor": "apprentice_cape",
+      "relic": "relic_luminous_amulet"
     }
   },
   "archer": {
@@ -33,12 +43,23 @@
     "damageStep": 0.12,
     "eyeColor": "#e9d8a6",
     "regenResource": "hp",
-    "nativeEquipment": ["composite_bow", "grey_stalker_quiver", "hunter_leathers", "archer_hood"],
+    "nativeEquipment": [
+      "composite_bow",
+      "grey_stalker_quiver",
+      "hunter_leathers",
+      "archer_hood"
+    ],
     "description": "Deadly long-range sniper utilizing fletched arrows and precision burst.",
     "renderTheme": {
       "primary": "#15803d",
       "accent": "#854d0e",
       "secondary": "#166534"
+    },
+    "solidEquipment": {
+      "main_hand": "composite_bow",
+      "off_hand": "grey_stalker_quiver",
+      "armor": "hunter_leathers",
+      "relic": "archer_hood"
     }
   },
   "fighter": {
@@ -54,12 +75,23 @@
     "damageStep": 0.15,
     "eyeColor": "#f87171",
     "regenResource": "hp",
-    "nativeEquipment": ["tempered_broadsword", "vanguard_shield", "plate_armor", "iron_helm"],
+    "nativeEquipment": [
+      "tempered_broadsword",
+      "vanguard_shield",
+      "plate_armor",
+      "iron_helm"
+    ],
     "description": "Resilient front-line warrior using heavy broadswords, cleaves, and defensive stances.",
     "renderTheme": {
       "primary": "#475569",
       "accent": "#94a3b8",
       "secondary": "#334155"
+    },
+    "solidEquipment": {
+      "main_hand": "tempered_broadsword",
+      "off_hand": "vanguard_shield",
+      "armor": "plate_armor",
+      "relic": "iron_helm"
     }
   },
   "paladin": {
@@ -75,12 +107,23 @@
     "damageStep": 0.11,
     "eyeColor": "#38bdf8",
     "regenResource": "hp",
-    "nativeEquipment": ["consecrated_warhammer", "aegis_shield", "plate_armor", "holy_crown"],
+    "nativeEquipment": [
+      "consecrated_warhammer",
+      "aegis_shield",
+      "plate_armor",
+      "holy_crown"
+    ],
     "description": "Holy champion striking with sacred warhammers, area light, and restorative prayers.",
     "renderTheme": {
       "primary": "#0284c7",
       "accent": "#f59e0b",
       "secondary": "#0369a1"
+    },
+    "solidEquipment": {
+      "main_hand": "consecrated_warhammer",
+      "off_hand": "aegis_shield",
+      "armor": "plate_armor",
+      "relic": "holy_crown"
     }
   }
 }

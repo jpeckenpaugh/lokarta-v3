@@ -1,0 +1,296 @@
+/**
+ * Lokarta: Come Into The Light - Economy, Town & Recovery Subsystem
+ *
+ * Pure, dependency-free helpers for the LIV-22 board overhaul:
+ *   - gold drops from monsters + chests (item 6)
+ *   - passive HP/MP recovery of ~1/10s (item 4)
+ *   - healing springs with a charge gate (item 7)
+ *   - town temple healing + shop purchase/upgrade (item 5)
+ *
+ * Every tunable originates in `html/data/economy.json` (no hardcoded constants)
+ * and every lookup falls back gracefully. No DOM, worker, or storage I/O so the
+ * native Node test runner can exercise it directly.
+ */
+
+import { ECONOMY_CATALOG, ITEMS_CATALOG, MONSTERS_CATALOG, UI_CATALOG } from '../data/index.js';
+
+const DEFAULTS = {
+  gold: { starting: 0, cap: 999999 },
+  passiveRecovery: { intervalSec: 10, hpPerTick: 1, mpPerTick: 1 },
+  springs: { healPerUse: 10, manaPerUse: 10, chargeSec: 60, maxCharges: 1 },
+  temple: { healCostPerHp: 1, healCostPerMp: 1, reviveAt: 'town_temple', reviveCostPct: 0 },
+  shop: { sellRatePct: 40, buyMarkupPct: 0, upgradeBaseCost: 40, upgradeCostPerRank: 35, maxRank: 5 },
+};
+
+function cfg(path, fallback) {
+  const root = path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), ECONOMY_CATALOG);
+  return root === undefined || root === null ? fallback : root;
+}
+
+/** Deterministic integer roll in [min, max] from a seeded rng. */
+function rollInt(rng, min, max) {
+  const lo = Number.isFinite(Number(min)) ? Math.floor(Number(min)) : 0;
+  const hi = Number.isFinite(Number(max)) ? Math.floor(Number(max)) : lo;
+  if (hi <= lo) return lo;
+  return lo + Math.floor(rng() * (hi - lo + 1));
+}
+
+export class EconomySystem {
+  static get startingGold() {
+    return Number(cfg('gold.starting', DEFAULTS.gold.starting)) || 0;
+  }
+
+  static get goldCap() {
+    return Number(cfg('gold.cap', DEFAULTS.gold.cap)) || DEFAULTS.gold.cap;
+  }
+
+  /**
+   * Adds gold to a player, clamped to the catalog cap. Mutates `player.gold`.
+   * @returns {number} the amount actually credited
+   */
+  static addGold(player, amount) {
+    if (!player) return 0;
+    const gain = Math.max(0, Math.floor(Number(amount) || 0));
+    const before = Number(player.gold) || 0;
+    player.gold = Math.min(EconomySystem.goldCap, before + gain);
+    return player.gold - before;
+  }
+
+  /** Spends gold if affordable. Returns true when the purchase succeeded. */
+  static spendGold(player, amount) {
+    const cost = Math.max(0, Math.floor(Number(amount) || 0));
+    if (!player || (Number(player.gold) || 0) < cost) return false;
+    player.gold = (Number(player.gold) || 0) - cost;
+    return true;
+  }
+
+  /**
+   * Rolls the gold dropped by a defeated monster (item 6). Reads the per-type
+   * range from `economy.monsterGold`, falling back to the monster catalog's
+   * `baseXp`-derived range so an unauthored type still drops something.
+   */
+  static goldFromMonster(monster, rng = Math.random) {
+    const type = monster?.type;
+    const table = cfg('monsterGold', {});
+    const range = (type && table && table[type]) || null;
+    if (range) return rollInt(rng, range.min, range.max);
+    const def = (type && MONSTERS_CATALOG[type]) || null;
+    const base = def?.baseXp || 10;
+    return rollInt(rng, Math.max(1, Math.floor(base * 0.15)), Math.max(2, Math.floor(base * 0.4)));
+  }
+
+  /** Rolls the gold contained in a chest by tier (item 6). */
+  static goldFromChest(tier, rng = Math.random) {
+    const table = cfg('chestGold', {});
+    const range = tier && table && table[tier];
+    if (!range) return 0;
+    return rollInt(rng, range.min, range.max);
+  }
+
+  /** Passive recovery tunables (item 4). */
+  static passiveRecovery() {
+    const p = cfg('passiveRecovery', DEFAULTS.passiveRecovery);
+    return {
+      intervalSec: Number(p.intervalSec) || DEFAULTS.passiveRecovery.intervalSec,
+      hpPerTick: Number(p.hpPerTick) || 0,
+      mpPerTick: Number(p.mpPerTick) || 0,
+    };
+  }
+
+  /**
+   * Applies one passive-recovery tick. Returns the amount restored
+   * `{ hp, mp }`. Never overheals.
+   */
+  static applyPassiveRecovery(player) {
+    const { hpPerTick, mpPerTick } = EconomySystem.passiveRecovery();
+    let hp = 0;
+    let mp = 0;
+    if (!player) return { hp, mp };
+    if (player.hp < player.max_hp && hpPerTick > 0) {
+      hp = Math.min(hpPerTick, player.max_hp - player.hp);
+      player.hp += hp;
+    }
+    if (player.mana < player.max_mana && mpPerTick > 0) {
+      mp = Math.min(mpPerTick, player.max_mana - player.mana);
+      player.mana += mp;
+    }
+    return { hp, mp };
+  }
+
+  /** Healing-spring tunables (item 7). */
+  static springConfig() {
+    const s = cfg('springs', DEFAULTS.springs);
+    return {
+      healPerUse: Number(s.healPerUse) || 0,
+      manaPerUse: Number(s.manaPerUse) || 0,
+      chargeSec: Number(s.chargeSec) || 60,
+      maxCharges: Number(s.maxCharges) || 1,
+    };
+  }
+
+  /**
+   * True when the player may use the spring at `springId` again. Reads
+   * `player.springCharges[springId]` (ms timestamp of last use).
+   */
+  static isSpringReady(player, springId, nowMs = Date.now()) {
+    if (!player || !springId) return true;
+    const last = Number(player.springCharges?.[springId]) || 0;
+    const { chargeSec } = EconomySystem.springConfig();
+    return nowMs - last >= chargeSec * 1000;
+  }
+
+  /**
+   * Uses a healing spring: restores up to +heal/ +mana per use, gated to the
+   * catalog charge interval. Returns `{ success, hp, mp, message }`.
+   */
+  static useSpring(player, springId, nowMs = Date.now()) {
+    if (!player || !springId) return { success: false, hp: 0, mp: 0, message: 'No spring here.' };
+    if (!EconomySystem.isSpringReady(player, springId, nowMs)) {
+      const { chargeSec } = EconomySystem.springConfig();
+      const readyIn = Math.max(1, Math.ceil((chargeSec * 1000 - (nowMs - (Number(player.springCharges?.[springId]) || 0))) / 1000));
+      return { success: false, hp: 0, mp: 0, message: `The spring is recharging (${readyIn}s).`, cooldownRemainingSec: readyIn };
+    }
+
+    const { healPerUse, manaPerUse } = EconomySystem.springConfig();
+    const hp = Math.min(healPerUse, Math.max(0, player.max_hp - player.hp));
+    const mp = Math.min(manaPerUse, Math.max(0, player.max_mana - player.mana));
+    player.hp += hp;
+    player.mana += mp;
+    if (!player.springCharges) player.springCharges = {};
+    player.springCharges[springId] = nowMs;
+
+    const parts = [];
+    if (hp > 0) parts.push(`+${hp} HP`);
+    if (mp > 0) parts.push(`+${mp} MP`);
+    return {
+      success: true,
+      hp,
+      mp,
+      message: parts.length ? `The spring restores ${parts.join(' / ')}.` : 'The spring has nothing left to restore.',
+    };
+  }
+
+  /**
+   * Temple heal cost to fully restore HP/MP (item 5). Catalog-driven and
+   * floored at 0 so a free-heal config stays free.
+   */
+  static templeHealCost(player) {
+    if (!player) return 0;
+    const hpCost = Math.max(0, player.max_hp - player.hp) * Number(cfg('temple.healCostPerHp', 1));
+    const mpCost = Math.max(0, player.max_mana - player.mana) * Number(cfg('temple.healCostPerMp', 1));
+    return Math.max(0, Math.round(hpCost + mpCost));
+  }
+
+  /** Heals the player at the town temple, spending the computed gold cost. */
+  static templeHeal(player, opts = {}) {
+    if (!player) return { success: false, cost: 0, message: 'No character to heal.' };
+    const cost = opts.free ? 0 : EconomySystem.templeHealCost(player);
+    if (cost > 0 && (Number(player.gold) || 0) < cost) {
+      return { success: false, cost, message: `The temple asks ${cost} gold; you carry ${Number(player.gold) || 0}.` };
+    }
+    if (cost > 0) EconomySystem.spendGold(player, cost);
+    player.hp = player.max_hp;
+    player.mana = player.max_mana;
+    return { success: true, cost, message: cost > 0 ? `The temple restores you for ${cost} gold.` : 'The temple restores you.' };
+  }
+
+  /** Shop config. */
+  static shopConfig() {
+    const s = cfg('shop', DEFAULTS.shop);
+    return {
+      sellRatePct: Number(s.sellRatePct) || 0,
+      buyMarkupPct: Number(s.buyMarkupPct) || 0,
+      upgradeBaseCost: Number(s.upgradeBaseCost) || 0,
+      upgradeCostPerRank: Number(s.upgradeCostPerRank) || 0,
+      maxRank: Number(s.maxRank) || 5,
+    };
+  }
+
+  /**
+   * Returns the shop stock entries visible to a vocation (vocation-agnostic
+   * entries plus matching affinity), each annotated with `cost` and item def.
+   */
+  static shopStock(vocation) {
+    const stock = cfg('stock', []) || [];
+    const out = [];
+    for (const entry of stock) {
+      const affinity = entry.vocationAffinity;
+      if (affinity && vocation && affinity !== vocation && !(Array.isArray(affinity) && affinity.includes(vocation))) {
+        continue;
+      }
+      const def = ITEMS_CATALOG[entry.itemId] || {};
+      const markup = 1 + EconomySystem.shopConfig().buyMarkupPct / 100;
+      out.push({
+        itemId: entry.itemId,
+        name: def.name || entry.itemId,
+        type: def.type || 'item',
+        quantity: entry.quantity || 1,
+        price: Math.max(0, Math.round((entry.price || 0) * markup)),
+        maxPurchases: Number(entry.maxPurchases) || 0,
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Buy a shop entry. Spends gold and returns the item stack to grant.
+   * The caller is responsible for adding the item to the inventory.
+   * @returns {{ success, message, cost, item }}
+   */
+  static buyItem(player, itemId, opts = {}) {
+    if (!player || !itemId) return { success: false, cost: 0, message: 'Nothing to buy.' };
+    const entry = EconomySystem.shopStock(player.vocation).find(s => s.itemId === itemId);
+    if (!entry) return { success: false, cost: 0, message: `${itemId} is not for sale here.` };
+    if (entry.maxPurchases > 0 && opts.purchasedCount >= entry.maxPurchases) {
+      return { success: false, cost: 0, message: `${entry.name} is out of stock.` };
+    }
+    if (!EconomySystem.spendGold(player, entry.price)) {
+      return { success: false, cost: entry.price, message: `You need ${entry.price} gold for ${entry.name}.` };
+    }
+    const def = ITEMS_CATALOG[itemId] || {};
+    return {
+      success: true,
+      cost: entry.price,
+      message: `Purchased ${entry.name} for ${entry.price} gold.`,
+      item: { ...def, item_id: itemId, quantity: entry.quantity || 1, pricePaid: entry.price },
+    };
+  }
+
+  /** The gold cost to upgrade an owned item to its next rank. */
+  static upgradeCost(item) {
+    const { upgradeBaseCost, upgradeCostPerRank, maxRank } = EconomySystem.shopConfig();
+    const rank = Math.max(1, Math.min(maxRank, Number(item?.itemLevel) || 1));
+    return upgradeBaseCost + upgradeCostPerRank * (rank - 1);
+  }
+
+  /** True when an item can still be upgraded in the shop. */
+  static canUpgrade(item) {
+    if (!item || !item.upgradeSpec) return false;
+    const { maxRank } = EconomySystem.shopConfig();
+    return (Number(item?.itemLevel) || 1) < maxRank;
+  }
+
+  /** Sell value for an item (floor of a percentage of its price). */
+  static sellValue(item) {
+    if (!item) return 0;
+    const base = Number(item.pricePaid ?? item.price ?? item.stat_bonus ?? 0) || 0;
+    return Math.max(0, Math.floor(base * (EconomySystem.shopConfig().sellRatePct / 100)));
+  }
+
+  /** Description of the town temple / revive rule (item 5). */
+  static reviveLocation() {
+    return String(cfg('temple.reviveAt', DEFAULTS.temple.reviveAt));
+  }
+
+  /** The town presentation config (name, subtitle, labels) from ui.json. */
+  static townConfig() {
+    const town = UI_CATALOG?.town || {};
+    return {
+      title: town.title || 'Havenreach',
+      subtitle: town.subtitle || 'The town beneath the Crown Spire',
+      shopName: town.shopName || "Merchant's Stall",
+      templeName: town.templeName || 'Temple of the Dawn',
+      enterTowerLabel: town.enterTowerLabel || 'Enter the Tower',
+    };
+  }
+}

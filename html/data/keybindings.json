@@ -9,14 +9,26 @@
     "Digit1",
     "Digit2",
     "Digit3",
-    "Digit4",
-    "Digit5",
-    "Digit6",
-    "Digit7",
-    "Digit8",
-    "Digit9",
-    "Digit0"
+    "Digit4"
   ],
+  "equipmentBar": [
+    "KeyQ",
+    "KeyW",
+    "KeyE",
+    "KeyR"
+  ],
+  "equipmentSlots": {
+    "KeyQ": "main_hand",
+    "KeyW": "off_hand",
+    "KeyE": "armor",
+    "KeyR": "relic"
+  },
+  "activeSlots": {
+    "Digit1": 0,
+    "Digit2": 1,
+    "Digit3": 2,
+    "Digit4": 3
+  },
   "gestureTimings": {
     "tapMaxMs": 250,
     "holdMinMs": 250,

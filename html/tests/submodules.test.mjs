@@ -74,6 +74,7 @@ test('Modular Engine Submodules', async (t) => {
 
   await t.test('verifies GestureEngine submodule', () => {
     assert.equal(GestureEngine.keyToSlotIndex('1'), 0);
-    assert.equal(GestureEngine.keyToSlotIndex('0'), 9);
+    assert.equal(GestureEngine.keyToSlotIndex('4'), 3);
+    assert.equal(GestureEngine.keyToSlotIndex('5'), null);
   });
 });

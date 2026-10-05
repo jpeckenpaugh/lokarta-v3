@@ -27,6 +27,7 @@ export const TILE_TYPES = {
   STAIRS: 2,
   DOOR: 3,
   GATED_DOOR: 4,
+  SPRING: 5,
 };
 
 export const TOWER_LEVEL_COUNT = 5;
@@ -721,6 +722,26 @@ export function generateFloor(floorNumber = 1, seed = null) {
     return { x: center[0] + offset[0], y: center[1] + offset[1] };
   };
 
+  // 8. Healing spring (LIV-22 item 7): one per floor, placed in the stair room
+  //    beside the connecting exit stair, claiming its tile before monsters so
+  //    nothing overlaps it. Catalog-driven heal/charge live in `economy.json`.
+  const springs = [];
+  const springRoom = levelSpec.stairRoom;
+  if (springRoom) {
+    const springTile = neighbors(exitCoords.x, exitCoords.y).find(n => {
+      if (!matrix[n.y] || matrix[n.y][n.x] === undefined) return false;
+      if (matrix[n.y][n.x] !== TILE_TYPES.FLOOR) return false;
+      if (blocked.has(`${n.x},${n.y}`)) return false;
+      return n.x !== spawnCoords.x || n.y !== spawnCoords.y;
+    });
+    if (springTile) {
+      matrix[springTile.y][springTile.x] = TILE_TYPES.SPRING;
+      blocked.add(`${springTile.x},${springTile.y}`);
+      occupied.add(`${springTile.x},${springTile.y}`);
+      springs.push({ id: `f${levelId}_spring`, room: springRoom, x: springTile.x, y: springTile.y });
+    }
+  }
+
   const groupSize = tower.monsterGroups.groupSize[String(levelId)];
   const pool = tower.monsterGroups.pool[String(levelId)];
   const statScale = tower.monsterGroups.statScale[String(levelId)];
@@ -1091,6 +1112,7 @@ export function generateFloor(floorNumber = 1, seed = null) {
     room_tiers: { ...levelSpec.roomTiers },
     chests,
     chest_tiers: Object.fromEntries(chests.map(c => [String(c.room), c.tier])),
+    springs,
     props,
     monsters,
     spawns: monsters,

@@ -59,19 +59,16 @@
         </section>
       </main>
 
-      <!-- Sidebar HUD: Status, Paperdoll, Backpack, Hotbar -->
+      <!-- Sidebar HUD: Status, Keyed Slots, Backpack -->
       <aside class="sidebar-hud" id="sidebar-hud">
-        <!-- Status & Level / Vocation Bars -->
+        <!-- Status, Level/Vocation, Gold, HP/MP/XP Bars -->
         <div class="hud-panel status-panel" id="status-bars-container"></div>
 
-        <!-- Paperdoll Equipment (4 Slots) -->
-        <div class="hud-panel paperdoll-panel" id="paperdoll-container"></div>
+        <!-- 8 Keyed Slots: q w e r (equipment) + 1 2 3 4 (active items above) -->
+        <div class="hud-panel keyed-slots-panel" id="paperdoll-container"></div>
 
-        <!-- Backpack 6 Slots -->
+        <!-- Single Backpack Grid: 36 slots (6x6) -->
         <div class="hud-panel backpack-panel" id="backpack-container"></div>
-
-        <!-- Actions & Abilities 10 Slots (2 Rows of 5) -->
-        <div class="hud-panel hotbar-panel" id="hotbar-container"></div>
       </aside>
     </div>
 

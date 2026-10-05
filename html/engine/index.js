@@ -10,6 +10,7 @@ export * from './combat-system.js';
 export * from './projectile-collision.js';
 export * from './entity-ai.js';
 export * from './inventory-system.js';
+export * from './economy-system.js';
 export * from './item-stats.js';
 export * from './item-progression.js';
 export * from './chest-system.js';

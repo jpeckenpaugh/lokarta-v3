@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Engine Configuration & Constants
  */
 
-import { VOCATIONS_CATALOG, MONSTERS_CATALOG, ABILITIES_CATALOG } from '../data/index.js';
+import { VOCATIONS_CATALOG, MONSTERS_CATALOG, ABILITIES_CATALOG, UI_CATALOG, ECONOMY_CATALOG } from '../data/index.js';
 
 export const TILE_TYPES = {
   FLOOR: 0,
@@ -10,7 +10,29 @@ export const TILE_TYPES = {
   STAIRS: 2,
   DOOR: 3,
   GATED_DOOR: 4,
+  SPRING: 5,
 };
+
+/** Catalog-driven inventory layout (no hardcoded slot counts). */
+export const INVENTORY_CONFIG = {
+  ACTIVE_SLOTS: Number(UI_CATALOG?.inventory?.activeSlots) || 4,
+  EQUIPMENT_SLOTS: Number(UI_CATALOG?.inventory?.equipmentSlots) || 4,
+  BACKPACK_SLOTS: Number(UI_CATALOG?.inventory?.backpackSlots) || 36,
+  BACKPACK_COLUMNS: Number(UI_CATALOG?.inventory?.backpackColumns) || 6,
+  BACKPACK_ROWS: Number(UI_CATALOG?.inventory?.backpackRows) || 6,
+  STARTING_GOLD: Number(ECONOMY_CATALOG?.gold?.starting) || 0,
+  GOLD_CAP: Number(ECONOMY_CATALOG?.gold?.cap) || 999999,
+};
+
+/** Ordered equipment slots (q/w/e/r) resolved from the keybinding catalog. */
+export const EQUIPMENT_SLOT_KEYS = Object.values(
+  (UI_CATALOG && UI_CATALOG.inventory && UI_CATALOG.inventory.equipmentSlotOrder) || {
+    0: 'main_hand',
+    1: 'off_hand',
+    2: 'armor',
+    3: 'relic',
+  }
+);
 
 export const CONFIG = {
   GRID_SIZE: 64, // pixels per tile
@@ -18,9 +40,9 @@ export const CONFIG = {
   MAP_HEIGHT: 40,
   TICK_INTERVAL_MS: 100, // 10 Hz fixed simulation tick
 
-  // Inventory & Slots
-  ACTION_BAR_SLOTS: 10,
-  BACKPACK_SLOTS: 6,
+  // Inventory & Slots (catalog-driven; see INVENTORY_CONFIG)
+  ACTION_BAR_SLOTS: INVENTORY_CONFIG.ACTIVE_SLOTS,
+  BACKPACK_SLOTS: INVENTORY_CONFIG.BACKPACK_SLOTS,
 
   // Gesture Timings (ms)
   TAP_MAX_MS: 250,
@@ -108,6 +130,10 @@ export const CONFIG = {
   MANA_POTION_RESTORE: 40,
 };
 
+function emptySlots(n) {
+  return new Array(n).fill(null);
+}
+
 function buildArchetype(vocKey) {
   const data = VOCATIONS_CATALOG[vocKey] || VOCATIONS_CATALOG.magician;
   return {
@@ -131,14 +157,23 @@ function buildArchetype(vocKey) {
       bonusRange: 0,
       bonusRegen: 0,
     },
-    action_bar: [null, null, null, null, null, null, null, null, null, null],
+    // Active-item hotbar: 1-4 (consumables/usables triggered by key).
+    action_bar: emptySlots(INVENTORY_CONFIG.ACTIVE_SLOTS),
     paperdoll: {
       main_hand: null,
       off_hand: null,
       armor: null,
       relic: null,
     },
-    backpack: [null, null, null, null, null, null],
+    // Single backpack grid: default 36 slots (6x6).
+    backpack: emptySlots(INVENTORY_CONFIG.BACKPACK_SLOTS),
+    // Gold economy (LIV-22 item 6).
+    gold: INVENTORY_CONFIG.STARTING_GOLD,
+    // Town / descent state (LIV-22 item 5): a run starts in the Town.
+    location: 'town',
+    townVisits: 0,
+    // Healing spring charge tracking (LIV-22 item 7): per-floor id -> timestamp.
+    springCharges: {},
     // Per-level earned keys: { "1": { copper: true, ... }, ... }. Keys are tracked
     // on the character (not inventory) and persist across floor transitions.
     levelKeys: {},

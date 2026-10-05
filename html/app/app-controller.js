@@ -16,6 +16,7 @@ import {
   DoorSystem,
   StairSystem,
   GestureEngine,
+  EconomySystem,
   createPlayer,
 } from '../engine/index.js';
 import {
@@ -25,6 +26,7 @@ import {
 } from '../engine/projectile-collision.js';
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG, ABILITIES_CATALOG, KEYBINDINGS_CATALOG, VOCATIONS_CATALOG, UI_CATALOG } from '../data/index.js';
+import { applyItemRankUp } from '../engine/item-progression.js';
 import { CanvasRenderer } from './canvas-renderer.js';
 import { HUDManager } from './hud-manager.js';
 import { ModalManager } from './modal-manager.js';
@@ -69,6 +71,10 @@ export class LokartaApp {
     this.isGameOver = false;
     this.isFloorCleared = false;
     this.currentFloorName = 'The Gatehouse';
+    // LIV-22 item 5: the player begins in the Town outside the tower.
+    this.location = 'town';
+    this.townConfig = EconomySystem.townConfig();
+    this.passiveRecoveryAccumulator = 0;
 
     // E8: active-floor stair traversal state (dir/targetLevel + §9.3 arming).
     this.stairs = [];
@@ -90,7 +96,6 @@ export class LokartaApp {
     this.statusBarsEl = document.getElementById('status-bars-container');
     this.paperdollEl = document.getElementById('paperdoll-container');
     this.backpackEl = document.getElementById('backpack-container');
-    this.hotbarEl = document.getElementById('hotbar-container');
     this.combatLogScrollEl = document.getElementById('log-entries-container');
     this.modalOverlayEl = document.getElementById('modal-overlay');
     this.splashOverlayEl = document.getElementById('splash-overlay');
@@ -352,6 +357,7 @@ export class LokartaApp {
     this.isPaused = true;
     ModalManager.showPauseModal(this.modalOverlayEl, {
       onResume: () => this.resumeGameplay(),
+      onReturnToTown: () => this.leaveTower(),
       onOptions: () => this.showOptionsModal('pause'),
       onGuide: () => this.showGuideModal(),
       onReturnToTitle: () => this.returnToTitle(),
@@ -377,6 +383,10 @@ export class LokartaApp {
   returnFromOptions() {
     if (this.optionsReturnTo === 'pause') {
       this.openPauseMenu();
+      return;
+    }
+    if (this.optionsReturnTo === 'town') {
+      this.showTown();
       return;
     }
     this.showTitleScreen();
@@ -508,10 +518,11 @@ export class LokartaApp {
         this.clearCombatLog();
         this.logCombat(`Welcome to Lokarta, brave ${(this.player.vocation || 'magician').toUpperCase()}!`, 'victory');
         this.logCombat('Fate calls upon you: Draft your starter cards.', 'spell');
+        this.player.location = 'town';
         this.startGameLoop();
       });
 
-      this.showFateGrantModal(1);
+      this.showTown();
     } catch (err) {
       console.error('Failed to start new game:', err);
       this.showLoadError(slotIndex);
@@ -528,17 +539,162 @@ export class LokartaApp {
         this.adoptPlayer(data.player, data.floor);
         this.clearCombatLog();
         this.logCombat(`Resumed the ascent on Floor ${this.player.current_floor || 1} (${this.currentFloorName}).`, 'system');
+        this.player.location = this.player.location || 'tower';
         this.startGameLoop();
       });
 
       const isActionBarEmpty = this.player.action_bar?.every(s => s === null);
       if (isActionBarEmpty && this.player.level === 1) {
-        this.showFateGrantModal(1);
+        this.showTown();
       }
     } catch (err) {
       console.error('Failed to load saved game:', err);
       this.showLoadError(slotIndex);
     }
+  }
+
+  /**
+   * Shows the Town hub (LIV-22 item 5). The game loop keeps rendering the
+   * current floor behind the modal; gameplay input is paused.
+   */
+  showTown() {
+    this.location = 'town';
+    this.isPaused = true;
+    ModalManager.showTownScreen(this.modalOverlayEl, this, {
+      onEnterTower: () => this.enterTower(),
+      onShop: () => this.openShop(),
+      onTemple: () => this.openTemple(),
+      onOptions: () => this.showOptionsModal('town'),
+    });
+  }
+
+  /** Enter the tower from the Town: resume gameplay on the current floor. */
+  enterTower() {
+    this.location = 'tower';
+    this.player.location = 'tower';
+    this.closeModal();
+    this.isPaused = false;
+    this.logCombat('You step through the tower gate. The ascent begins.', 'system');
+    if (this.player.level === 1 && this.player.action_bar?.every(s => s === null)) {
+      this.showFateGrantModal(1);
+    }
+    this.updateHUD();
+    this.persistSave();
+  }
+
+  /** Leave the tower and return to the Town hub. */
+  leaveTower() {
+    if (!this.isInGameplay) return;
+    this.player.location = 'town';
+    this.transition.run('townVisit', () => this.showTown());
+  }
+
+  /** The shop stock + upgrade list for the current player. */
+  buildShopState() {
+    return {
+      shopStock: EconomySystem.shopStock(this.player.vocation),
+      ownedUpgradableItems: this.collectUpgradableItems(),
+      templeCost: EconomySystem.templeHealCost(this.player),
+    };
+  }
+
+  /** Banked/equipped items the shop can rank up. */
+  collectUpgradableItems() {
+    const out = [];
+    const push = (item, source, index) => {
+      if (!item || !EconomySystem.canUpgrade(item)) return;
+      out.push({ item, source, index, rank: item.itemLevel || 1, cost: EconomySystem.upgradeCost(item) });
+    };
+    (this.player.backpack || []).forEach((item, i) => push(item, 'backpack', i));
+    (this.player.action_bar || []).forEach((item, i) => push(item, 'action_bar', i));
+    Object.entries(this.player.paperdoll || {}).forEach(([slot, item]) => {
+      if (item && EconomySystem.canUpgrade(item)) {
+        out.push({ item, source: 'equipment', index: slot, rank: item.itemLevel || 1, cost: EconomySystem.upgradeCost(item) });
+      }
+    });
+    return out;
+  }
+
+  openShop() {
+    const state = this.buildShopState();
+    ModalManager.showShopModal(this.modalOverlayEl, { ...this, ...state }, {
+      onBuy: itemId => this.buyShopItem(itemId),
+      onUpgrade: (source, index) => this.upgradeShopItem(source, index),
+      onBack: () => this.showTown(),
+    });
+  }
+
+  buyShopItem(itemId) {
+    const purchased = this.purchasedCounts || (this.purchasedCounts = {});
+    const res = EconomySystem.buyItem(this.player, itemId, { purchasedCount: purchased[itemId] || 0 });
+    if (!res.success) {
+      soundFX.play('uiBack');
+      this.logCombat(res.message, 'warning');
+      this.openShop();
+      return;
+    }
+    const addRes = InventorySystem.addItem(this.player, { ...res.item, quantity: res.item.quantity || 1 });
+    if (!addRes.success) {
+      // No room: refund and tell the player.
+      EconomySystem.addGold(this.player, res.cost);
+      soundFX.play('uiBack');
+      this.logCombat('Your pack is full — the purchase was refunded.', 'warning');
+      this.openShop();
+      return;
+    }
+    purchased[itemId] = (purchased[itemId] || 0) + 1;
+    soundFX.play('itemPickup');
+    this.logCombat(res.message, 'loot');
+    this.updateHUD();
+    this.persistSave();
+    this.openShop();
+  }
+
+  upgradeShopItem(source, index) {
+    const entry = this.collectUpgradableItems().find(e => e.source === source && String(e.index) === String(index));
+    if (!entry) {
+      this.openShop();
+      return;
+    }
+    if (!EconomySystem.spendGold(this.player, entry.cost)) {
+      soundFX.play('uiBack');
+      this.logCombat(`You need ${entry.cost} gold to upgrade ${entry.item.name}.`, 'warning');
+      this.openShop();
+      return;
+    }
+    const result = applyItemRankUp(this.player, entry.item, { source: 'shop' });
+    if (!result) {
+      EconomySystem.addGold(this.player, entry.cost);
+      this.logCombat(`${entry.item.name} cannot be upgraded further.`, 'warning');
+    } else {
+      soundFX.play('levelUp');
+      this.logCombat(`Upgraded ${entry.item.name} for ${entry.cost} gold!`, 'loot');
+    }
+    InventorySystem.recomputeGearBonuses(this.player);
+    this.updateHUD();
+    this.persistSave(true);
+    this.openShop();
+  }
+
+  openTemple() {
+    ModalManager.showTempleModal(this.modalOverlayEl, { ...this, templeCost: EconomySystem.templeHealCost(this.player) }, {
+      onHeal: () => this.templeHeal(),
+      onBack: () => this.showTown(),
+    });
+  }
+
+  templeHeal() {
+    const res = EconomySystem.templeHeal(this.player);
+    if (res.success) {
+      soundFX.play('holyChime');
+      this.logCombat(res.message, 'spell');
+      this.updateHUD();
+      this.persistSave(true);
+    } else {
+      soundFX.play('uiBack');
+      this.logCombat(res.message, 'warning');
+    }
+    this.openTemple();
   }
 
   returnToTitle() {
@@ -592,6 +748,10 @@ export class LokartaApp {
 
     // D4 room props/decor (LIV-20) are render-only, non-blocking world data.
     this.props = (floorData.props || []).map(p => ({ ...p }));
+
+    // Healing springs (LIV-22 item 7) are world entities in each floor's stair
+    // room; stepping onto one heals + restores magic, gated to 1 charge / 60s.
+    this.springs = (floorData.springs || []).map(s => ({ ...s }));
 
     this.ambientLights = [];
     this.monsters = (floorData.monsters || []).map(s => ({
@@ -739,21 +899,16 @@ export class LokartaApp {
       }
     }
 
-    // Passive regeneration (every 5 seconds)
-    const bonusRegen = this.player.skillBoosts?.bonusRegen || 0;
-    this.regenAccumulator += deltaSec;
-    if (this.regenAccumulator >= 5.0) {
-      this.regenAccumulator -= 5.0;
-      const vocDef = VOCATIONS_CATALOG[this.player.vocation];
-      const regenType = vocDef?.regenResource || (this.player.vocation === 'magician' ? 'mana' : 'hp');
-      const amt = 2 + bonusRegen;
-      if (regenType === 'mana' && this.player.mana < this.player.max_mana) {
-        this.player.mana = Math.min(this.player.max_mana, this.player.mana + amt);
-        this.addFloatingText(`+${amt} MP`, this.player.x, this.player.y, '#3b82f6');
-      } else if (regenType === 'hp' && this.player.hp < this.player.max_hp) {
-        this.player.hp = Math.min(this.player.max_hp, this.player.hp + amt);
-        this.addFloatingText(`+${amt} HP`, this.player.x, this.player.y, '#22c55e');
-      }
+    // Passive HP/MP recovery (LIV-22 item 4): every character regenerates
+    // ~1 HP and ~1 MP per 10s (catalog-driven via economy.passiveRecovery).
+    const regen = EconomySystem.passiveRecovery();
+    this.passiveRecoveryAccumulator += deltaSec;
+    if (this.passiveRecoveryAccumulator >= regen.intervalSec) {
+      this.passiveRecoveryAccumulator -= regen.intervalSec;
+      const restored = EconomySystem.applyPassiveRecovery(this.player);
+      if (restored.hp > 0) this.addFloatingText(`+${restored.hp} HP`, this.player.x, this.player.y, '#22c55e');
+      if (restored.mp > 0) this.addFloatingText(`+${restored.mp} MP`, this.player.x, this.player.y, '#3b82f6');
+      if (restored.hp > 0 || restored.mp > 0) this.updateHUD();
     }
 
     // Auto-Prayer Pulse (Luminous Amulet every 10 seconds)
@@ -1303,6 +1458,11 @@ export class LokartaApp {
           if (ChestSystem.findChestAt(this.chests, this.player.x, this.player.y)) {
             this.handleOpenChest(this.player.x, this.player.y);
           }
+
+          // Walk-on healing spring (LIV-22 item 7).
+          if (this.gridMap.isSpring(this.player.x, this.player.y)) {
+            this.handleSpring(this.player.x, this.player.y);
+          }
         }
       }
     } else if (this.player) {
@@ -1388,17 +1548,9 @@ export class LokartaApp {
       }
     }
 
-    const actionKey = item.actionKey || catalogItem?.actionKey || (
-      item.item_id?.includes('spark') ? 'wand_spark' :
-      item.item_id?.includes('beam') ? 'energy_beam' :
-      item.item_id?.includes('light') ? 'light_spell' :
-      item.item_id?.includes('power_shot') ? 'power_shot' :
-      (item.item_id?.includes('bow') || item.item_id?.includes('shot')) ? 'bow_shot' :
-      item.item_id?.includes('cleave') ? 'cleave' :
-      (item.item_id?.includes('sword') || item.item_id?.includes('slash')) ? 'slash' :
-      (item.item_id?.includes('prayer') || item.item_id?.includes('heal')) ? 'healing_prayer' :
-      (item.item_id?.includes('holy') || item.item_id?.includes('warhammer') || item.item_id?.includes('radiance')) ? 'holy_strike' : null
-    );
+    // Dispatch strictly on the catalog `actionKey` (declared in items.json).
+    // No string heuristics: an item without an actionKey has no active ability.
+    const actionKey = item.actionKey || catalogItem?.actionKey || null;
 
     const handlers = {
       wand_spark: () => {
@@ -1574,6 +1726,15 @@ export class LokartaApp {
         }
 
         const isBoss = deadMonster.isBoss || deadMonster.id.includes('boss') || deadMonster.max_hp >= 200;
+
+        // Gold drop (LIV-22 item 6): monsters yield gold in addition to items.
+        const goldDrop = EconomySystem.goldFromMonster(deadMonster);
+        if (goldDrop > 0) {
+          EconomySystem.addGold(this.player, goldDrop);
+          this.logCombat(`${deadMonster.name} dropped ${goldDrop} gold.`, 'loot');
+          this.addFloatingText(`+${goldDrop}g`, deadMonster.x, deadMonster.y, '#fbbf24');
+        }
+
         this.spawnDeathEffect(deadMonster);
         const xpEarned = ProgressionSystem.getMonsterXp(deadMonster.type, this.player.current_floor || 1, isBoss);
         const lvlRes = ProgressionSystem.awardXP(this.player, xpEarned);
@@ -1657,6 +1818,14 @@ export class LokartaApp {
     this.logCombat(res.message, 'loot');
     this.addFloatingText(`OPENED ${chest.tier.toUpperCase()} CHEST`, chest.x, chest.y, '#ffd700');
 
+    // Gold from chests (LIV-22 item 6), in addition to the rolled item loot.
+    const goldDrop = EconomySystem.goldFromChest(chest.tier);
+    if (goldDrop > 0) {
+      EconomySystem.addGold(this.player, goldDrop);
+      this.logCombat(`Found ${goldDrop} gold in the chest.`, 'loot');
+      this.addFloatingText(`+${goldDrop}g`, chest.x, chest.y, '#fbbf24');
+    }
+
     // Single-turn open + collect: grant the rolled loot directly to the player.
     let picked = 0;
     const pickedNames = [];
@@ -1679,6 +1848,32 @@ export class LokartaApp {
     this.updateHUD();
     await this.persistChests();
     return true;
+  }
+
+  /**
+   * Uses the healing spring at (gridX, gridY): restores up to the catalog
+   * +10 HP/MP per use, gated to 1 charge per 60s (LIV-22 item 7).
+   */
+  handleSpring(gridX, gridY) {
+    const spring = (this.springs || []).find(s => s.x === gridX && s.y === gridY)
+      || { id: `spring_${this.player.current_floor}_${gridX}_${gridY}` };
+    const res = EconomySystem.useSpring(this.player, spring.id, Date.now());
+    if (res.success) {
+      soundFX.init();
+      soundFX.play('holyChime');
+      this.logCombat(res.message, 'spell');
+      if (res.hp > 0) this.addFloatingText(`+${res.hp} HP`, gridX, gridY, '#22c55e');
+      if (res.mp > 0) this.addFloatingText(`+${res.mp} MP`, gridX, gridY, '#3b82f6');
+      this.updateHUD();
+      this.persistSave();
+    } else if (res.cooldownRemainingSec) {
+      // One-shot nag per spring while recharging.
+      const hint = `spring:${spring.id}`;
+      if (this.stairHint !== hint) {
+        this.stairHint = hint;
+        this.logCombat(res.message, 'warning');
+      }
+    }
   }
 
   /**
@@ -1908,7 +2103,6 @@ export class LokartaApp {
         statusBarsEl: this.statusBarsEl,
         paperdollEl: this.paperdollEl,
         backpackEl: this.backpackEl,
-        hotbarEl: this.hotbarEl,
       },
       this
     );
@@ -1923,47 +2117,33 @@ export class LokartaApp {
   }
 
   async onPlayerDeath() {
-    // Death sends the player down one level (min level 1) with full HP/mana
-    // (LIV-16). Never persist HP 0 — the worker respawn restores a full-heal
-    // state on the lower level.
-    const slotIndex = this.player?.slotIndex;
+    // LIV-22 item 5: on defeat the hero is revived in the Town Temple at full
+    // HP/MP (never persisted at 0). The descent-on-death model is retired.
     const fromFloor = this.player?.current_floor || 1;
     this.isPaused = true;
 
-    if (!slotIndex) {
-      // No slot (legacy run): just fall back to the title/game-over screen.
-      this.showGameOverModal(fromFloor, fromFloor);
-      return;
-    }
+    this.player.hp = this.player.max_hp;
+    this.player.mana = this.player.max_mana;
+    this.player.location = 'town';
+    this.player.current_floor = this.player.current_floor || 1;
+    this.location = 'town';
 
     try {
-      const data = await this.gameClient.respawnAfterDeath(slotIndex);
-      const toFloor = data.player?.current_floor || 1;
-      this.player = data.player;
-      this.monsters = [];
-      this.applyDungeonData(data.floor);
-      LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
-      this.updateHUD();
       await this.persistSave(true);
-      if (toFloor < fromFloor) {
-        this.logCombat(`You fell on Floor ${fromFloor}. You awaken on Floor ${toFloor}, restored.`, 'warning');
-      } else {
-        this.logCombat(`You fell on Floor ${fromFloor}. You awaken at the tower gate, restored.`, 'warning');
-      }
-      this.showGameOverModal(fromFloor, toFloor);
     } catch (err) {
-      console.error('Death respawn failed:', err);
-      this.showGameOverModal(fromFloor, fromFloor);
+      console.warn('Death save error:', err);
     }
+
+    this.logCombat(`You fell on Floor ${fromFloor}. The Temple of the Dawn draws you back and restores you.`, 'warning');
+    this.showGameOverModal(fromFloor, fromFloor);
   }
 
-  /** Resumes play at the already-respawned lower level. */
+  /** Resumes play in the Town after a defeat (LIV-22 item 5). */
   resumeAfterDeath() {
     this.isGameOver = false;
     this.isFloorCleared = false;
-    this.isPaused = false;
     this.closeModal();
-    this.startGameLoop();
+    this.showTown();
   }
 
   showVictoryModal() {
