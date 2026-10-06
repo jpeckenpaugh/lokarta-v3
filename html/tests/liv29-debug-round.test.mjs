@@ -32,6 +32,7 @@ import { ITEMS_CATALOG, UI_CATALOG, CHESTS_CATALOG } from '../data/index.js';
 import { LokartaApp } from '../app/app-controller.js';
 import { SpriteRenderer } from '../app/sprite-renderer.js';
 import { soundFX } from '../audio/index.js';
+import { readControllerSources } from './helpers/app-source.mjs';
 
 const LEVELS = [1, 2, 3, 4, 5];
 
@@ -291,7 +292,7 @@ describe('LIV-29 #6 pickup messages', () => {
 
 describe('LIV-29 #7 no XP from floor changes', () => {
   it('removes the floor-clear XP grant from the controller source', () => {
-    const src = readFileSync(resolve(process.cwd(), 'html/app/app-controller.js'), 'utf8');
+    const src = readControllerSources();
     assert.doesNotMatch(src, /Floor Clear XP/, 'floor-clear XP copy must be gone');
     const clearBody = src.slice(src.indexOf('async handleFloorClear'));
     assert.doesNotMatch(clearBody.slice(0, clearBody.indexOf('addFloatingText(')), /awardXP/, 'floor change must not award XP');
