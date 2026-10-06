@@ -15,6 +15,7 @@ export * from './combat-controller.js';
 export * from './inventory-controller.js';
 export * from './shop-controller.js';
 export * from './floor-controller.js';
+export * from './save-controller.js';
 export * from './splash-screen.js';
 export * from './title-ambient.js';
 export * from './transition-controller.js';
