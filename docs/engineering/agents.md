@@ -82,16 +82,16 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 
 ### Specific Rules:
 1. **Single-Pass Skeleton Initialization:**
-   DOM containers for hotbar action slots, backpack grids, paperdoll slots, and status bars must be generated **once** during startup.
+   DOM containers for the loadout panel (active slots `1`–`4`, equipment slots `Q,W,E,R`), backpack grid (36 slots), status bars, and combat log must be generated **once** during startup.
 2. **Selective Tick Diffing:**
    On every 10 Hz simulation tick, update existing elements selectively (e.g., mutate `.textContent`, `.style.width`, or `.classList.toggle()`) only when values actually change:
    ```javascript
    if (nameEl.textContent !== newName) nameEl.textContent = newName;
    ```
 3. **Event Delegation Only:**
-   Do not attach event listeners to dynamic list items or action buttons in loops. Attach delegated listeners to static parent containers (e.g., `#hotbar-container`, `#backpack-container`) using `e.target.closest('.action-slot-btn')`.
+   Do not attach event listeners to dynamic list items or action buttons in loops. Attach delegated listeners to static parent containers (e.g., `#loadout-container`, `#backpack-container`) using `e.target.closest('.loadout-slot')` or `e.target.closest('.backpack-slot')`.
 4. **Pointer Event Bubbling:**
-   Remember that `pointerleave` and `mouseleave` **do not bubble**. Use bubbling events like `pointerout` with boundary checks (`if (e.relatedTarget && btn.contains(e.relatedTarget)) return;`) when delegating pointer exit events.
+   Manage pointer drag/drop and slot interactions through unified root delegation (`pointerdown`, `pointermove`, `pointerup`) with coordinate inspection (`document.elementFromPoint`).
 5. **Unbounded DOM Capping:**
    Any scrolling log, particle container, or floating text list must enforce a strict upper bound (e.g., ring-buffer pruning via `while (count > MAX) removeChild(firstElementChild)`).
 
@@ -103,9 +103,9 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
    Procedural tower floor generation, BFS room connectivity validation, and IndexedDB I/O belong strictly in [`html/worker/game-worker.js`](html/worker/game-worker.js).
 2. **Debounce Persistence Calls:**
    Do not dispatch `saveCharacter` worker messages on every minor user action. Use a trailing debounce timer (e.g., 500 ms) for rapid actions (potions, looting), reserving immediate saves (`persistSave(true)`) for critical transitions:
-   - Floor ascent stairs
+   - Floor ascent / descent stairs
    - Player leveling up
-   - Game over / defeat
+   - Game over / defeat (persisting revival at Town Temple)
 3. **Message Serialization (Structured Clone):**
    State sent between the main thread and `game-worker.js` must be pure JSON-serializable state. Never pass functions, DOM elements, or circular object graphs across `postMessage`.
 
@@ -116,7 +116,7 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 1. **Mulberry32 PRNG:**
    Always use the deterministic Mulberry32 PRNG ([`createPRNG`](html/services/floor-generator.js)) for tower floor carving, room layout, and monster tier selection. Never use `Math.random()` in procedural generation.
 2. **BFS Connectivity Guarantee:**
-   Any modification to tower templates or floor generation algorithms must guarantee and verify full Breadth-First Search (BFS) path connectivity between player spawn `(2,2)` and the ascent stairs `(35,35)`.
+   Any modification to tower templates or floor generation algorithms must guarantee and verify full Breadth-First Search (BFS) path connectivity between the arrival spawn tile and the connecting ascent stair tile across all 5 tiers.
 3. **Consistent Floor Seeds:**
    Use the canonical formula `(1337 + floorId * 42)` for floor seeds unless an explicit seed parameter is provided.
 
