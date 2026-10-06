@@ -588,7 +588,7 @@ export class HUDManager {
     if (!item) return '•';
     const catalogItem = ITEMS_CATALOG[item.item_id];
     const code = item.svgCode || catalogItem?.svgCode || (item.icon ? HUDManager.emojiToOpenMojiCode(item.icon) : '1F4E6');
-    return `<img class="openmoji-icon" src="./assets/openmoji/${code}.svg" alt="${item.name || 'item'}" />`;
+    return `<img class="openmoji-icon" src="./assets/openmoji/${code}.svg" alt="${item.name || 'item'}" draggable="false" />`;
   }
 
   static logCombat(combatLogScrollEl, message, category = 'system') {

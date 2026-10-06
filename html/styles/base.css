@@ -326,6 +326,7 @@ body {
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
   transition: transform 90ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out;
 }
@@ -363,6 +364,17 @@ body {
   justify-content: center;
   width: 30px;
   height: 30px;
+  /* The button owns all pointer/long-press targeting; the icon must never be
+     the event target or Android Chrome opens its native image context menu. */
+  pointer-events: none;
+  -webkit-touch-callout: none;
+}
+
+.ability-btn .ability-icon,
+.ability-btn .ability-icon *,
+.ability-btn .openmoji-icon {
+  pointer-events: none;
+  -webkit-touch-callout: none;
 }
 
 .ability-btn .ability-icon .openmoji-icon {

@@ -132,6 +132,15 @@ export class AbilityBar {
       c.addEventListener('touchend', e => this._onTouch('up', e), { passive: false });
       c.addEventListener('touchcancel', e => this._onTouch('cancel', e), { passive: false });
     }
+    // Android Chrome long-press on the item <img> would otherwise open the
+    // native "Open image in new tab" menu instead of reaching autofire. Scope
+    // the suppression to ability buttons; leave context menus elsewhere alone.
+    c.addEventListener('contextmenu', e => this._onContextMenu(e));
+  }
+
+  _onContextMenu(e) {
+    const btn = this._buttonFromEvent(e);
+    if (btn) e.preventDefault();
   }
 
   _buttonFromEvent(e) {
