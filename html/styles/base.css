@@ -262,8 +262,8 @@ body {
 /* Touch controls overlay for mobile */
 .touch-controls {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  left: calc(12px + env(safe-area-inset-left, 0px));
   display: none;
   grid-template-columns: repeat(3, 44px);
   grid-template-rows: repeat(3, 44px);
@@ -289,6 +289,261 @@ body {
 .touch-btn:active {
   background: var(--gold-accent);
   color: #050608;
+}
+
+/* ==========================================================================
+   Mobile Ability Bar (LIV-45) — q/w/e/r + 1/2/3/4 touch slots
+   Mirrors the sidebar loadout; shown wherever .touch-controls is shown.
+   ========================================================================== */
+
+.ability-bar {
+  position: absolute;
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  display: none;
+  grid-template-columns: repeat(4, 52px);
+  grid-template-rows: repeat(2, 52px);
+  gap: 6px;
+  z-index: 20;
+  /* Gaps pass through so the canvas stays targetable between buttons. */
+  pointer-events: none;
+}
+
+.ability-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  background: rgba(20, 24, 38, 0.85);
+  border: 1px solid var(--gold-accent);
+  border-radius: 8px;
+  color: var(--gold-accent);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 90ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.ability-btn .key-badge {
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--gold-accent);
+}
+
+.ability-btn .slot-class-badge {
+  position: absolute;
+  top: 2px;
+  right: 5px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.ability-btn .slot-class-badge.visible {
+  opacity: 0.9;
+}
+
+.ability-btn .ability-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+}
+
+.ability-btn .ability-icon .openmoji-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.ability-btn .ability-qty {
+  position: absolute;
+  bottom: 2px;
+  right: 5px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--blue-accent);
+}
+
+/* The `!` non-color cue for a depleted (no mana / no ammo) button. */
+.ability-btn .ability-flag {
+  display: none;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  z-index: 4;
+  width: 15px;
+  height: 15px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #b91c1c;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ability-btn.slot-empty {
+  border-style: dashed;
+  opacity: 0.55;
+}
+
+.ability-btn.slot-empty .key-badge {
+  opacity: 0.7;
+}
+
+.ability-btn.slot-occupied.voc-fighter { border-left: 3px solid var(--class-fighter); }
+.ability-btn.slot-occupied.voc-paladin { border-left: 3px solid var(--class-paladin); }
+.ability-btn.slot-occupied.voc-magician { border-left: 3px solid var(--class-magician); }
+.ability-btn.slot-occupied.voc-archer { border-left: 3px solid var(--class-archer); }
+.ability-btn.slot-occupied.voc-neutral { border-left: 3px solid var(--class-neutral); }
+
+.ability-btn:active {
+  transform: scale(0.96);
+}
+
+.ability-btn:focus-visible {
+  outline: 2px solid var(--gold-accent);
+  outline-offset: 2px;
+}
+
+/* Cooldown wipe: grey scrim recedes as the ability readies (same vocabulary
+   as the sidebar loadout slots). */
+.ability-btn .cooldown-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: var(--slot-cooldown-overlay);
+  pointer-events: none;
+  clip-path: inset(var(--cd-inset, 0%) 0 0 0);
+  transition: clip-path var(--slot-cooldown-step) linear;
+}
+
+.ability-btn.on-cooldown .cooldown-overlay {
+  display: block;
+}
+
+.ability-btn.on-cooldown .key-badge {
+  color: var(--gold-accent);
+}
+
+/* Depleted (no mana / no ammo): desaturate + `!` badge. */
+.ability-btn--depleted .ability-icon {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.ability-btn--depleted .ability-flag {
+  display: flex;
+}
+
+.ability-btn--depleted .ability-flag::before {
+  content: '!';
+}
+
+/* No valid target / already-active buff: neutral dimmed ring, no error color. */
+.ability-btn--no-target {
+  opacity: 0.6;
+}
+
+.ability-btn--no-target .ability-icon {
+  opacity: 0.7;
+}
+
+/* Charging (< hold threshold): progress underline that fills over the feedback
+   window so the autofire threshold is learnable. */
+.ability-btn--charging {
+  transform: scale(0.94);
+  border-color: #fff2c8;
+}
+
+.ability-btn--charging::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  border-radius: 0 0 7px 7px;
+  background: var(--gold-accent);
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation: abilityChargeFill var(--autofire-feedback-ms, 1200ms) linear forwards;
+}
+
+@keyframes abilityChargeFill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Autofire active: pulsing gold ring + icon micro-pulse. */
+.ability-btn--active-fire {
+  border-color: var(--gold-accent);
+  animation: abilityActiveRing 1.2s ease-in-out infinite alternate;
+}
+
+.ability-btn--active-fire .ability-icon {
+  animation: abilityIconPulse 1.2s ease-in-out infinite alternate;
+}
+
+/* Waiting: holding through a cooldown/guard gap; resumes automatically. */
+.ability-btn--waiting {
+  animation: none;
+  opacity: 0.45;
+}
+
+/* Active slots 1-4 held past the threshold: single-use locked, no ring. */
+.ability-btn--single-locked {
+  border-color: var(--gold-accent);
+  box-shadow: 0 0 8px var(--gold-glow) inset;
+}
+
+@keyframes abilityActiveRing {
+  from { box-shadow: 0 0 4px var(--gold-glow); }
+  to { box-shadow: 0 0 14px var(--gold-glow); }
+}
+
+@keyframes abilityIconPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ability-btn,
+  .ability-btn .cooldown-overlay {
+    transition: none;
+  }
+  .ability-btn--charging {
+    transform: none;
+  }
+  .ability-btn--charging::after {
+    animation: none;
+    transform: scaleX(1);
+    background: repeating-linear-gradient(90deg, var(--gold-accent) 0 6px, transparent 6px 10px);
+  }
+  .ability-btn--active-fire,
+  .ability-btn--active-fire .ability-icon {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--gold-accent) inset;
+  }
 }
 
 /* ==========================================================================

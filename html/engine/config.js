@@ -61,6 +61,12 @@ export const CONFIG = {
   HOLD_MAX_MS: 1200,
   DOUBLE_TAP_MAX_MS: 300,
 
+  // Hold-to-autofire timings (ms) for the mobile ability bar (LIV-45),
+  // resolved from `keybindings.json.autofire`.
+  AUTOFIRE_HOLD_MS: Number(KEYBINDINGS_CATALOG?.autofire?.holdMs) || 2000,
+  AUTOFIRE_REPEAT_MS: Number(KEYBINDINGS_CATALOG?.autofire?.repeatMs) || 200,
+  AUTOFIRE_FEEDBACK_MS: Number(KEYBINDINGS_CATALOG?.autofire?.feedbackMs) || 1200,
+
   // Lighting
   BASE_LIGHT_RADIUS: 10,
   LIGHT_SPELL_RADIUS: ABILITIES_CATALOG.magician_light.lightRadius || 13,

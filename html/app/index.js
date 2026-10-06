@@ -7,6 +7,7 @@ export * from './canvas-renderer.js';
 export * from './hud-manager.js';
 export * from './modal-manager.js';
 export * from './input-controller.js';
+export * from './ability-bar.js';
 export * from './app-controller.js';
 export * from './splash-screen.js';
 export * from './title-ambient.js';

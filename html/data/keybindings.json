@@ -19,5 +19,10 @@
     "holdMinMs": 250,
     "holdMaxMs": 1200,
     "doubleTapMaxMs": 300
+  },
+  "autofire": {
+    "holdMs": 2000,
+    "repeatMs": 200,
+    "feedbackMs": 1200
   }
 }

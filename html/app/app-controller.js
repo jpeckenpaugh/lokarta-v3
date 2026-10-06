@@ -31,6 +31,7 @@ import { CanvasRenderer } from './canvas-renderer.js';
 import { HUDManager } from './hud-manager.js';
 import { ModalManager } from './modal-manager.js';
 import { InputController } from './input-controller.js';
+import { AbilityBar } from './ability-bar.js';
 import { TransitionController } from './transition-controller.js';
 import { TitleAmbient } from './title-ambient.js';
 import { normalizeOptions, resolveReducedMotion, slotSummary } from '../services/save-slots.js';
@@ -153,6 +154,7 @@ export class LokartaApp {
     this.sidebarEl = document.getElementById('sidebar-hud');
     this.loadoutEl = document.getElementById('loadout-container');
     this.backpackEl = document.getElementById('backpack-container');
+    this.abilityBarEl = document.getElementById('ability-bar');
     this.combatLogScrollEl = document.getElementById('log-entries-container');
     this.modalOverlayEl = document.getElementById('modal-overlay');
     this.townEl = document.getElementById('town-screen');
@@ -182,6 +184,7 @@ export class LokartaApp {
     );
 
     this.inputController = new InputController(this);
+    this.abilityBar = new AbilityBar(this);
 
     this.init();
   }
@@ -190,6 +193,7 @@ export class LokartaApp {
     window.addEventListener('resize', () => this.renderer.resize());
     this.renderer.resize();
     this.inputController.bindInputs();
+    this.abilityBar.mount({ abilityBarEl: this.abilityBarEl });
     this.bindChromeControls();
 
     let bootstrapData = null;
@@ -2377,6 +2381,7 @@ export class LokartaApp {
       },
       this
     );
+    this.abilityBar.paint();
   }
 
   logCombat(message, category = 'system') {
