@@ -13,6 +13,7 @@ export * from './game-loop.js';
 export * from './hud-fx.js';
 export * from './combat-controller.js';
 export * from './inventory-controller.js';
+export * from './shop-controller.js';
 export * from './splash-screen.js';
 export * from './title-ambient.js';
 export * from './transition-controller.js';
