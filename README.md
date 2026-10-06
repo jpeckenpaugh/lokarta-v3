@@ -125,7 +125,7 @@ The client application is structured into clean, modular vanilla ES JavaScript s
 
 ## 📖 Documentation Index
 
-All docs live under `docs/` (design canon, art direction, engineering truth, process):
+All docs live under `docs/` (design canon, art direction, engineering truth):
 
 - **Design canon (`docs/design/`)**
   - [`concept.md`](docs/design/concept.md) — Product identity, target audience, stack summary, vocation specs, and tower tier catalog.
@@ -143,7 +143,3 @@ All docs live under `docs/` (design canon, art direction, engineering truth, pro
   - [`architecture.md`](docs/engineering/architecture.md) — Subsystem architecture, RPC protocol, IndexedDB schema, render loop, audio graph.
   - [`build-versioning.md`](docs/engineering/build-versioning.md) — Build id / cache-flush versioning.
   - [`environment.md`](docs/engineering/environment.md) — Browser API prerequisites, local server, and test procedures.
-  - [`features/`](docs/engineering/features/) — Canonical feature briefs (`01-dungeon-generator.md` through `08-ui-and-canvas-renderer.md`).
-- **Process (`docs/process/`)**
-  - [`stage-manager.md`](docs/process/stage-manager.md) — Agent pipeline orchestration.
-  - [`reverse-engineering/`](docs/process/reverse-engineering/) — Historical bootstrap pipeline (archived).

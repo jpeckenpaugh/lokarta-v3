@@ -7,7 +7,7 @@
 | Scope | 4 vocations (Magician, Archer, Fighter, Paladin) + 5 monsters (`giant_rat`, `crypt_skeleton`, `shadow_cultist`, `elite_cultist`, `abyssal_overlord`) |
 | Board-mandated style | "Top down classic RPG", **16-bit SNES-inspired top-down pixel art** |
 | Baseline | `main` @ `5381afc`, native suite green: **507 tests / 80 suites / 0 fail** |
-| Canon refs | `concept.md`, `docs/engineering/architecture.md`, `docs/engineering/agents.md`, `docs/design/analysis/equipment-analysis.md`, `docs/engineering/features/01..08` |
+| Canon refs | `concept.md`, `docs/engineering/architecture.md`, `docs/engineering/agents.md`, `docs/design/analysis/equipment-analysis.md` |
 
 This document is the contract for LIV-10. Every in-scope asset has a concrete schema, size, palette, frame set, integration point, and verification check so the implementation needs no further design input.
 
@@ -50,7 +50,7 @@ Colors come from `html/data/vocations.json` (`renderTheme.primary/secondary/acce
 
 1. **Vector shapes at 64 px, not pixels.** Every edge is anti-aliased (`arc`, `ellipse`, `stroke` with fractional `u` multiples such as `1.2 * u`, `4 * u`, `0.5`). There is no pixel grid, no outline, no dither, no ramp. At a 64 px tile this reads as "programmer art."
 2. **No animation at all.** The player/monsters are redrawn in a single static pose per frame. `updateAnimations` (`app-controller.js:483+`) only advances projectiles, particles and floating text. There is **no walk cycle, no attack pose, no hit reaction, no death animation**. Facing is two moving dots.
-3. **Docs drift masks it.** `docs/engineering/architecture.md §6.1` and `docs/engineering/features/08` describe `prevX/prevY` lerp interpolation, but the codebase has **no `prevX`/`prevY` fields** (verified: zero matches in `html/`). Entities snap tile-to-tile; the only smoothing is camera rounding.
+3. **Docs drift masks it.** `docs/engineering/architecture.md §6.1` describes `prevX/prevY` lerp interpolation, but the codebase has **no `prevX`/`prevY` fields** (verified: zero matches in `html/`). Entities snap tile-to-tile; the only smoothing is camera rounding.
 4. **Palettes are near-invisible on the floor.** Using WCAG relative luminance (`L`) and contrast ratio `CR = (L_a + 0.05) / (L_b + 0.05)` against `tile_themes.floor.fill = #1a1c23` (`L ≈ 0.0128`):
 
    | Actor | Dominant fill | `L` (approx) | `CR` vs floor | Verdict |
@@ -588,7 +588,7 @@ These are deliberately excluded to keep this spec to "4 vocations + monsters," b
 
 1. **Tile & item pixel pass.** The flat procedural floor/wall/door/stairs and the vector item glyphs will clash with pixel-art actors. Recommended next: a second spec covering `tile_themes.json`-driven 32×32 native tiles and item icons using the same JSON matrix pipeline, per tier.
 2. **OpenMoji `svgCode` cleanup.** Either add the missing `1F407` (rat) and `1F480` (skeleton) SVGs or stop treating `svgCode` as renderer-ready for monsters.
-3. **Fix docs drift.** `docs/engineering/architecture.md §6.1` and `docs/engineering/features/08` claim `prevX/prevY` interpolation that does not exist; either implement it (recommended, for smoother 10 Hz movement) or correct the docs.
+3. **Fix docs drift.** `docs/engineering/architecture.md §6.1` claims `prevX/prevY` interpolation that does not exist; either implement it (recommended, for smoother 10 Hz movement) or correct the docs.
 4. **HUD sprite parity.** Replace OpenMoji item icons in the HUD with the same pixel-art style once actors ship, updating `app-modules.test.mjs:31` deliberately.
 
 Recommended owner: Tech Lead (route 1 and 4 as engineering issues; 2 and 3 are small doc/asset fixes). This document does not create those issues — the CEO/board can decide sequencing after LIV-10 lands.
