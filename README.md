@@ -125,21 +125,15 @@ The client application is structured into clean, modular vanilla ES JavaScript s
 
 ## 📖 Documentation Index
 
-All docs live under `docs/` (design canon, art direction, engineering truth):
+All docs live under `docs/`:
 
 - **Design canon (`docs/design/`)**
-  - [`concept.md`](docs/design/concept.md) — Product identity, target audience, stack summary, vocation specs, and tower tier catalog.
-  - [`level-design.md`](docs/design/level-design.md) — Authoritative level/room design spec.
-  - [`lore-and-naming.md`](docs/design/lore-and-naming.md) — Naming canon.
-  - [`packaging-design.md`](docs/design/packaging-design.md) — Save-slot packaging and storage design.
-  - [`analysis/equipment-analysis.md`](docs/design/analysis/equipment-analysis.md) — Historical equipment analysis (LIV-12).
+  - [`game-design.md`](docs/design/game-design.md) — Core game loop, 4 vocations, 5-tier tower ascent, Havenreach town hub, and inventory rules.
 - **Art direction (`docs/art/`)**
-  - [`art-direction.md`](docs/art/art-direction.md) — Actor/sprite art contract.
-  - [`art-direction-tower.md`](docs/art/art-direction-tower.md) — Tower theme/tile art specs.
-  - [`art-direction-room-props.md`](docs/art/art-direction-room-props.md) — Room prop wave spec.
-  - [`preview/`](docs/art/preview/) — Committed sprite preview PNGs (drift-checked by tests).
+  - [`art-direction.md`](docs/art/art-direction.md) — 16-bit SNES-inspired pixel art specifications, frame sets, and contrast rules.
+  - [`preview/`](docs/art/preview/) — Committed sprite preview PNGs (verified by tests).
 - **Engineering (`docs/engineering/`)**
+  - [`architecture.md`](docs/engineering/architecture.md) — Modular UI controllers, Web Worker RPC protocol, and IndexedDB schema.
   - [`agents.md`](docs/engineering/agents.md) — Mandatory architecture rules, data-driven constraints, hot-path budgets, and testing standards.
-  - [`architecture.md`](docs/engineering/architecture.md) — Subsystem architecture, RPC protocol, IndexedDB schema, render loop, audio graph.
-  - [`build-versioning.md`](docs/engineering/build-versioning.md) — Build id / cache-flush versioning.
+  - [`build-versioning.md`](docs/engineering/build-versioning.md) — Build ID cache-busting mechanism.
   - [`environment.md`](docs/engineering/environment.md) — Browser API prerequisites, local server, and test procedures.
