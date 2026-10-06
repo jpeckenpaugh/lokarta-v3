@@ -13,6 +13,7 @@ import {
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG, UI_CATALOG } from '../data/index.js';
+import { TOWER_LEVEL_COUNT } from '../services/floor-generator.js';
 import { setAnimState, dirFromFacing } from './animation-state.js';
 
 /**
