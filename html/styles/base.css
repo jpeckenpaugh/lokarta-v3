@@ -412,6 +412,29 @@ body {
   line-height: 1;
 }
 
+/* Armed (toggled) auto-fire: a persistent `AUTO` badge that does not depend on
+   the finger being down. Hidden unless the slot is armed (LIV-47). */
+.ability-btn .ability-auto-badge {
+  display: none;
+  position: absolute;
+  bottom: 2px;
+  left: 4px;
+  z-index: 4;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--gold-accent);
+  color: #050608;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+}
+
+.ability-btn--active-fire .ability-auto-badge {
+  display: inline-block;
+}
+
 .ability-btn.slot-empty {
   border-style: dashed;
   opacity: 0.55;
@@ -516,10 +539,14 @@ body {
   animation: abilityIconPulse 1.2s ease-in-out infinite alternate;
 }
 
-/* Waiting: holding through a cooldown/guard gap; resumes automatically. */
+/* Waiting: armed but throttled by a cooldown/guard gap; resumes automatically. */
 .ability-btn--waiting {
   animation: none;
   opacity: 0.45;
+}
+
+.ability-btn--waiting .ability-icon {
+  animation: none;
 }
 
 /* Active slots 1-4 held past the threshold: single-use locked, no ring. */

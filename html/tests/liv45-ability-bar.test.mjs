@@ -278,7 +278,7 @@ describe('LIV-45 press/autofire state machine', () => {
     bar.destroy();
   });
 
-  it('crosses the threshold into autofire and stops on release', async () => {
+  it('crosses the threshold into a persistent armed state that survives release', async () => {
     CONFIG.AUTOFIRE_HOLD_MS = 30;
     CONFIG.AUTOFIRE_REPEAT_MS = 15;
     const app = machineApp();
@@ -288,11 +288,23 @@ describe('LIV-45 press/autofire state machine', () => {
     await new Promise(r => setTimeout(r, 90));
     assert.ok(app.casts >= 2, `expected repeat casts, got ${app.casts}`);
     assert.equal(btn.classList.contains('ability-btn--active-fire'), true);
+    assert.equal(bar.armed.has('off_hand'), true, 'slot armed at threshold');
+
     const castsAtRelease = app.casts;
     bar._endSession(bar.sessions.get(2), false);
     await new Promise(r => setTimeout(r, 60));
-    assert.equal(app.casts, castsAtRelease, 'no casts after release');
+    assert.ok(app.casts > castsAtRelease, 'keeps firing after release');
+    assert.equal(btn.classList.contains('ability-btn--active-fire'), true, 'ring persists after release');
+
+    // Long-press the same slot again to disarm immediately.
+    bar._startSession(btn, 6, { pointerId: 6 });
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(bar.armed.has('off_hand'), false, 'second long-press disarms');
     assert.equal(btn.classList.contains('ability-btn--active-fire'), false);
+    const castsAtDisarm = app.casts;
+    bar._endSession(bar.sessions.get(6), false);
+    await new Promise(r => setTimeout(r, 60));
+    assert.equal(app.casts, castsAtDisarm, 'no casts after disarm');
     bar.destroy();
   });
 
@@ -323,7 +335,7 @@ describe('LIV-45 press/autofire state machine', () => {
     bar.destroy();
   });
 
-  it('forced stop cancels autofire when gameplay pauses', async () => {
+  it('forced stop disarms an armed slot when gameplay pauses', async () => {
     CONFIG.AUTOFIRE_HOLD_MS = 20;
     CONFIG.AUTOFIRE_REPEAT_MS = 10;
     const app = machineApp();
@@ -331,10 +343,12 @@ describe('LIV-45 press/autofire state machine', () => {
     const btn = fakeButton({ slotKind: 'equipment', slot: 'off_hand', index: '0', baseLabel: 'Off hand, key W' });
     bar._startSession(btn, 5, { pointerId: 5 });
     await new Promise(r => setTimeout(r, 40));
+    assert.equal(bar.armed.has('off_hand'), true, 'armed before pause');
     app.isPaused = true;
     await new Promise(r => setTimeout(r, 60));
-    assert.equal(bar.sessions.has(5), false, 'session cleared on pause');
+    assert.equal(bar.armed.has('off_hand'), false, 'disarmed on pause');
     assert.equal(btn.classList.contains('ability-btn--active-fire'), false);
+    bar._endSession(bar.sessions.get(5), false);
     bar.destroy();
     CONFIG.AUTOFIRE_HOLD_MS = originalHold;
     CONFIG.AUTOFIRE_REPEAT_MS = originalRepeat;

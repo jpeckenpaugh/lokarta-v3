@@ -1,5 +1,5 @@
 /**
- * Lokarta: Come Into The Light - Mobile Ability Bar (LIV-45)
+ * Lokarta: Come Into The Light - Mobile Ability Bar (LIV-45, LIV-47)
  *
  * The on-screen mirror of the `q/w/e/r` + `1/2/3/4` keyboard slots, rendered
  * bottom-right on touch layouts. It reuses the existing dispatch paths so touch
@@ -9,9 +9,19 @@
  *   - Active `1/2/3/4`   -> `app.gestureEngine.handleInputDown/Up` (single tap)
  *                           and `app.handleGestureEvent(...)` (held once)
  *
- * Pressing and holding an equipment ability for `autofireHoldMs` casts once at
- * the threshold and then repeats on `autofireRepeatMs` while `canAutoFire`
- * passes (see `autofire.js`). Active slots 1-4 fire exactly once per hold.
+ * Press behaviour (LIV-47): a short tap (< `autofire.holdMs`) performs the
+ * existing single cast / use-equip. A long-press (>= `autofire.holdMs`) on an
+ * equipment slot **toggles a persistent auto-fire armed state** for that slot —
+ * releasing does not cancel. While armed, a ~5 Hz guarded tick fires the ability
+ * whenever `canAutoFire` passes and parks in a visible waiting state otherwise
+ * (cooldown / out of mana / no target), resuming automatically when the guard
+ * passes again. Long-pressing the same slot again, unequipping/changing its
+ * item, or ending the gameplay context (pause, modal, death, floor transition,
+ * game over) disarms it. Active slots 1-4 never auto-fire.
+ *
+ * Armed state is per-slot, in-memory only (never persisted). The pure policy in
+ * `autofire.js` (`classifyHold`, `canAutoFire`) remains the single source of
+ * truth for the threshold and the resource guards.
  *
  * DOM is built once and diffed; state is repainted from the 10 Hz HUD refresh.
  */
@@ -41,7 +51,9 @@ export class AbilityBar {
     this.app = app;
     this.container = null;
     this.buttons = [];
-    this.sessions = new Map(); // pointerId -> session
+    this.sessions = new Map(); // pointerId -> press session (tap vs long-press)
+    this.armed = new Map(); // equipment slot -> { ref, itemRef, btn }
+    this._tickTimer = null;
     this._built = false;
     this._bound = false;
   }
@@ -63,11 +75,10 @@ export class AbilityBar {
   }
 
   destroy() {
-    for (const session of this.sessions.values()) {
-      clearTimeout(session.thresholdTimer);
-      clearInterval(session.repeatTimer);
-    }
+    for (const session of this.sessions.values()) clearTimeout(session.thresholdTimer);
     this.sessions.clear();
+    this._clearTick();
+    this.armed.clear();
   }
 
   // ---- Build (once) -------------------------------------------------------
@@ -109,6 +120,7 @@ export class AbilityBar {
           <span class="ability-qty"></span>
           <span class="cooldown-overlay" style="display:none;"></span>
           <span class="ability-flag" aria-hidden="true"></span>
+          <span class="ability-auto-badge" aria-hidden="true">AUTO</span>
         </button>`;
     }).join('');
 
@@ -191,22 +203,19 @@ export class AbilityBar {
     if (session) this._endSession(session, false);
   }
 
-  // ---- Press / autofire state machine ------------------------------------
+  // ---- Press state machine (tap vs long-press toggle) ---------------------
 
   _startSession(btn, pointerId, e) {
     if (pointerId === undefined || this.sessions.has(pointerId)) return;
     const ref = this._refFor(btn);
-    const ctx = resolveAbilityRef(this.app, ref);
     const { holdMs } = autofireTimings();
 
     const session = {
       pointerId,
       btn,
       ref,
-      itemRef: ctx.item,
       firedAtThreshold: false,
       thresholdTimer: null,
-      repeatTimer: null,
     };
     this.sessions.set(pointerId, session);
     btn.classList.add('ability-btn--charging');
@@ -221,64 +230,137 @@ export class AbilityBar {
     session.firedAtThreshold = true;
     session.btn.classList.remove('ability-btn--charging');
     const ctx = resolveAbilityRef(this.app, session.ref);
-    if (!ctx.item) {
-      session.btn.classList.add('ability-btn--single-locked');
-      this._dispatchSingle(session.ref);
-      return;
-    }
-    this._dispatch(session.ref);
+
+    // Equipment abilities with a catalog actionKey toggle a persistent armed
+    // state. Everything else (active slots 1-4, non-ability equipment) keeps
+    // the original single activation at the threshold.
     if (isRepeatable(session.ref, ctx)) {
-      this._startRepeat(session);
-    } else {
-      session.btn.classList.add('ability-btn--single-locked');
-    }
-  }
-
-  _startRepeat(session) {
-    const { repeatMs } = autofireTimings();
-    session.btn.classList.add('ability-btn--active-fire');
-    session.repeatTimer = setInterval(() => this._repeatTick(session), repeatMs);
-  }
-
-  _repeatTick(session) {
-    if (this._forcedStop()) {
-      this._endSession(session, false);
+      this._toggleArmed(session.ref, session.btn, ctx);
       return;
     }
-    const ctx = resolveAbilityRef(this.app, session.ref);
-    if (!ctx.item || !isRepeatable(session.ref, ctx) || ctx.item !== session.itemRef) {
-      this._endSession(session, false);
-      return;
-    }
-    if (canAutoFire(this.app, session.ref)) {
-      session.btn.classList.remove('ability-btn--waiting');
-      this._dispatch(session.ref);
-    } else {
-      session.btn.classList.add('ability-btn--waiting');
-    }
-  }
 
-  _forcedStop() {
-    const app = this.app;
-    if (!app) return true;
-    if (!app.isInGameplay || app.isPaused || app.isGameOver || app.isFloorCleared) return true;
-    if (app.transition && typeof app.transition.isLocked === 'function' && app.transition.isLocked()) return true;
-    if (!(app.player && app.player.hp > 0)) return true;
-    return false;
+    session.btn.classList.add('ability-btn--single-locked');
+    if (!ctx.item) this._dispatchSingle(session.ref);
+    else this._dispatch(session.ref);
   }
 
   _endSession(session, dispatchIfBeforeThreshold) {
     if (!this.sessions.has(session.pointerId)) return;
     clearTimeout(session.thresholdTimer);
-    clearInterval(session.repeatTimer);
     this.sessions.delete(session.pointerId);
-    session.btn.classList.remove(
-      'ability-btn--charging', 'ability-btn--active-fire',
-      'ability-btn--waiting', 'ability-btn--single-locked',
-    );
+    session.btn.classList.remove('ability-btn--charging', 'ability-btn--single-locked');
+    // Armed visuals persist after release; only the transient press visuals go.
+    this._applyArmedVisual(session.btn);
     if (!session.firedAtThreshold && dispatchIfBeforeThreshold) {
       this._dispatchSingle(session.ref);
     }
+  }
+
+  // ---- Armed (persistent auto-fire) state --------------------------------
+
+  /** Syncs the persistent armed visuals for one button from the armed map. */
+  _applyArmedVisual(btn) {
+    const ref = this._refFor(btn);
+    const armed = ref.kind === 'equipment' && this.armed.has(ref.slot);
+    btn.classList.toggle('ability-btn--active-fire', armed);
+    if (!armed) btn.classList.remove('ability-btn--waiting');
+  }
+
+  _toggleArmed(ref, btn, ctx) {
+    if (this.armed.has(ref.slot)) {
+      this._disarm(ref.slot);
+      return;
+    }
+    this.armed.set(ref.slot, { ref, itemRef: ctx.item, btn });
+    this._ensureTick();
+    this._applyArmedVisual(btn);
+    // Fire immediately if the guard allows it (mirrors the old threshold cast).
+    this._evaluateArmed(ref.slot);
+  }
+
+  _ensureTick() {
+    if (this._tickTimer || this.armed.size === 0) return;
+    const { repeatMs } = autofireTimings();
+    this._tickTimer = setInterval(() => this._autoTick(), repeatMs);
+  }
+
+  _clearTick() {
+    if (this._tickTimer) {
+      clearInterval(this._tickTimer);
+      this._tickTimer = null;
+    }
+  }
+
+  _stopTickIfIdle() {
+    if (this.armed.size === 0) this._clearTick();
+  }
+
+  _autoTick() {
+    if (this.armed.size === 0) {
+      this._clearTick();
+      return;
+    }
+    if (this._contextEnded()) {
+      this._disarmAll();
+      return;
+    }
+    // forEach tolerates deletion of the current entry; no transient array.
+    this.armed.forEach((_state, slot) => this._evaluateArmed(slot));
+  }
+
+  /** One guarded autofire tick for a single slot; stays armed when suppressed. */
+  _evaluateArmed(slot) {
+    const state = this.armed.get(slot);
+    if (!state) return;
+    const ctx = resolveAbilityRef(this.app, state.ref);
+    if (!ctx.item || !isRepeatable(state.ref, ctx) || ctx.item !== state.itemRef) {
+      this._disarm(slot);
+      return;
+    }
+    const btn = state.btn;
+    if (canAutoFire(this.app, state.ref)) {
+      if (btn) btn.classList.remove('ability-btn--waiting');
+      this._dispatch(state.ref);
+    } else if (btn) {
+      btn.classList.add('ability-btn--waiting');
+    }
+  }
+
+  _disarm(slot) {
+    const state = this.armed.get(slot);
+    if (!state) return;
+    this.armed.delete(slot);
+    const btn = state.btn;
+    if (btn) {
+      btn.classList.remove('ability-btn--active-fire', 'ability-btn--waiting');
+      const baseLabel = btn.dataset?.baseLabel || '';
+      if (baseLabel) this._setAria(btn, baseLabel, '');
+    }
+    this._stopTickIfIdle();
+  }
+
+  _disarmAll() {
+    const slots = [];
+    this.armed.forEach((_state, slot) => slots.push(slot));
+    for (const slot of slots) this._disarm(slot);
+  }
+
+  /**
+   * True when the gameplay context has ended and auto-fire must be disarmed.
+   * Covers pause, any open modal, death, floor transition, game over, and
+   * tower cleared. After this the player must re-arm explicitly — we never
+   * silently re-arm on resume.
+   */
+  _contextEnded() {
+    const app = this.app;
+    if (!app) return true;
+    if (!app.isInGameplay || app.isPaused || app.isGameOver || app.isFloorCleared) return true;
+    if (app.transition && typeof app.transition.isLocked === 'function' && app.transition.isLocked()) return true;
+    const overlay = app.modalOverlayEl;
+    if (overlay && overlay.classList && typeof overlay.classList.contains === 'function'
+      && !overlay.classList.contains('hidden')) return true;
+    if (!(app.player && app.player.hp > 0)) return true;
+    return false;
   }
 
   // ---- Dispatch (reuses keyboard paths) ----------------------------------
@@ -316,7 +398,13 @@ export class AbilityBar {
     const occupied = Boolean(ctx.item);
     const baseLabel = btn.dataset.baseLabel || btn.getAttribute('aria-label') || '';
 
+    // An armed slot whose item vanished is disarmed immediately.
+    if (!occupied && ref.kind === 'equipment') this._disarm(ref.slot);
+    const armed = ref.kind === 'equipment' && this.armed.has(ref.slot);
+
     btn.classList.remove(...STATE_CLASSES, ...CLASS_TINTS);
+    btn.classList.toggle('ability-btn--active-fire', armed);
+    if (!armed) btn.classList.remove('ability-btn--waiting');
 
     const classBadge = btn.querySelector('.slot-class-badge');
     const iconEl = btn.querySelector('.ability-icon');
@@ -371,7 +459,11 @@ export class AbilityBar {
     btn.classList.toggle('ability-btn--depleted', reason === 'mana' || reason === 'ammo');
     btn.classList.toggle('ability-btn--no-target', SUPPRESSED_REASONS.has(reason) && reason !== 'mana' && reason !== 'ammo');
 
-    this._setAria(btn, baseLabel, this._stateSuffix(reason, ctx));
+    const stateSuffix = this._stateSuffix(reason, ctx);
+    const suffix = armed
+      ? (stateSuffix ? `auto-fire on, ${stateSuffix}` : 'auto-fire on')
+      : stateSuffix;
+    this._setAria(btn, baseLabel, suffix);
   }
 
   _cooldownRemaining(actionKey) {
