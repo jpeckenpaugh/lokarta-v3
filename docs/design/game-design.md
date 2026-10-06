@@ -41,11 +41,21 @@ The tower layout and monster pools are catalog-driven via [`html/data/tower_leve
 
 ---
 
-## 4. Systems & Invariants
+## 4. Controls & Input Mapping
+
+* **Keyboard Movement:** `W`, `A`, `S`, `D` or Arrow Keys $\uparrow, \leftarrow, \downarrow, \rightarrow$.
+* **Touch & Mobile Gestures:** Directional swipe for movement; tap for HUD buttons, loadout slots, and floor item pickup.
+* **Active Consumable Slots:** Keys `1`, `2`, `3`, `4` activate potions, torches, and active consumables.
+* **Equipment Hotkeys:** Keys `Q`, `W`, `E`, `R` map to `main_hand`, `off_hand`, `armor`, and `relic`.
+* **Stairs & Gate Traversal:** Step directly onto stairs or unlocked gates to traverse tower rooms and floors.
+
+---
+
+## 5. Systems & Invariants
 
 * **Inventory Layout (8 Keyed Slots + 36 Backpack):**
-  * **4 Active Action Slots:** Hotkeys `1`, `2`, `3`, `4` for potions, torches, and active consumables.
-  * **4 Paperdoll Equipment Slots:** Hotkeys `Q`, `W`, `E`, `R` mapped to `main_hand`, `off_hand`, `armor`, and `relic`.
+  * **4 Active Action Slots:** Hotkeys `1`–`4` (potions, torches, active items).
+  * **4 Paperdoll Equipment Slots:** Hotkeys `Q`, `W`, `E`, `R` (`main_hand`, `off_hand`, `armor`, `relic`).
   * **36 Backpack Slots:** $6 \times 6$ storage grid for general inventory.
 * **Death & Defeat:** Defeat in the tower revives the hero at full health/mana in the Havenreach Town Temple. Current floor progression is **preserved** (the player can re-enter and resume on their active floor).
 * **Data-Driven Truth:** All balance stats, drop tables, room tiers, and costs are authored exclusively in `html/data/*.json`.
