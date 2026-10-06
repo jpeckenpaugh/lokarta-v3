@@ -1,5 +1,10 @@
 # LIV-23 evidence — Save-slot UX (New Game default + delete/reuse)
 
+> **Archived note (LIV-50).** The six `LIV-23-0*.png` screenshots were removed per
+> `docs/engineering/agents.md` §8 (T2 browser evidence belongs to the board, not
+> the repo). This note and its manual-test/probe record are kept; the filenames
+> below are historical and no longer resolve to committed files.
+
 Browser-verified on `main` with the change at `10cd15e`, served from `html/` by
 `python3 -m http.server` (static only, no bundler). Fresh browser profile,
 1280×720, Chromium headless via Playwright. Page errors: none.
