@@ -28,7 +28,7 @@ The **Inventory, Paperdoll Equipment, and Offline Storage** feature manages play
 - **Auto-Stacking & Floor Drops:** Pickup attempts first to merge with existing stacks; if action bar and backpack are full, items remain on floor with a log alert.
 
 ### 2.4 IndexedDB Local Storage (`lokarta_browser_db`)
-- **Database Engine:** Pure browser IndexedDB (`DB_NAME = 'lokarta_browser_db'`, `DB_VERSION = 1`) managed by [storage.js](file:///Users/jarad/git/lokarta-v3/html/storage.js).
+- **Database Engine:** Pure browser IndexedDB (`DB_NAME = 'lokarta_browser_db'`) managed by `html/services/storage.js`.
 - **4 Dedicated Object Stores (`STORES`):**
   1. `profile`: Keyed by `id` (`'player_profile'`). Stores audio volume, sound toggle (`soundEnabled`), and update timestamps.
   2. `characters`: Keyed by `id`. Stores character entity JSON (vocation, level, stats, inventory, equipment, current floor).

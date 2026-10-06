@@ -28,7 +28,7 @@ import { validatePropAssets } from '../../tools/validate-prop-assets.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
 const SPRITES_DIR = path.join(ROOT, 'html', 'assets', 'sprites');
-const PREVIEW_DIR = path.join(ROOT, 'docs', 'art-preview');
+const PREVIEW_DIR = path.join(ROOT, 'docs', 'art', 'preview');
 const FLOOR = '#1a1c23';
 
 function srgbToLin(c) {
@@ -199,7 +199,7 @@ test('Sprite assets (LIV-10)', async t => {
   });
 
   await t.test('10. committed preview PNGs match a fresh export (no drift)', () => {
-    assert.ok(fs.existsSync(PREVIEW_DIR), 'docs/art-preview must exist');
+    assert.ok(fs.existsSync(PREVIEW_DIR), 'docs/art/preview must exist');
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'lokarta-preview-'));
     exportPreviews(tmp);
     const committed = fs.readdirSync(PREVIEW_DIR).filter(f => f.endsWith('.png')).sort();
@@ -335,7 +335,7 @@ test('Prop & tower tile assets (LIV-7)', async t => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'lokarta-props-'));
     exportPreviews(tmp);
     const propsPath = path.join(PREVIEW_DIR, 'props.png');
-    assert.ok(fs.existsSync(propsPath), 'docs/art-preview/props.png missing');
+    assert.ok(fs.existsSync(propsPath), 'docs/art/preview/props.png missing');
     assert.ok(fs.readFileSync(propsPath).equals(fs.readFileSync(path.join(tmp, 'props.png'))), 'props preview drift');
     fs.rmSync(tmp, { recursive: true, force: true });
   });

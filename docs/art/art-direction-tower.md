@@ -2,7 +2,7 @@
 
 **Issue:** LIV-7 (D3) · **Parent:** LIV-4 · **Owner:** Designer · **Audience:** Tech Lead / E5 ([LIV-12](/LIV/issues/LIV-12)), board (browser verification)
 
-**Wave 2 spec. Supersedes the tile/item portion of [docs/art-direction.md](art-direction.md) (that doc remains authoritative for the 4 vocations + 5 monster actors).**
+**Wave 2 spec. Supersedes the tile/item portion of [docs/art/art-direction.md](art-direction.md) (that doc remains authoritative for the 4 vocations + 5 monster actors).**
 
 This brief converts the LIV-4 product decisions (ascend a 5-level tower, copper→silver→gold keys, gated doors, per-room chests, castle/tower variation) into buildable, data-driven art and tile themes. It commits the design-system artifacts E5 integrates directly, and it names them by catalog entry, token, component, and sprite path.
 
@@ -12,7 +12,7 @@ This brief converts the LIV-4 product decisions (ascend a 5-level tower, copper�
 
 | # | Item | Decision |
 | :-- | :-- | :-- |
-| 1 | Tile art approach | Same authored-indexed-pixel pipeline as actors (`docs/art-direction.md` §2). **New tile/feature art ships as data + procedural draw against `tile_themes.json`; gated doors port the 32×32 prop matrix.** No bundler, no runtime fetch. |
+| 1 | Tile art approach | Same authored-indexed-pixel pipeline as actors (`docs/art/art-direction.md` §2). **New tile/feature art ships as data + procedural draw against `tile_themes.json`; gated doors port the 32×32 prop matrix.** No bundler, no runtime fetch. |
 | 2 | Native size | **32×32 px** per tile/feature; blit at `SCALE = GRID_SIZE/32` (×2 at 64 px). Integer only, nearest-neighbour. |
 | 3 | Tile themes | 5 tower tiers in `html/data/tile_themes.json` under a new **`levels`** map (keys `"1"`–`"5"`), each with full `wall` / `floor` / `stairs` / `door` / `features` / `decor`. Existing root `wall`/`floor`/`stairs`/`door`/`items` stay as the **legacy fallback**. |
 | 4 | Per-level variation | Structural (banner / sconce / window / stair material) **and** palette. Every level's `wall.fill` is distinct; `stairs` material and `features` set change so variation survives greyscale. |
@@ -20,7 +20,7 @@ This brief converts the LIV-4 product decisions (ascend a 5-level tower, copper�
 | 6 | Tier colorways | copper `#b87333` / silver `#aab2bf` / gold `#e0a82e`, each a 3-ramp (`shadow/base/highlight`) plus a glint. |
 | 7 | Tier progression is **structural, not hue-only** | Keys: 2→3→4 teeth (+ gold gem). Chests: 1→3→5 lid studs (bands constant). Doors: 0→2→3 side studs + gold crown emblem. Passes WCAG 1.4.1 / greyscale. |
 | 8 | Sprite specs committed | `html/assets/sprites/items/{key,chest}_*.json` and `html/assets/sprites/tiles/gated_door_*.json`, registered in `manifest.json.props`, exported via `props.js` (`PROP_CATALOG`, `PROP_MANIFEST`, `PROP_IDS_BY_TIER`). |
-| 9 | Preview | `tools/render-sprite-preview.mjs` emits `docs/art-preview/props.png`; drift is test-enforced. |
+| 9 | Preview | `tools/render-sprite-preview.mjs` emits `docs/art/preview/props.png`; drift is test-enforced. |
 | 10 | Validator | `tools/validate-prop-assets.mjs` + `html/tests/sprite-assets.test.mjs` (checks 14–18) enforce geometry, palette ≤16, rim ≥3:1, structural tier progression, 5 distinct level themes. |
 | 11 | Volume / capacity | 9 prop matrices + 5 tile themes produced in this issue. **No mid-sprint art hire required** for D3 scope; the actor pass already landed (LIV-10). See §9 residual risk (optional per-level furniture). |
 
@@ -226,7 +226,7 @@ html/data/tile_themes.json          # + "levels" 1..5 (theme source of truth)
 tools/render-sprite-preview.mjs     # + props.png export
 tools/validate-prop-assets.mjs      # prop/tile + level-theme gate
 html/tests/sprite-assets.test.mjs   # + checks 14–18
-docs/art-preview/props.png          # committed contact sheet
+docs/art/preview/props.png          # committed contact sheet
 ```
 
 ### 5.2 Integration contract for E5
@@ -240,7 +240,7 @@ docs/art-preview/props.png          # committed contact sheet
 | Draw features | Add the §3.3 draws inside `SpriteRenderer.drawTile` behind a `theme.features`/`theme.decor` presence check |
 | Chest interaction | `closed` until opened; on open, swap to `open` and hold until loot is taken; persist opened state (E4 owns the model) |
 | Door state | `closed` blocks movement; `open` is passable and stays open for the run; the gold stair-room door is the only crown door |
-| Keep tests green | `node --test html/tests/*.test.mjs` (currently **146 tests / 14 suites / 0 fail**) |
+| Keep tests green | `node --test html/tests/*.test.mjs` (currently **507 tests / 80 suites / 0 fail**) |
 
 **Back-compat is mandatory.** If `PROP_CATALOG[id]` is missing or a frame is absent, the renderer must fall back to today's procedural `TILE_RENDERERS`/`ITEM_RENDERERS` output. This lets E5 land object-by-object without breaking the game or the suite (same rule as art-direction.md §6.6).
 
@@ -310,7 +310,7 @@ Met by: exact `tile_themes.levels` schema + values (§2–3), exact prop files +
 
 ## 9. Residual risks and follow-ups
 
-1. **Per-level *furniture* set deferred to D4.** For the D3 scope the castle read came from wall palette + sconce/banner/window + stair material. Richer interiors are now specified in [docs/art-direction-room-props.md](art-direction-room-props.md) (LIV-19 / D4): 9 furniture props + 1 floor decal, a per-level `tile_themes.levels[n].props` block, a `tower_levels.propPolicy` placement contract, non-blocking placement that preserves the no-soft-lock proof, and chest-against-wall placement. Implemented by E10 ([LIV-20](/LIV/issues/LIV-20)).
+1. **Per-level *furniture* set deferred to D4.** For the D3 scope the castle read came from wall palette + sconce/banner/window + stair material. Richer interiors are now specified in [docs/art/art-direction-room-props.md](art-direction-room-props.md) (LIV-19 / D4): 9 furniture props + 1 floor decal, a per-level `tile_themes.levels[n].props` block, a `tower_levels.propPolicy` placement contract, non-blocking placement that preserves the no-soft-lock proof, and chest-against-wall placement. Implemented by E10 ([LIV-20](/LIV/issues/LIV-20)).
 2. **`biomes.json` name reuse:** §3.2 recommends tier ids/floors; E1 must update `biomes.json` and any string tests together (data-catalogs.test.mjs asserts current cave names; that test is E1/E7 scope and will need updating with the tower rewrite).
 3. **Feature overlap with walls near doors:** banners are suppressed within 2 tiles of a door to protect the door read. If E2 places many doors, banner density may look sparse on a floor — tune `decor.banner` per level without code changes.
 4. **Contrast is a design gate, not certification:** values are approximate to ±0.05 (same method as art-direction.md Appendix C).
@@ -332,6 +332,6 @@ Met by: exact `tile_themes.levels` schema + values (§2–3), exact prop files +
 
 ```bash
 node tools/validate-prop-assets.mjs          # prop/tile/level-theme gate
-node tools/render-sprite-preview.mjs         # regenerate docs/art-preview/*.png
-node --test html/tests/*.test.mjs            # full native suite (146 tests)
+node tools/render-sprite-preview.mjs         # regenerate docs/art/preview/*.png
+node --test html/tests/*.test.mjs            # full native suite (507 tests)
 ```

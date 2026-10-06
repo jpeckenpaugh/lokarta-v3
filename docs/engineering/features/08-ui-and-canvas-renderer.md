@@ -26,7 +26,7 @@ The **UI Controller and Canvas Renderer** delivers the visual presentation layer
   - Visible tiles: Biome color ambient glow overlays (Amber `#ff8800` Crypt, Cyan `#00d4ff` Catacombs, Purple `#a855f7` Vaults, Crimson `#ef4444` Sanctum) with dynamic radial falloff.
 
 ### 2.3 Gesture Engine & Input Mapping (`GestureEngine`)
-Calculates gesture type based on press duration (`CONFIG` in `engine.js`):
+Calculates gesture type based on press duration (`CONFIG` in `html/engine/config.js`):
 - **Tap Gesture:** Press duration $\le 250\text{ ms}$ (`CONFIG.TAP_MAX_MS = 250`).
 - **Hold Gesture:** Press duration between $250\text{ ms}$ and $1200\text{ ms}$ (`CONFIG.HOLD_MIN_MS = 250`, `CONFIG.HOLD_MAX_MS = 1200`).
 - **Double-Tap Gesture:** Second tap within $300\text{ ms}$ of first release (`CONFIG.DOUBLE_TAP_MAX_MS = 300`).

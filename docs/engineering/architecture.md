@@ -35,7 +35,7 @@
 │  ┌───────────────┐              ┌───────────────┐           ┌───────────────┐   │
 │  │ Engine State  │              │ Procedural    │           │ IndexedDB     │   │
 │  │ Simulation    │              │ Floor Gen     │           │ Persistence   │   │
-│  │ (engine.js)   │              │ (floor-gen)   │           │ (storage.js)  │   │
+│  │ (engine/)     │              │ (floor-gen/)  │           │ (storage.js)  │   │
 │  └───────────────┘              └───────────────┘           └───────────────┘   │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
@@ -59,10 +59,10 @@ html/
 ├── app.js                # Central bootstrap & loading entry point
 ├── app/                  # UI & Rendering submodules (app-controller, canvas-renderer, sprite-renderer, etc.)
 ├── audio/                # Web Audio synthesizer subsystem (audio-system.js)
-├── data/                 # 12 JSON data catalogs (cards, monsters, items, vocations, sounds, abilities, biomes, encounters, dungeons, tile_themes, keybindings, ui)
+├── data/                 # 16 JSON data catalogs (cards, monsters, items, vocations, sounds, abilities, biomes, encounters, dungeons, tower_levels, doors, chests, tile_themes, keybindings, ui, economy)
 ├── engine/               # Core game engine submodules (config, grid-map, lighting, combat, AI, inventory, etc.)
 ├── services/             # Floor generator & IndexedDB persistence layer
-├── styles/               # Modular CSS stylesheets (base.css, hud.css, modals.css, index.css)
+├── styles/               # Modular CSS stylesheets (base.css, hud.css, modals.css)
 ├── worker/               # Web Worker dispatcher (game-worker.js) & RPC client (game-client.js)
 └── tests/                # Automated unit test suites (engine, audio, submodules, app-modules, data-catalogs)
 ```
@@ -100,9 +100,9 @@ html/
 
 ---
 
-## 3. Core Engine Subsystems (`html/engine.js`)
+## 3. Core Engine Subsystems (`html/engine/`)
 
-`engine.js` exports configuration constants, default archetypes, and eight decoupled core subsystems:
+The engine barrel (`html/engine/index.js`) exports configuration constants, default archetypes, and the decoupled core subsystem modules (`combat-system.js`, `entity-ai.js`, `inventory-system.js`, `economy-system.js`, `item-progression.js`, `fate-grant-system.js`, `gesture-engine.js`, …):
 
 ### 3.1 Subsystem Registry
 
@@ -131,7 +131,7 @@ html/
 - **Paladin:** Base HP 120 (+15/level), Base MP 90 (+10/level). Native: Warhammers, Relics, Holy Strike, Healing Prayer.
 
 ### 3.4 Data-Driven JSON Catalogs (`html/data/`)
-The game data systems are fully decoupled from codebase logic and driven by 12 JSON data files in `html/data/`:
+The game data systems are fully decoupled from codebase logic and driven by 16 JSON data files in `html/data/`:
 - **`cards.json`**: 24 Fate Grant Draft cards with rarity, stat bonuses, vocation affinities, and item payloads.
 - **`monsters.json`**: Bestiary catalog for monster types defining base HP/ATK/DEF, cadences, AI types (`chase`, `standoff`), `svgCode`, and `lootTable` drop rules.
 - **`items.json`**: Attributes, icons, `svgCode`, `vocationAffinity`, `grantedAmmo`, and stack limits for all weapons, armor, relics, consumables, and spells.
@@ -141,14 +141,18 @@ The game data systems are fully decoupled from codebase logic and driven by 12 J
 - **`biomes.json`**: Floor ranges and lighting colors for each tower tier.
 - **`encounters.json`**: Floor tier spawn groups, boss specifications, and monster density parameters.
 - **`dungeons.json`**: Macro 40x40 room layouts, doorway anchors, milestone bonuses, and floor name overrides.
+- **`tower_levels.json`**: Authored per-level tower specs (room roles, key holders, boss/guard placements).
+- **`doors.json`** / **`chests.json`**: Key-gated door specs and chest tier/opening rules.
 - **`tile_themes.json`**: Wall fills, highlights, floor colors, door fills, and stairs colors.
 - **`keybindings.json`**: Movement key maps and hotkey slot assignments.
-- **`index.js`**: Export barrel exposing all 12 JSON catalogs.
+- **`ui.json`**: Presentation tunables (slot layout, HUD labels, glyph map).
+- **`economy.json`**: Gold economy, town shop stock/shop tunables, temple, passive recovery, and springs.
+- **`index.js`**: Export barrel exposing all 16 JSON catalogs.
 - **Render & AI Dispatchers**: Uses $O(1)$ lookup tables (`MONSTER_RENDERERS`, `ITEM_RENDERERS`, `WEAPON_RENDERERS`, `TILE_RENDERERS`, `AI_HANDLERS`, `CODE_TO_TILE_TYPE`, `EMOJI_TO_SVG_MAP`).
 
 ---
 
-## 4. Web Worker RPC Protocol (`html/game-client.js` & `html/game-worker.js`)
+## 4. Web Worker RPC Protocol (`html/worker/game-client.js` & `html/worker/game-worker.js`)
 
 The application offloads storage operations and floor generation to a dedicated Web Worker using a typed asynchronous RPC protocol.
 
@@ -196,9 +200,9 @@ interface WorkerRPCResponse {
 
 ---
 
-## 5. IndexedDB Persistence Schema (`html/storage.js`)
+## 5. IndexedDB Persistence Schema (`html/services/storage.js`)
 
-IndexedDB storage is managed by `storage.js` under the database name `lokarta_browser_db` (Version 1).
+IndexedDB storage is managed by `html/services/storage.js` under the database name `lokarta_browser_db` (Version 1).
 
 ### 5.1 Object Store Specification
 
@@ -270,7 +274,7 @@ where $\alpha = \min(1.0, \frac{t - t_{\text{last\_tick}}}{\text{TICK\_INTERVAL\
 
 ---
 
-## 7. Web Audio Synthesis Architecture (`html/audio.js`)
+## 7. Web Audio Synthesis Architecture (`html/audio/audio-system.js`)
 
 Sound effects are synthesized procedurally in real-time using the Web Audio API without external audio files.
 
@@ -319,7 +323,7 @@ Sound effects are synthesized procedurally in real-time using the Web Audio API 
 
 ## 8. Architectural Verification & Compliance
 
-This architecture specification accurately documents the ground-truth codebase in `html/`. Compliance has been verified via the native Node.js test suite (`html/tests/engine.test.mjs`), validating:
+This architecture specification accurately documents the ground-truth codebase in `html/`. Compliance is verified by CI (`.github/workflows/test.yml`) running the native Node.js test suite (`node --test html/tests/*.test.mjs`), validating:
 1. Floor generator determinism, grid boundaries, spawn/stairs placement, and BFS connectivity across floors 1–20.
 2. GridMap walkability and tile bounds.
 3. Raycasted line-of-sight visibility and torch/spell radii adjustments.
@@ -334,8 +338,8 @@ This architecture specification accurately documents the ground-truth codebase i
 ## 9. Actor Sprite Pipeline (LIV-10)
 
 Actor art is authored **data**, not procedural primitives. The contract and
-per-actor specs live in `docs/art-direction.md`; this section records where the
-pieces live.
+per-actor specs live in `docs/art/art-direction.md`; this section records where
+the pieces live.
 
 - **Art data:** `html/assets/sprites/manifest.json` plus one JSON file per actor
   under `vocations/` and `monsters/`. Each file carries `native`, `anchor`,
@@ -359,5 +363,5 @@ pieces live.
   contrast gates, outline idempotency, determinism, distinct cultist
   silhouettes, preview-drift, fallback safety, full render smoke).
 - **Preview export (review only):** `tools/render-sprite-preview.mjs` writes
-  `docs/art-preview/*.png`; a test re-runs it and byte-compares so committed
+  `docs/art/preview/*.png`; a test re-runs it and byte-compares so committed
   previews cannot drift.

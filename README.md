@@ -16,7 +16,7 @@
 - **Dynamic Line-of-Sight (LOS) Lighting:** Circular radius field-of-view algorithm driven by JSON catalog specs (Base FOV: 10 tiles, degrading `lightSpellTimer` +3/+2/+1 engine seam).
 - **4 Playable Vocations & Vocation-Locked Equipment:** Play as Magician, Archer, Fighter, or Paladin with unique stat growth curves. The class advantage comes from **exclusive access to vocation-locked gear** — weapons, armor, and relics can only be equipped by their appropriate vocation.
 - **Fate Grant Leveling System:** 5-card draft reward selection upon leveling up (up to Level 20 cap), offering vocation-aligned skills, stat boosts, and gear.
-- **Data-Driven JSON Catalogs:** Clean JSON data structures under `html/data/` defining 11 decoupled catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tile_themes.json`, and `keybindings.json`.
+- **Data-Driven JSON Catalogs:** Clean JSON data structures under `html/data/` defining 16 decoupled catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tower_levels.json`, `doors.json`, `chests.json`, `tile_themes.json`, `keybindings.json`, `ui.json`, and `economy.json`.
 - **Real-Time Web Audio Synthesizer:** 19 procedural sound definitions (footsteps, spell sparks, bow snaps, holy chimes, level-up fanfares, victory/defeat) driven by `html/data/sounds.json` without external audio asset files.
 - **Offline Save Persistence:** Local database persistence (`lokarta_browser_db`) via IndexedDB storing characters, action bars, equipment paperdolls, backpacks, profile settings, and generated floor states.
 
@@ -67,9 +67,9 @@ Run all test suites from the repository root:
 node --test html/tests/*.test.mjs
 ```
 
-The glob covers all 9 suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`, `packaging`, `sprite-assets`, `storage-migration`). CI (`.github/workflows/test.yml`) runs the same command on every push.
+The glob covers all evaluation suites under `html/tests/` (31 test files / 80 suites / 507 tests). CI (`.github/workflows/test.yml`) runs the same command on every push.
 
-### Test Suite Coverage (9 Test Suites, 140 Tests / 14 Suites / 0 Fail)
+### Test Suite Coverage (31 Test Files, 507 Tests / 80 Suites / 0 Fail)
 
 - **Floor Generator:** Validates Mulberry32 determinism, $40 \times 40$ matrix boundaries, spawn $(2,2)$ and exit stairs $(35,35)$ placement, BFS path connectivity, tier mapping, and final guardian (The Spire Warden) stats (600 HP, 20 ATK, 6 DEF).
 - **GridMap & Tile Bounds:** Tests matrix initialization, tile opacity/walkability checks, and item placement/removal.
@@ -81,7 +81,7 @@ The glob covers all 9 suites (`engine`, `audio`, `submodules`, `app-modules`, `d
 - **LOK-15 Golden Equipment Sets:** Verifies the four Golden sets (Magician untouched; Archer Grey Stalker quiver regen/consume/fill; Fighter Vanguard shield bash push+stun+cooldown, wide cleave, fortify; Paladin Radiant Crusader mana-gated holy bubble with absorb intercept) plus rank-to-5 upgrade paths, draft offers, and the Slice-3 monster damage re-tune.
 - **GestureEngine:** Validates key mapping for hotkeys `1`–`9` and `0` to slots 0–9.
 - **GameClient & Worker Protocol:** Tests client initialization and worker RPC lifecycle communication.
-- **JSON Data Catalogs:** Validates schema structure and completeness across all 12 JSON catalogs under `html/data/`.
+- **JSON Data Catalogs:** Validates schema structure and completeness across all 16 JSON catalogs under `html/data/`.
 
 ---
 
@@ -91,16 +91,17 @@ The client application is structured into clean, modular vanilla ES JavaScript s
 
 | Module / Directory | Layer | Thread Context | Primary Responsibility |
 | :--- | :--- | :--- | :--- |
-| [`html/index.html`](file:///Users/jarad/git/lokarta-v3/html/index.html) | View / DOM | Main UI Thread | HTML5 layout container, Canvas element, HUD overlays, and modal views. |
-| [`html/styles/`](file:///Users/jarad/git/lokarta-v3/html/styles/) | Presentation | Main UI Thread | Modular CSS stylesheets (`base.css`, `hud.css`, `modals.css`, `index.css`). |
-| [`html/app.js`](file:///Users/jarad/git/lokarta-v3/html/app.js) | Bootstrap | Main UI Thread | Central loading entry point for application controllers and renderers. |
-| [`html/app/`](file:///Users/jarad/git/lokarta-v3/html/app/) | UI Controller | Main UI Thread | Submodules: `app-controller.js`, `canvas-renderer.js`, `hud-manager.js`, `input-controller.js`, `modal-manager.js`, `sprite-renderer.js`. |
-| [`html/audio/`](file:///Users/jarad/git/lokarta-v3/html/audio/) | Audio Subsystem | Main UI Thread | Web Audio API procedural synthesizer (`audio-system.js`) driven by `sounds.json`. |
-| [`html/data/`](file:///Users/jarad/git/lokarta-v3/html/data/) | Data Catalogs | Shared | 12 JSON data catalogs: `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tile_themes.json`, `keybindings.json`, `ui.json`. |
-| [`html/engine/`](file:///Users/jarad/git/lokarta-v3/html/engine/) | Core Engine | Shared | Submodules: `config.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `entity-ai.js`, `inventory-system.js`, `fate-grant-system.js`, `gesture-engine.js`. |
-| [`html/services/`](file:///Users/jarad/git/lokarta-v3/html/services/) | Services | Shared / Worker | Tower floor generator (`floor-generator.js`) and IndexedDB persistence (`storage.js`). |
-| [`html/worker/`](file:///Users/jarad/git/lokarta-v3/html/worker/) | Worker RPC | Web Worker Thread | RPC Client (`game-client.js`) and background worker dispatcher (`game-worker.js`). |
-| [`html/tests/`](file:///Users/jarad/git/lokarta-v3/html/tests/) | Test Suite | CLI / Node.js | Automated unit test suites (`engine`, `audio`, `submodules`, `app-modules`, `data-catalogs`, `golden-sets`, `packaging`, `sprite-assets`, `storage-migration`). |
+| [`html/index.html`](html/index.html) | View / DOM | Main UI Thread | HTML5 layout container, Canvas element, HUD overlays, and modal views. |
+| [`html/styles.css`](html/styles.css) + [`html/styles/`](html/styles/) | Presentation | Main UI Thread | Aggregator plus modular CSS (`base.css`, `hud.css`, `modals.css`). |
+| [`html/app.js`](html/app.js) | Bootstrap | Main UI Thread | Central loading entry point for application controllers and renderers. |
+| [`html/app/`](html/app/) | UI Controller | Main UI Thread | `app-controller.js`, `canvas-renderer.js`, `sprite-renderer.js`, `hud-manager.js`, `modal-manager.js`, `input-controller.js`, `ability-bar.js`, `autofire.js`, `animation-state.js`, and related controllers. |
+| [`html/audio/`](html/audio/) | Audio Subsystem | Main UI Thread | Web Audio API procedural synthesizer (`audio-system.js`) driven by `sounds.json`. |
+| [`html/data/`](html/data/) | Data Catalogs | Shared | 16 JSON data catalogs (`cards`, `monsters`, `items`, `vocations`, `sounds`, `abilities`, `biomes`, `encounters`, `dungeons`, `tower_levels`, `doors`, `chests`, `tile_themes`, `keybindings`, `ui`, `economy`) plus the `index.js` barrel. |
+| [`html/engine/`](html/engine/) | Core Engine | Shared | `config.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `entity-ai.js`, `inventory-system.js`, `economy-system.js`, `item-progression.js`, `item-stats.js`, `fate-grant-system.js`, `gesture-engine.js`, and related systems. |
+| [`html/services/`](html/services/) | Services | Shared / Worker | Tower floor generator (`floor-generator.js`), IndexedDB persistence (`storage.js`), save slots (`save-slots.js`), build version (`build-version.js`). |
+| [`html/worker/`](html/worker/) | Worker RPC | Web Worker Thread | RPC client (`game-client.js`) and background worker dispatcher (`game-worker.js`). |
+| [`html/assets/`](html/assets/) | Static Assets | Shared | Sprite atlases (`sprites/`), OpenMoji HUD icons, and brand SVGs. |
+| [`html/tests/`](html/tests/) | Test Suite | CLI / Node.js | Native `node:test` suites (`*.test.mjs`). |
 
 ---
 
@@ -122,24 +123,27 @@ The client application is structured into clean, modular vanilla ES JavaScript s
 
 ---
 
-## 📖 Reverse-Engineered Documentation Index
+## 📖 Documentation Index
 
-Complete technical documentation and specifications reverse-engineered from the ground-truth application codebase:
+All docs live under `docs/` (design canon, art direction, engineering truth, process):
 
-- **Concept Specification:** [`concept.md`](file:///Users/jarad/git/lokarta-v3/concept.md) — Product identity, target audience, stack summary, vocation specs, and tower tier catalog.
-- **Technical Architecture:** [`docs/architecture.md`](file:///Users/jarad/git/lokarta-v3/docs/architecture.md) — Detailed subsystem architecture, RPC protocols, IndexedDB schemas, rendering lerp formulas, and audio graphs.
-- **AI Agent Development Guidelines:** [`docs/agents.md`](file:///Users/jarad/git/lokarta-v3/docs/agents.md) — Mandatory architecture rules, data-driven constraints, hot-path performance budgets, and regression testing standards.
-- **Optimization & Performance Report:** [`docs/optimizations.md`](file:///Users/jarad/git/lokarta-v3/docs/optimizations.md) — Detailed runtime bottlenecks, GC profiling, overdraw culling, and proposed optimization solutions.
-- **Verification Report:** [`docs/verification-report.md`](file:///Users/jarad/git/lokarta-v3/docs/verification-report.md) — Stage 8 test execution evidence, verification matrix, and compliance audit.
-- **Environment & System Notes:** [`environment-notes.md`](file:///Users/jarad/git/lokarta-v3/environment-notes.md) — Browser API specifications, server setups, and test runner guidelines.
-- **Feature Briefs:** [`features/briefs/`](file:///Users/jarad/git/lokarta-v3/features/briefs/)
-  - [`01-dungeon-generator.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/01-dungeon-generator.md) — Procedural generation, PRNG, and BFS connectivity.
-  - [`02-lighting-and-los.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/02-lighting-and-los.md) — Circular radius lighting engine and dynamic fog of war.
-  - [`03-combat-and-abilities.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/03-combat-and-abilities.md) — Turn-based combat, ability execution, and vocation-locked equipment.
-  - [`04-vocations-and-progression.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/04-vocations-and-progression.md) — 4 playable vocations, stat scaling, and XP curves.
-  - [`05-inventory-and-storage.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/05-inventory-and-storage.md) — Action bar, backpack, paperdoll, item stacking, and IndexedDB persistence.
-  - [`06-audio-synthesizer.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/06-audio-synthesizer.md) — Procedural Web Audio API synthesizer catalog.
-  - [`07-web-worker-rpc.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/07-web-worker-rpc.md) — Web Worker thread offloading and asynchronous RPC bridge.
-  - [`08-ui-and-canvas-renderer.md`](file:///Users/jarad/git/lokarta-v3/features/briefs/08-ui-and-canvas-renderer.md) — 10 Hz simulation loop, 60 FPS lerp Canvas rendering, and gesture engine.
-- **Feature Specification Breakdown:** [`features/`](file:///Users/jarad/git/lokarta-v3/features/) — Full specification files (`01-dungeon-generator.md` through `08-ui-and-canvas-renderer.md`).
-- **Stage Summaries:** [`summaries/`](file:///Users/jarad/git/lokarta-v3/summaries/) — Stage summaries (`01-write-concept.md` through `09-documentation.md`).
+- **Design canon (`docs/design/`)**
+  - [`concept.md`](docs/design/concept.md) — Product identity, target audience, stack summary, vocation specs, and tower tier catalog.
+  - [`level-design.md`](docs/design/level-design.md) — Authoritative level/room design spec.
+  - [`lore-and-naming.md`](docs/design/lore-and-naming.md) — Naming canon.
+  - [`packaging-design.md`](docs/design/packaging-design.md) — Save-slot packaging and storage design.
+  - [`analysis/equipment-analysis.md`](docs/design/analysis/equipment-analysis.md) — Historical equipment analysis (LIV-12).
+- **Art direction (`docs/art/`)**
+  - [`art-direction.md`](docs/art/art-direction.md) — Actor/sprite art contract.
+  - [`art-direction-tower.md`](docs/art/art-direction-tower.md) — Tower theme/tile art specs.
+  - [`art-direction-room-props.md`](docs/art/art-direction-room-props.md) — Room prop wave spec.
+  - [`preview/`](docs/art/preview/) — Committed sprite preview PNGs (drift-checked by tests).
+- **Engineering (`docs/engineering/`)**
+  - [`agents.md`](docs/engineering/agents.md) — Mandatory architecture rules, data-driven constraints, hot-path budgets, and testing standards.
+  - [`architecture.md`](docs/engineering/architecture.md) — Subsystem architecture, RPC protocol, IndexedDB schema, render loop, audio graph.
+  - [`build-versioning.md`](docs/engineering/build-versioning.md) — Build id / cache-flush versioning.
+  - [`environment.md`](docs/engineering/environment.md) — Browser API prerequisites, local server, and test procedures.
+  - [`features/`](docs/engineering/features/) — Canonical feature briefs (`01-dungeon-generator.md` through `08-ui-and-canvas-renderer.md`).
+- **Process (`docs/process/`)**
+  - [`stage-manager.md`](docs/process/stage-manager.md) — Agent pipeline orchestration.
+  - [`reverse-engineering/`](docs/process/reverse-engineering/) — Historical bootstrap pipeline (archived).

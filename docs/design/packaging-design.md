@@ -614,7 +614,7 @@ lists with `uiMove`, `uiBack`.
 
 ## 8. Verification
 
-### 8.1 Native test suite (must stay green; baseline 104 tests)
+### 8.1 Native test suite (must stay green; baseline 507 tests)
 
 `node --test html/tests/*.test.mjs`
 

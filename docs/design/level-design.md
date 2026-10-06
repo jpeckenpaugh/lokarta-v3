@@ -29,7 +29,7 @@
 | Non-color tier cues on keys/doors/chests | Color-blind players can read tier from shape | WCAG 1.4.1, color-independence |
 | Auto-open gates on key grant | Zero soft-lock surface; instant feedback | Norman feedback, Doherty <400ms |
 
-Synergy with `docs/art-direction.md` §3.5/§3.6: the tower tiers keep warm/cool light tints distinct from copper/silver/**_gold_** accents; the gold key/chest/door carry a **crown** silhouette so "gold" reads in greyscale.
+Synergy with `docs/art/art-direction.md` §3.5/§3.6: the tower tiers keep warm/cool light tints distinct from copper/silver/**_gold_** accents; the gold key/chest/door carry a **crown** silhouette so "gold" reads in greyscale.
 
 ---
 
@@ -279,7 +279,7 @@ The Summit group is the guardian plus **2 guards** (`elite_cultist` base, scaled
 
 ### 6.4 Level-5 guardian
 
-- Room **5**, center `(19,19)`, `type: abyssal_overlord`, display name **"The Spire Warden"** (canonical per D1 `docs/lore-and-naming.md`).
+- Room **5**, center `(19,19)`, `type: abyssal_overlord`, display name **"The Spire Warden"** (canonical per D1 `docs/design/lore-and-naming.md`).
 - Stats **unchanged** from the existing boss to respect the sprint guardrail: `600 HP / 20 ATK / 6 DEF`, `isBoss: true`.
 - Guardrail: only key/chest drop wiring may touch combat; **do not re-tune** vocation/combat systems here.
 
@@ -495,7 +495,7 @@ E1 builds these catalog shapes from this spec; the values are already fully dete
 
 ```jsonc
 // biomes.json → 5 tower tiers (replace 4 cave biomes).
-// Per D1 (docs/lore-and-naming.md): tier display names + legacy biome ids are FROZEN.
+// Per D1 (docs/design/lore-and-naming.md): tier display names + legacy biome ids are FROZEN.
 // Each legacy id is reused for exactly one level; a new fifth id covers level 5.
 {
   "crypt":          { "id":"crypt",          "name":"The Gatehouse",      "minLevel":1, "maxLevel":1, "lightColor":"#ff8800" },
@@ -604,7 +604,7 @@ Reference run output (scratch validator, all 5 levels): `ALL LEVELS OK: strict o
 | Concern | Spec | Lens |
 | :-- | :-- | :-- |
 | **Color-independence** | Keys use bow shapes (circle/square/crown); gates show the same shape in the keyhole; chests show 1/2/3 lid studs. Tier is readable in greyscale. | WCAG 1.4.1 |
-| **Contrast** | Key/chest/door accents must hit ≥3:1 against floor `#1a1c23`; use the master palette (`docs/art-direction.md` App. A). | WCAG 1.4.11 |
+| **Contrast** | Key/chest/door accents must hit ≥3:1 against floor `#1a1c23`; use the master palette (`docs/art/art-direction.md` App. A). | WCAG 1.4.11 |
 | **Feedback latency** | Key grant → gate open ≤400 ms; hit/attack feedback unchanged. | Doherty |
 | **Recognition over recall** | Persistent HUD keyring per level (copper/silver/gold) + toast on unlock; minimap gate markers. | Nielsen #6 |
 | **Reduced motion** | Gate slide and chest open collapse to a 1-frame state change under `prefers-reduced-motion`. | WCAG 2.3 |
@@ -633,7 +633,7 @@ Reference run output (scratch validator, all 5 levels): `ALL LEVELS OK: strict o
 ## 13. Residual risks & decisions left open
 
 - **Auto-open vs bump-to-open.** Canonical is auto-open on grant (soft-lock-proof, E3-literal). A bump-to-open variant with guaranteed inventory keys is equally safe but needs a new interaction; **not** in scope.
-- **Tower tier names/light colors** align to D1's canon (`docs/lore-and-naming.md`): tier display names and legacy biome ids (`crypt`, `catacombs`, `shadow_vaults`, `abyssal_sanctum`) + new `crown_spire` are **frozen**. D3 owns the final per-level palette refinement.
+- **Tower tier names/light colors** align to D1's canon (`docs/design/lore-and-naming.md`): tier display names and legacy biome ids (`crypt`, `catacombs`, `shadow_vaults`, `abyssal_sanctum`) + new `crown_spire` are **frozen**. D3 owns the final per-level palette refinement.
 - **"Reduced gold chests" tuning:** §7.2 yields 2 gold chests/level (gold-key room + stair room). If playtesting shows this is too rich, raise the gold-key-room exception to a silver chest — a one-line catalog change.
 - **Room-5 pillars** remain on odd levels; placement skips them. If E2 removes them, §7 placement is unaffected.
 - **Boss/actor display names** are canonical per D1; internal `type` ids are frozen so catalogs and tests stay stable.

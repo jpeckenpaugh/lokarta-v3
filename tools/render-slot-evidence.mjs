@@ -3,11 +3,16 @@
 // browser (see the "Tooling: headless browser is preinstalled" directive) and a
 // running static server on :4173 (python3 -m http.server -d html 4173).
 // No runtime installs: `require('playwright')` resolves from any cwd.
+import fs from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
-const OUT = process.env.EVIDENCE_DIR || 'docs/evidence';
+// Evidence is run-owned, not committed (docs/evidence PNGs are retired per
+// agents.md §8: T2 browser evidence belongs to the board). Default to the
+// gitignored tmp/ dir; override with EVIDENCE_DIR when needed.
+const OUT = process.env.EVIDENCE_DIR || 'tmp/evidence';
+fs.mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const page = await ctx.newPage();

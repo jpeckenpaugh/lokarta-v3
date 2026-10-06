@@ -47,7 +47,7 @@ The **Procedural Web Audio Synthesizer** provides code-generated, zero-asset ret
 
 ## 6. Acceptance Criteria
 
-1. **Lazy Initialization:** `AudioSystem.getInstance()` initializes singleton with `isMuted` loaded from `localStorage` (Verified in [html/audio.js](file:///Users/jarad/git/lokarta-v3/html/audio.js#L14-L31)).
-2. **Master Gain Setting (0.35):** Active un-muted audio initializes `masterGain.gain.value = 0.35` (Verified in [html/audio.js](file:///Users/jarad/git/lokarta-v3/html/audio.js#L49)).
-3. **Mute State Toggle:** `toggleMute()` updates `isMuted`, mutates `masterGain` value to `0`, and updates `localStorage` (Verified in [html/audio.js](file:///Users/jarad/git/lokarta-v3/html/audio.js#L67-L101)).
+1. **Lazy Initialization:** `AudioSystem.getInstance()` initializes singleton with `isMuted` loaded from `localStorage` (in `html/audio/audio-system.js`).
+2. **Master Gain Setting (0.35):** Active un-muted audio initializes `masterGain.gain.value = 0.35` (in `html/audio/audio-system.js`).
+3. **Mute State Toggle:** `toggleMute()` updates `isMuted`, mutates `masterGain` value to `0`, and updates `localStorage` (in `html/audio/audio-system.js`).
 4. **Zero-Asset Playback:** Invoking sound methods (`playFootstep`, `playWandSpark`, `playLevelUp`) constructs oscillator nodes in memory without generating network HTTP GET requests for audio files.

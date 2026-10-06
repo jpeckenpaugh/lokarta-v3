@@ -152,7 +152,7 @@ solid ground. Surface anything missing to the human rather than guessing:
    fresh run reproduces correctly. **Guard the seed, not the product.** Human
    answers to *data-model or implementation* questions from a downstream stage
    are recorded in the appropriate downstream artifact (`features/*.md`,
-   `features/briefs/*.md`, or the pipeline's decision/summary) — never written
+   `docs/engineering/features/*.md`, or the pipeline's decision/summary) — never written
    back into `concept.md` / `scope.md`. A thin seed leaves the data model and
    implementation to the downstream stages, which make and record those
    decisions; a richer seed has its pre-stated data-model/implementation content

@@ -6,8 +6,8 @@
 | Status | Design deliverable — **no `html/` code changed by this document** |
 | Scope | 4 vocations (Magician, Archer, Fighter, Paladin) + 5 monsters (`giant_rat`, `crypt_skeleton`, `shadow_cultist`, `elite_cultist`, `abyssal_overlord`) |
 | Board-mandated style | "Top down classic RPG", **16-bit SNES-inspired top-down pixel art** |
-| Baseline | `main` @ `5381afc`, native suite green: **104 tests / 14 suites / 0 fail** |
-| Canon refs | `concept.md`, `docs/architecture.md`, `docs/agents.md`, `docs/LOK-12-equipment-analysis.md`, `features/briefs/01..08` |
+| Baseline | `main` @ `5381afc`, native suite green: **507 tests / 80 suites / 0 fail** |
+| Canon refs | `concept.md`, `docs/engineering/architecture.md`, `docs/engineering/agents.md`, `docs/design/analysis/equipment-analysis.md`, `docs/engineering/features/01..08` |
 
 This document is the contract for LIV-10. Every in-scope asset has a concrete schema, size, palette, frame set, integration point, and verification check so the implementation needs no further design input.
 
@@ -50,7 +50,7 @@ Colors come from `html/data/vocations.json` (`renderTheme.primary/secondary/acce
 
 1. **Vector shapes at 64 px, not pixels.** Every edge is anti-aliased (`arc`, `ellipse`, `stroke` with fractional `u` multiples such as `1.2 * u`, `4 * u`, `0.5`). There is no pixel grid, no outline, no dither, no ramp. At a 64 px tile this reads as "programmer art."
 2. **No animation at all.** The player/monsters are redrawn in a single static pose per frame. `updateAnimations` (`app-controller.js:483+`) only advances projectiles, particles and floating text. There is **no walk cycle, no attack pose, no hit reaction, no death animation**. Facing is two moving dots.
-3. **Docs drift masks it.** `docs/architecture.md §6.1` and `features/briefs/08` describe `prevX/prevY` lerp interpolation, but the codebase has **no `prevX`/`prevY` fields** (verified: zero matches in `html/`). Entities snap tile-to-tile; the only smoothing is camera rounding.
+3. **Docs drift masks it.** `docs/engineering/architecture.md §6.1` and `docs/engineering/features/08` describe `prevX/prevY` lerp interpolation, but the codebase has **no `prevX`/`prevY` fields** (verified: zero matches in `html/`). Entities snap tile-to-tile; the only smoothing is camera rounding.
 4. **Palettes are near-invisible on the floor.** Using WCAG relative luminance (`L`) and contrast ratio `CR = (L_a + 0.05) / (L_b + 0.05)` against `tile_themes.floor.fill = #1a1c23` (`L ≈ 0.0128`):
 
    | Actor | Dominant fill | `L` (approx) | `CR` vs floor | Verdict |
@@ -77,7 +77,7 @@ Colors come from `html/data/vocations.json` (`renderTheme.primary/secondary/acce
 - `image-rendering: pixelated` is already on the canvas element (`base.css:184`).
 - `CONFIG.GRID_SIZE = 64` and the `u = size / 32` convention are a clean integer-scale seam.
 - The DOM HUD/menus already use real illustrated assets (OpenMoji SVGs); `HUDManager.renderItemIcon` is unit-tested to an exact `<img>` string (`html/tests/app-modules.test.mjs:31`) — **do not touch HUD icons in the sprite pass**.
-- `MONSTER_RENDERERS`, `TILE_RENDERERS`, `ITEM_RENDERERS`, `WEAPON_RENDERERS` are already polymorphic dispatch tables, consistent with the data-driven rule in `docs/agents.md §2.3`.
+- `MONSTER_RENDERERS`, `TILE_RENDERERS`, `ITEM_RENDERERS`, `WEAPON_RENDERERS` are already polymorphic dispatch tables, consistent with the data-driven rule in `docs/engineering/agents.md §2.3`.
 
 ---
 
@@ -90,9 +90,9 @@ Ship upgraded art as **indexed-pixel matrices in JSON** under `html/assets/sprit
 Why this is the right call for Lokarta specifically:
 
 - **Preserves the zero-backend / no-bundler invariant.** Pure ES Modules + `<canvas>`. Nothing is fetched at runtime; the matrices are static JSON imported with `with { type: 'json' }`, exactly like `html/data/index.js` already does. Works from `file://` today (no image decode/CORS race) and from any static host.
-- **Reviewable in git.** The art is text; `git diff` shows the exact pixel change. The committed PNG preview under `docs/art-preview/` gives the visual review that a binary-only pipeline loses.
+- **Reviewable in git.** The art is text; `git diff` shows the exact pixel change. The committed PNG preview under `docs/art/preview/` gives the visual review that a binary-only pipeline loses.
 - **Native-testable.** The matrices, palettes, frame names, outline pass and contrast rule are all pure functions over arrays — no canvas required in `node --test`. This keeps the 104/104 baseline meaningful.
-- **Fits the golden rule.** `docs/agents.md §2` mandates data-driven dispatch with graceful fallbacks. Sprite definitions extend that pattern; a new monster is "catalog entry + sprite file," never new hardcoded logic.
+- **Fits the golden rule.** `docs/engineering/agents.md §2` mandates data-driven dispatch with graceful fallbacks. Sprite definitions extend that pattern; a new monster is "catalog entry + sprite file," never new hardcoded logic.
 - **Palette-first, so variants are free.** `elite_cultist` becomes a documented palette + silhouette variant (gold trim + horns) rather than a copy with a different fill; per-tier tinting and hit-flash tinting become palette operations, not code.
 - **Integer scaling is enforced by construction.** `SCALE = GRID_SIZE / 32` is a positive integer today (×2); a `drawImage` blit with `imageSmoothingEnabled = false` yields crisp pixels.
 
@@ -108,7 +108,7 @@ Why this is the right call for Lokarta specifically:
 
 To satisfy "reviewers must be able to see the art files in git" without trusting a build step, add an **optional, dependency-free** exporter:
 
-- `tools/render-sprite-preview.mjs` — Node-only, uses built-in `zlib` to encode PNG, reads the JSON matrices, applies the same outline pass and palette, writes one PNG per actor (and one combined sheet) to `docs/art-preview/`.
+- `tools/render-sprite-preview.mjs` — Node-only, uses built-in `zlib` to encode PNG, reads the JSON matrices, applies the same outline pass and palette, writes one PNG per actor (and one combined sheet) to `docs/art/preview/`.
 - The export is **committed**. A native test re-runs the exporter into a temp dir and byte-compares against the committed PNGs; a mismatch fails the suite. This makes drift impossible and keeps the invariant: the app itself never runs the exporter.
 
 This gives us both worlds — text source of truth in `html/`, and inspectable images in `docs/` — with no npm dependency and no runtime fetch.
@@ -130,7 +130,7 @@ html/assets/sprites/
     shadow_cultist.json
     elite_cultist.json
     abyssal_overlord.json
-docs/art-preview/
+docs/art/preview/
   magician.png … abyssal_overlord.png
   sheet.png                     # optional contact sheet for QA
 tools/render-sprite-preview.mjs # optional exporter (Node-only, zero deps)
@@ -449,8 +449,8 @@ Shared defaults as §4. Monster scales/spawns come from `monsters.json` and `flo
 | `html/app/canvas-renderer.js` | Reorder layers; pass animation state through; draw selection ring + health bar relative to the sprite box; draw projectiles after the mask | `screenToGrid`, camera math, tile/item culling (`if (!tile.isLit) continue`) |
 | `html/app/app-controller.js` | Add per-actor `anim` state; update it in `updateAnimations(dtMs)`; trigger attack/hit/death from combat and AI results; spawn transient death effects instead of splicing immediate removal | 10 Hz tick order, `handleCombatResult` loot/XP/boss logic, `processMovementInput` collision |
 | `html/data/vocations.json`, `html/data/monsters.json` | Optional additive `"spriteId"` field; refined `renderTheme` hexes if adopted | All stats, `nativeEquipment`, `lootTable`, `svgCode`, `eyeColor` semantics; `data-catalogs.test.mjs` assertions |
-| `html/tests/sprite-assets.test.mjs` (new) | Data validation + pure-function tests (§7) | Existing 104 tests must stay green |
-| `tools/render-sprite-preview.mjs` + `docs/art-preview/*.png` (new, optional) | Deterministic PNG export committed for review | Not part of the app runtime/bundle |
+| `html/tests/sprite-assets.test.mjs` (new) | Data validation + pure-function tests (§7) | Existing tests must stay green |
+| `tools/render-sprite-preview.mjs` + `docs/art/preview/*.png` (new, optional) | Deterministic PNG export committed for review | Not part of the app runtime/bundle |
 
 ### 6.2 Animation state contract
 
@@ -546,7 +546,7 @@ This guarantees the silhouette (and its rim) stays ≥ 0.65 alpha while distant 
 7. **Scale integrality.** `CONFIG.GRID_SIZE % SPRITE_NATIVE === 0` (asserts the ×2 blit is exact).
 8. **Rim contrast.** For each actor, at least one palette entry has `CR >= 3.0` against `#1a1c23` (implements §3.5 numerically).
 9. **Distinct silhouettes / non-color cue.** The alpha masks of `shadow_cultist` and `elite_cultist` idle frames are **not identical**, and `elite_cultist` includes its gold trim color — a code-level guard for color-independence.
-10. **Preview drift (if the preview export ships).** Re-run `tools/render-sprite-preview.mjs` into a temp dir; byte-compare to `docs/art-preview/`; mismatch = fail.
+10. **Preview drift (if the preview export ships).** Re-run `tools/render-sprite-preview.mjs` into a temp dir; byte-compare to `docs/art/preview/`; mismatch = fail.
 11. **Fallback safety.** `SpriteRenderer.drawPlayer`/`drawMonster` with a fake 2D-context spy and an unknown id do not throw and call the procedural fallback.
 12. **Regression baseline.** The full suite still reports **104+ tests / 0 fail** (`node --test html/tests/*.test.mjs`).
 
@@ -568,7 +568,7 @@ Run: `node --test html/tests/*.test.mjs` from repo root.
 
 ### 7.3 Catalog-diff acceptance
 
-- Allowed: new `html/assets/sprites/**`, new `html/assets/sprites/index.js`, additive `spriteId` fields, refined `renderTheme` hexes in `vocations.json` **with the sprite palette updated in the same PR**, new tests, optional `tools/` + `docs/art-preview/`.
+- Allowed: new `html/assets/sprites/**`, new `html/assets/sprites/index.js`, additive `spriteId` fields, refined `renderTheme` hexes in `vocations.json` **with the sprite palette updated in the same PR**, new tests, optional `tools/` + `docs/art/preview/`.
 - Forbidden in this workstream: any change to monster/vocation **stats**, `lootTable`, `nativeEquipment`, abilities, encounter/dungeon numbers, or `CONFIG.GRID_SIZE`.
 
 ### 7.4 Definition of Done for LIV-10
@@ -588,7 +588,7 @@ These are deliberately excluded to keep this spec to "4 vocations + monsters," b
 
 1. **Tile & item pixel pass.** The flat procedural floor/wall/door/stairs and the vector item glyphs will clash with pixel-art actors. Recommended next: a second spec covering `tile_themes.json`-driven 32×32 native tiles and item icons using the same JSON matrix pipeline, per tier.
 2. **OpenMoji `svgCode` cleanup.** Either add the missing `1F407` (rat) and `1F480` (skeleton) SVGs or stop treating `svgCode` as renderer-ready for monsters.
-3. **Fix docs drift.** `docs/architecture.md §6.1` and `features/briefs/08` claim `prevX/prevY` interpolation that does not exist; either implement it (recommended, for smoother 10 Hz movement) or correct the docs.
+3. **Fix docs drift.** `docs/engineering/architecture.md §6.1` and `docs/engineering/features/08` claim `prevX/prevY` interpolation that does not exist; either implement it (recommended, for smoother 10 Hz movement) or correct the docs.
 4. **HUD sprite parity.** Replace OpenMoji item icons in the HUD with the same pixel-art style once actors ship, updating `app-modules.test.mjs:31` deliberately.
 
 Recommended owner: Tech Lead (route 1 and 4 as engineering issues; 2 and 3 are small doc/asset fixes). This document does not create those issues — the CEO/board can decide sequencing after LIV-10 lands.

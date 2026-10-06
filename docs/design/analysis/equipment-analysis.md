@@ -1,8 +1,10 @@
 # LOK-12 — Equipment & Strategic Depth Analysis + Golden Starter Sets (v2)
 
+> **Historical (archived 2026-10-06).** This analysis predates the shipped implementation; its recommendations now live in `html/data/items.json` (`upgradeSpec`) and `html/engine/item-progression.js`. Kept for design provenance only — do not treat as current spec.
+
 **Status:** Design / analysis document — **v2** (board-compliant revision). No code or data changes in this revision.
 **Author:** Gameplay Designer (LOK-13); v2 revision per LOK-14 board directives.
-**Sources:** `html/data/items.json`, `html/data/vocations.json`, `html/data/cards.json`, `html/data/abilities.json`, `html/data/monsters.json`, `html/engine/*.js`, `html/app/app-controller.js`, `features/03`, `features/04`, `features/05`
+**Sources:** `html/data/items.json`, `html/data/vocations.json`, `html/data/cards.json`, `html/data/abilities.json`, `html/data/monsters.json`, `html/engine/*.js`, `html/app/app-controller.js`, `docs/engineering/features/03-combat-and-abilities.md`, `docs/engineering/features/04-vocations-and-progression.md`, `docs/engineering/features/05-inventory-and-storage.md`
 **Scope:** Current equipment layouts → analysis → 4 "Golden" starter sets (v2, board-directive compliant) → creative strategic depth options (trimmed to 3) → recommendation & implementation slice order.
 
 **Revision note (LOK-14):** §1–3 are the approved analysis from the original document and are kept, with the §3 power-budget ledger lightly re-driven to match the v2 sets. §4 (Golden Starter Sets), §5 (creative options), and §6 (recommendation/slice order) are replaced by the board-compliant design below. The board's directives are reproduced verbatim in §4.0 and every design choice traces to a directive.

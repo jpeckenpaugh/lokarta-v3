@@ -2,14 +2,14 @@
 
 ## 1. Purpose
 
-The **Web Worker Async RPC Bridge** offloads heavy computational operations—such as Mulberry32 tower floor generation, BFS path validation, and IndexedDB storage persistence—to a Dedicated Web Worker (`game-worker.js`). By isolating CPU-bound generation and async storage calls off the main thread, it guarantees smooth 60 FPS rendering on the primary UI thread without frame drops.
+The **Web Worker Async RPC Bridge** offloads heavy computational operations—such as Mulberry32 tower floor generation, BFS path validation, and IndexedDB storage persistence—to a Dedicated Web Worker (`html/worker/game-worker.js`). By isolating CPU-bound generation and async storage calls off the main thread, it guarantees smooth 60 FPS rendering on the primary UI thread without frame drops.
 
 ---
 
 ## 2. Implemented Behavior
 
 ### 2.1 Promise-Wrapped RPC Protocol
-- **Client Class:** `GameClient` ([game-client.js](file:///Users/jarad/git/lokarta-v3/html/game-client.js)) instantiates the worker (`{ type: 'module' }`) and manages asynchronous request-response mapping via `postMessage` and `onmessage`.
+- **Client Class:** `GameClient` (`html/worker/game-client.js`) instantiates the worker (`{ type: 'module' }`) and manages asynchronous request-response mapping via `postMessage` and `onmessage`.
 - **Unique Request Identifier:** Outgoing calls generate unique ID strings:
   `req_${reqIdCounter}_${Date.now()}_${randomString}`.
 - **Pending Request Registry:** Pending Promises are registered in `this.pending` (a `Map<string, { resolve, reject, timer, command }>`).
@@ -17,7 +17,7 @@ The **Web Worker Async RPC Bridge** offloads heavy computational operations—su
 - **Worker Error Handling:** Unhandled worker runtime errors trigger `_handleError`, clearing `this.pending` and rejecting all active pending Promises.
 
 ### 2.2 RPC Command Dispatch Matrix
-The Dedicated Worker (`game-worker.js`) listens for messages and dispatches payload parameters across 7 RPC endpoints:
+The Dedicated Worker (`html/worker/game-worker.js`) listens for messages and dispatches payload parameters across the RPC endpoints:
 1. `bootstrap`: Opens IndexedDB, loads profile preferences, fetches active character, and loads floor state.
 2. `newGame`: Initializes Level 1 character archetype, generates Floor 1 map, commits records to IndexedDB, and returns `{ player, floor }`.
 3. `generateFloor` / `getFloor`: Fetches floor depth ($1..20$) from IndexedDB cache or generates via `generateFloor(floorNumber)`.

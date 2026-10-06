@@ -2,7 +2,7 @@
 
 **Issue:** [LIV-19](/LIV/issues/LIV-19) (D4) · **Parent:** [LIV-17](/LIV/issues/LIV-17) · **Owner:** Designer · **Audience:** Tech Lead / E10 ([LIV-20](/LIV/issues/LIV-20)), board (browser verification)
 
-**Wave 3 spec.** Extends [docs/art-direction-tower.md](art-direction-tower.md) §3.3 (castle motifs) and closes its §9 residual risk #1 ("No per-level *furniture* set"). `art-direction-tower.md` remains authoritative for tile themes, keys/chests/gated doors, stair material, and the castle wall motifs (sconce/banner/window); [docs/art-direction.md](art-direction.md) remains authoritative for actors + vocations. This document is authoritative for **room furniture props, floor-decal decor, prop placement, and chest-against-wall placement (LIV-17 item 3)**.
+**Wave 3 spec.** Extends [docs/art/art-direction-tower.md](art-direction-tower.md) §3.3 (castle motifs) and closes its §9 residual risk #1 ("No per-level *furniture* set"). `art-direction-tower.md` remains authoritative for tile themes, keys/chests/gated doors, stair material, and the castle wall motifs (sconce/banner/window); [docs/art/art-direction.md](art-direction.md) remains authoritative for actors + vocations. This document is authoritative for **room furniture props, floor-decal decor, prop placement, and chest-against-wall placement (LIV-17 item 3)**.
 
 This converts LIV-17 item 2 ("add additional artwork / different tile types in the various rooms, e.g. tables, candelabras, other themed artwork") into buildable, data-driven art plus an extension to the deterministic floor generator. It commits the design-system artifacts E10 integrates directly, and names them by catalog entry, token, component, and sprite path.
 
@@ -278,7 +278,7 @@ html/app/canvas-renderer.js          # + props layer (§6)
 html/app/app-controller.js           # + this.props wiring (§6.2)
 tools/validate-prop-assets.mjs       # + prop-class + per-level rim gate
 tools/render-sprite-preview.mjs      # props.png now includes furniture + decor
-docs/art-preview/props.png           # committed contact sheet (regenerated)
+docs/art/preview/props.png           # committed contact sheet (regenerated)
 html/tests/room-props.test.mjs       # new (§9)
 html/tests/sprite-assets.test.mjs    # preview drift + manifest coverage unchanged
 ```
@@ -324,7 +324,7 @@ New `html/tests/room-props.test.mjs` (node:test):
 8. **Per-level identity** — each level's props are a subset of its `props.set`; L1 and L4 prop-id sets are not identical (theme variation is real).
 9. **Brazier light bound** — at most `maxBrazierLights` brazier ambient lights per floor, and each corresponds to a placed brazier.
 
-Also run the existing suite: `node --test html/tests/*.test.mjs` (must stay green; preview drift check regenerates `docs/art-preview/props.png`).
+Also run the existing suite: `node --test html/tests/*.test.mjs` (must stay green; preview drift check regenerates `docs/art/preview/props.png`).
 
 ### 9.2 Manual / browser checklist (board, via Tech Lead)
 
@@ -374,7 +374,7 @@ Met by: exact catalog + per-level `props` schema (§2–§3), exact generator + 
 
 ```bash
 node tools/validate-prop-assets.mjs          # prop/decor + per-level rim gate
-node tools/render-sprite-preview.mjs         # regenerate docs/art-preview/*.png (props.png grows)
+node tools/render-sprite-preview.mjs         # regenerate docs/art/preview/*.png (props.png grows)
 node --test html/tests/room-props.test.mjs   # D4 placement contract
 node --test html/tests/*.test.mjs            # full native suite
 ```

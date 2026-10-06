@@ -27,7 +27,7 @@ dissonance between copy and mechanics.
 ## 2. Canonical tower tiers (5 levels, bottom → top)
 
 The tower has **five levels**. Each level is a *tier* with its own visual theme (see
-`docs/art-direction.md` and D3). Level 5 is the final level and holds the final guardian.
+`docs/art/art-direction.md` and D3). Level 5 is the final level and holds the final guardian.
 
 | Level | Tier name | Role | Legacy biome id (internal, unchanged) |
 | --: | :-- | :-- | :-- |
@@ -104,7 +104,7 @@ and persistence are untouched:
 - File names (`dungeons.json`, `biomes.json`, `floor-generator.js`,
   `01-dungeon-generator.md`), barrel exports (`BIOMES_CATALOG`, `DUNGEONS_CATALOG`), and
   `FLOOR_TEMPLATE_VERSION`.
-- Sprite paths (`docs/art-preview/abyssal_overlord.png`, `html/assets/sprites/**`).
+- Sprite paths (`docs/art/preview/abyssal_overlord.png`, `html/assets/sprites/**`).
 
 Renaming any of the above is an engineering migration (E1/E6), not a copy edit.
 

@@ -9,7 +9,7 @@ The **Vocations and Character Progression** feature manages character archetypes
 ## 2. Implemented Behavior
 
 ### 2.1 Playable Character Vocations & Growth Curves
-The 4 playable vocations (`DEFAULT_ARCHETYPES` in `engine.js`) possess initial vitals and per-level stat growth curves (`ProgressionSystem.addXp`). Each vocation also declares a `nativeEquipment` item-id list in `vocations.json` (**vocation-locked gear** — weapons/armor/relics can only be equipped by their appropriate vocation; there is **no** class damage/healing multiplier):
+The 4 playable vocations (built in `html/engine/config.js` from `vocations.json`) possess initial vitals and per-level stat growth curves (`ProgressionSystem.addXp`). Each vocation also declares a `nativeEquipment` item-id list in `vocations.json` (**vocation-locked gear** — weapons/armor/relics can only be equipped by their appropriate vocation; there is **no** class damage/healing multiplier):
 
 - **Magician:**
   - Base Vitals: 60 HP, 150 MP.

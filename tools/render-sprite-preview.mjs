@@ -4,7 +4,7 @@
  *
  * Reads the authored sprite definitions from `html/assets/sprites/**`, applies
  * the same outline pass + palette as the runtime renderer, and writes one PNG
- * per actor plus a combined contact sheet to `docs/art-preview/`.
+ * per actor plus a combined contact sheet to `docs/art/preview/`.
  *
  * This is a review/export tool. The app never runs it: art data is the JSON
  * under `html/assets/sprites/`. A native test re-runs this exporter into a temp
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 const SPRITES_DIR = path.join(ROOT, 'html', 'assets', 'sprites');
-const DEFAULT_OUT = path.join(ROOT, 'docs', 'art-preview');
+const DEFAULT_OUT = path.join(ROOT, 'docs', 'art', 'preview');
 const SCALE = 2;
 
 /* ---------------- PNG encoder ---------------- */

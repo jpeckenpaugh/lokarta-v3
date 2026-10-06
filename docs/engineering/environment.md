@@ -13,9 +13,10 @@ The application runs entirely within the web browser context without external se
 ### Supported Browsers & API Requirements
 - **Browser Compatibility:** Any modern evergreen web browser (Google Chrome, Mozilla Firefox, Apple Safari, Microsoft Edge).
 - **ES Modules (ESM):** Native support for `import` / `export` syntax in standard script tags (`<script type="module" src="app.js">`).
-- **Web Workers:** Native support for dedicated Web Workers (`new Worker('game-worker.js', { type: 'module' })`) to execute game state simulation off the main UI thread.
-- **IndexedDB:** Client-side object database API used by `storage.js` for persistent profile storage, settings, and floor state saves (`lokarta_db`).
-- **Web Audio API:** Native support for `AudioContext` used by `audio.js` for procedural real-time Web Audio sound synthesis (synthesizing retro sound effects without external audio files).
+- **Web Workers:** Native support for dedicated Web Workers (`new Worker('worker/game-worker.js', { type: 'module' })`) to execute game state simulation off the main UI thread.
+- **IndexedDB:** Client-side object database API used by `html/services/storage.js` for persistent profile storage, settings, and floor state saves (`lokarta_browser_db`).
+- **Web Audio API:** Native support for `AudioContext` used by `html/audio/audio-system.js` for procedural real-time Web Audio sound synthesis (synthesizing retro sound effects without external audio files).
+- **No external CDNs:** All scripts, fonts, and assets are served from the repo. Do not add remote stylesheet/script `<link>`/`<script>` tags.
 - **HTML5 Canvas 2D:** Native 2D rendering context (`HTMLCanvasElement.getContext('2d')`) used by `app.js` for 60 FPS tile map, particle, light overlay, and UI rendering.
 
 ---
@@ -55,22 +56,24 @@ The codebase includes native ES Module unit test suites located in `html/tests/`
 
 ### Running Automated Tests
 
-Run the engine test suite using Node's built-in test runner:
+Run the full test suite (all domain suites) using Node's built-in test runner:
 
 ```bash
-node --test html/tests/engine.test.mjs
+node --test html/tests/*.test.mjs
 ```
 
+CI (`.github/workflows/test.yml`) runs this same command on every push/PR.
+
 ### Coverage
-The test suite (`html/tests/engine.test.mjs`) validates:
+The suite (`html/tests/*.test.mjs`) validates, among others:
 1. **Floor Generator:** Determinism, 40x40 grid boundaries, spawn (2,2) and stairs (35,35) placement, floor-to-stairs connectivity, tower-tier mapping, and Spire Warden boss stats.
 2. **GridMap & Tile Bounds:** Dimension initialization, tile types, and item management.
-3. **LightingSystem & FOV:** Vision radius computation (base 10, torch +2, degrading light spell +3/+2/+1), spatial circle lighting, and monster visibility.
+3. **LightingSystem & FOV:** Vision radius computation (base 10, degrading light spell +3/+2/+1), spatial circle lighting, and monster visibility.
 4. **ProgressionSystem:** 4 playable vocations (Magician, Archer, Fighter, Paladin), level scaling, and stat increments.
 5. **CombatSystem:** Vocation-locked equipment enforcement (no class multiplier — damage/healing scales from `skillBoosts.damageMultiplier` only), ability execution, arrow consumption, and Paladin prayers/strikes.
-6. **InventorySystem:** Slot priority (action bar 0–9 before backpack), paperdoll equipment slots, and unequip functionality.
+6. **InventorySystem:** Slot priority (action bar before backpack), paperdoll equipment slots, and unequip functionality.
 7. **FateGrantSystem:** 5-card draft generation and card application.
-8. **GestureEngine:** Hotkey mapping for keys 1–9 and 0.
+8. **GestureEngine:** Hotkey mapping for action slots.
 9. **GameClient & Worker Protocol:** Client bootstrap and worker lifecycle RPC communication.
 
 ---
@@ -83,34 +86,6 @@ The test suite (`html/tests/engine.test.mjs`) validates:
 
 ---
 
-## 5. Shared Git Hosting (`/repos/lokarta.git`) & Push Workaround
+## 5. Git Hosting
 
-The project's `origin` is a local bare repository at `file:///repos/lokarta.git`, owned by the agent user (`node`). `refs/heads/main` and most of `objects/` are agent-writable, but 19 `objects/<xx>/` fanout directories are owned by `root:root` (created by a root-run process on 2026-09-27 05:14–05:18) and cannot be written by `node`.
-
-When a push contains loose objects that hash into one of those directories, the receive side fails deterministically with:
-
-```text
-remote: error: unable to migrate objects to permanent storage
-```
-
-### Active workaround (non-destructive, reversible)
-
-Keep incoming pushes as **packfiles** in the agent-writable `objects/pack/` instead of exploding them into loose fanout directories:
-
-```sh
-git -C /repos/lokarta.git config receive.unpackLimit 1
-```
-
-This setting is already applied to the shared bare repository, so pushes land normally. Revert with:
-
-```sh
-git -C /repos/lokarta.git config --unset receive.unpackLimit
-```
-
-Do **not** `rm`/`chown`/`chmod` the root-owned directories from an agent run. The permanent fix requires root:
-
-```sh
-chown -R node:1003 /repos/lokarta.git/objects
-```
-
-(or at minimum the 19 root-owned `objects/<xx>` directories). Once that is done the `receive.unpackLimit` workaround can be removed.
+`origin` is the GitHub remote `git@github.com:jpeckenpaugh/lokarta-v3.git`; `main` is the integration and deploy branch (GitHub Pages via `.github/workflows/deploy.yml`). The former local bare-repo mirror at `/repos/lokarta.git` and its `receive.unpackLimit` packfile workaround are retired.

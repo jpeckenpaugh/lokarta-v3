@@ -21,13 +21,13 @@ The purpose of Lokarta is to deliver a rich tactical tower-climbing roguelike fe
 Lokarta is built as a pure web-native client application utilizing modern standard browser APIs:
 
 - **Zero-Backend Architecture:** Self-contained static assets hosted via standard HTTP static file servers (`run.sh`, Python `http.server`, `npx serve`, GitHub Pages, Cloudflare Pages, S3).
-- **Vanilla ES Modules (`type="module"`):** Decoupled, dependency-free JavaScript modules (`engine.js`, `floor-generator.js`, `storage.js`, `game-worker.js`, `game-client.js`, `app.js`, `audio.js`).
-- **Dedicated Web Worker (`game-worker.js`):** Offloads procedural tower floor generation, state calculation, and floor caching off the main UI thread.
-- **Typed Worker RPC Bridge (`game-client.js`):** Asynchronous Promise-wrapped message protocol for state mutation and worker commands (`INIT_GAME`, `GENERATE_FLOOR`, `LOAD_FLOOR`, `SAVE_GAME`, `GET_GAME`).
-- **IndexedDB Persistence (`storage.js`):** Asynchronous local database storage utilizing dedicated Object Stores (`characters`, `dungeon_floors`, `profile`, `game_settings`).
-- **HTML5 Canvas 2D Renderer (`app.js`):** 60 FPS sprite and tile rendering pipeline with smooth coordinate interpolation, camera centering, line-of-sight shadow masks, particle effects, and dynamic light radii.
-- **Procedural Web Audio API (`audio.js`):** Dynamic Web Audio synthesizer creating retro sound effects (footsteps, wand sparks, energy beams, bow shots, power shots, holy strikes, healing spells, monster hits, level-up fanfares, potions) entirely in code without external audio assets.
-- **10 Hz Simulation Loop & Gesture Engine (`app.js`, `engine.js`):** Fixed-tick turn-based engine handling input gestures, movement, combat actions, AI pathing, and cooldown updates.
+- **Vanilla ES Modules (`type="module"`):** Decoupled, dependency-free JavaScript modules (`html/engine/*.js`, `html/services/floor-generator.js`, `html/services/storage.js`, `html/worker/game-worker.js`, `html/worker/game-client.js`, `html/app.js`, `html/audio/audio-system.js`).
+- **Dedicated Web Worker (`html/worker/game-worker.js`):** Offloads procedural tower floor generation, state calculation, and floor caching off the main UI thread.
+- **Typed Worker RPC Bridge (`html/worker/game-client.js`):** Asynchronous Promise-wrapped message protocol for state mutation and worker commands.
+- **IndexedDB Persistence (`html/services/storage.js`):** Asynchronous local database storage utilizing dedicated Object Stores (`characters`, `dungeon_floors`, `profile`, `game_settings`).
+- **HTML5 Canvas 2D Renderer (`html/app/`):** 60 FPS sprite and tile rendering pipeline with camera centering, line-of-sight shadow masks, particle effects, and dynamic light radii.
+- **Procedural Web Audio API (`html/audio/audio-system.js`):** Dynamic Web Audio synthesizer creating retro sound effects (footsteps, wand sparks, energy beams, bow shots, power shots, holy strikes, healing spells, monster hits, level-up fanfares, potions) entirely in code without external audio assets.
+- **10 Hz Simulation Loop & Gesture Engine (`html/app/`, `html/engine/`):** Fixed-tick turn-based engine handling input gestures, movement, combat actions, AI pathing, and cooldown updates.
 
 ---
 
@@ -58,7 +58,7 @@ The game supports 4 distinct playable vocations, each possessing unique stat gro
   - *Native Gear/Abilities:* Holy Strike, Healing Prayer, Relics, Warhammers, Shields.
 
 ### 2. Procedural Tower Ascent & Tiers
-The tower is procedurally generated on a $40 \times 40$ tile grid using a deterministic Mulberry32 PRNG seed generator (`floor-generator.js`), ensuring reproducible connectivity between player spawn at `(2,2)` and the ascent stairs at `(35,35)`. The tower comprises **five tiers**, climbed in ascending order; level 5 is the final level:
+The tower is procedurally generated on a $40 \times 40$ tile grid using a deterministic Mulberry32 PRNG seed generator (`html/services/floor-generator.js`), ensuring reproducible connectivity between player spawn at `(2,2)` and the ascent stairs at `(35,35)`. The tower comprises **five tiers**, climbed in ascending order; level 5 is the final level:
 
 1. **The Gatehouse (Level 1):** Ground-floor entry, reached through the room-2 doorway. Populated by Giant Rats and Bone Sentries.
 2. **The Hall of Banners (Level 2):** First gated keys; Shadow Cultists and Bone Sentries tighten the corridors.
