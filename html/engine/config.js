@@ -118,32 +118,11 @@ export const CONFIG = {
   PALADIN_HEAL_MAX: ABILITIES_CATALOG.paladin_heal.healMax,
   PALADIN_HEAL_COOLDOWN_SEC: ABILITIES_CATALOG.paladin_heal.cooldownSec,
 
-  // Monster Balance & Cadence
-  RAT_MOVE_CADENCE_SEC: MONSTERS_CATALOG.giant_rat.moveCadence,
-  RAT_ATTACK_CADENCE_SEC: MONSTERS_CATALOG.giant_rat.attackCadence,
-  RAT_DAMAGE_MIN: MONSTERS_CATALOG.giant_rat.damageMin,
-  RAT_DAMAGE_MAX: MONSTERS_CATALOG.giant_rat.damageMax,
-
-  SKELETON_MOVE_CADENCE_SEC: MONSTERS_CATALOG.crypt_skeleton.moveCadence,
-  SKELETON_ATTACK_CADENCE_SEC: MONSTERS_CATALOG.crypt_skeleton.attackCadence,
-  SKELETON_DAMAGE_MIN: MONSTERS_CATALOG.crypt_skeleton.damageMin,
-  SKELETON_DAMAGE_MAX: MONSTERS_CATALOG.crypt_skeleton.damageMax,
-
-  CULTIST_MOVE_CADENCE_SEC: MONSTERS_CATALOG.shadow_cultist.moveCadence,
-  CULTIST_ATTACK_CADENCE_SEC: MONSTERS_CATALOG.shadow_cultist.attackCadence,
-  CULTIST_DAMAGE_MIN: MONSTERS_CATALOG.shadow_cultist.damageMin,
-  CULTIST_DAMAGE_MAX: MONSTERS_CATALOG.shadow_cultist.damageMax,
+  // Monster standoff range (catalog-derived). All other monster stats
+  // (hp/attack/defense/damage/cadence/aiType) are read live from
+  // MONSTERS_CATALOG in entity-ai.js and floor-generator.js.
   CULTIST_STANDOFF_MIN: MONSTERS_CATALOG.shadow_cultist.standoffMin,
   CULTIST_STANDOFF_MAX: MONSTERS_CATALOG.shadow_cultist.standoffMax,
-
-  BOSS_MOVE_CADENCE_SEC: MONSTERS_CATALOG.abyssal_overlord.moveCadence,
-  BOSS_ATTACK_CADENCE_SEC: MONSTERS_CATALOG.abyssal_overlord.attackCadence,
-  BOSS_DAMAGE_MIN: MONSTERS_CATALOG.abyssal_overlord.damageMin,
-  BOSS_DAMAGE_MAX: MONSTERS_CATALOG.abyssal_overlord.damageMax,
-
-  // Consumables
-  HEALTH_POTION_HEAL: 30,
-  MANA_POTION_RESTORE: 40,
 };
 
 function emptySlots(n) {

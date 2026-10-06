@@ -13,7 +13,7 @@
  * `keybindings.json`); there are no hardcoded constants here.
  */
 
-import { CONFIG, INVENTORY_CONFIG, EQUIPMENT_KEY_MAP, EQUIPMENT_SLOT_KEYS } from './config.js';
+import { INVENTORY_CONFIG, EQUIPMENT_KEY_MAP, EQUIPMENT_SLOT_KEYS } from './config.js';
 import { ITEMS_CATALOG, UI_CATALOG } from '../data/index.js';
 import { findOwnedItem, applyItemRankUp, formatRankUpMessage } from './item-progression.js';
 
@@ -27,6 +27,31 @@ const ITEM_SLOT_ROLE = {
   active: 'active',
   equipment: 'equipment',
   bank: 'bank',
+};
+
+/**
+ * Restorable resources keyed by catalog `effect.resource`. `current` mutates the
+ * player pool, `max` clamps it; labels are for player-facing messages.
+ */
+const RESTORE_RESOURCES = {
+  hp: { current: 'hp', max: 'max_hp', label: 'HP', full: 'Health' },
+  mp: { current: 'mana', max: 'max_mana', label: 'MP', full: 'Mana' },
+};
+
+/** Consumable effect dispatch keyed by catalog `effect.kind` (items.json). */
+const CONSUMABLE_EFFECTS = {
+  restore: (player, item, effect, removeCallback) => {
+    const res = RESTORE_RESOURCES[effect.resource];
+    if (!res) return { success: false, message: `Unknown consumable resource: ${effect.resource}` };
+    if (player[res.current] >= player[res.max]) {
+      return { success: false, message: `${res.full} is already full!` };
+    }
+    const amount = Number(item.stat_bonus) || Number(effect.amount) || 0;
+    const restored = Math.min(amount, player[res.max] - player[res.current]);
+    player[res.current] = Math.min(player[res.max], player[res.current] + amount);
+    removeCallback();
+    return { success: true, message: `Drank ${item.name}. Restored +${restored} ${res.label} (${player[res.current]}/${player[res.max]}).`, item };
+  },
 };
 
 export class InventorySystem {
@@ -605,22 +630,10 @@ export class InventorySystem {
   }
 
   static consumeItem(player, item, removeCallback) {
-    if (item.item_id === 'health_potion') {
-      if (player.hp >= player.max_hp) return { success: false, message: 'Health is already full!' };
-      const healAmount = item.stat_bonus || CONFIG.HEALTH_POTION_HEAL;
-      const restored = Math.min(healAmount, player.max_hp - player.hp);
-      player.hp = Math.min(player.max_hp, player.hp + healAmount);
-      removeCallback();
-      return { success: true, message: `Drank Health Potion. Restored +${restored} HP (${player.hp}/${player.max_hp}).`, item };
-    }
-    if (item.item_id === 'mana_potion') {
-      if (player.mana >= player.max_mana) return { success: false, message: 'Mana is already full!' };
-      const restoreAmount = item.stat_bonus || CONFIG.MANA_POTION_RESTORE;
-      const restored = Math.min(restoreAmount, player.max_mana - player.mana);
-      player.mana = Math.min(player.max_mana, player.mana + restoreAmount);
-      removeCallback();
-      return { success: true, message: `Drank Mana Potion. Restored +${restored} MP (${player.mana}/${player.max_mana}).`, item };
-    }
-    return { success: false, message: `Unknown consumable item: ${item.name}` };
+    if (!item) return { success: false, message: 'No item to consume.' };
+    const effect = item.effect || ITEMS_CATALOG[item.item_id]?.effect;
+    const handler = effect && CONSUMABLE_EFFECTS[effect.kind];
+    if (!handler) return { success: false, message: `Unknown consumable item: ${item.name}` };
+    return handler(player, item, effect, removeCallback);
   }
 }

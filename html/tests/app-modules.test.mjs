@@ -18,6 +18,35 @@ test('App Submodules & Root Re-exports', async (t) => {
     assert.equal(typeof SpriteRenderer.drawItem, 'function');
   });
 
+  await t.test('dispatches weapon visuals by catalog renderKey (no item_id substring sniff)', () => {
+    const calls = [];
+    const ctx = {
+      calls,
+      canvas: { width: 64, height: 64 },
+      strokeStyle: '',
+      fillStyle: '',
+      lineWidth: 1,
+      beginPath: () => calls.push('beginPath'),
+      moveTo: () => {},
+      lineTo: () => {},
+      arc: () => calls.push('arc'),
+      stroke: () => calls.push('stroke'),
+      fill: () => calls.push('fill'),
+      fillRect: () => calls.push('fillRect'),
+    };
+
+    SpriteRenderer.drawItem(ctx, { type: 'weapon', item_id: 'wooden_bow', renderKey: 'archer', quantity: 1 }, 0, 0, 32);
+    assert.ok(calls.includes('arc'), 'archer renderKey selects the bow arc renderer');
+
+    calls.length = 0;
+    SpriteRenderer.drawItem(ctx, { type: 'weapon', item_id: 'consecrated_warhammer', renderKey: 'paladin', quantity: 1 }, 0, 0, 32);
+    assert.ok(calls.includes('fillRect') && !calls.includes('arc'), 'paladin renderKey selects the hammer block renderer');
+
+    calls.length = 0;
+    SpriteRenderer.drawItem(ctx, { type: 'weapon', item_id: 'mystery_weapon', quantity: 1 }, 0, 0, 32);
+    assert.ok(calls.includes('stroke'), 'unknown weapon falls back to the neutral default renderer');
+  });
+
   await t.test('verifies CanvasRenderer constructor and coordinate conversion', () => {
     const cr = new CanvasRenderer(null);
     assert.equal(cr.cameraX, 0);

@@ -91,6 +91,24 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(ITEMS_CATALOG['apprentice_wand'].maxStack, 1);
   });
 
+  await t.test('drives consumable effects and weapon visuals from items.json', () => {
+    for (const [id, resource] of [['health_potion', 'hp'], ['mana_potion', 'mp']]) {
+      const effect = ITEMS_CATALOG[id].effect;
+      assert.ok(effect, `consumable ${id} must declare effect metadata`);
+      assert.equal(effect.kind, 'restore', `${id} effect kind`);
+      assert.equal(effect.resource, resource, `${id} effect resource`);
+      assert.ok(effect.amount > 0, `${id} effect amount`);
+    }
+
+    for (const [id, item] of Object.entries(ITEMS_CATALOG)) {
+      if (item.type !== 'weapon') continue;
+      assert.ok(
+        typeof item.renderKey === 'string' && item.renderKey.length > 0,
+        `weapon ${id} must declare renderKey (no item_id substring heuristics)`
+      );
+    }
+  });
+
   await t.test('loads the vocation-locked items with required fields', () => {
     const requiredFields = ['name', 'type', 'slot', 'stat_bonus', 'icon', 'svgCode', 'vocationAffinity', 'maxStack'];
     const newItems = {

@@ -11,9 +11,10 @@ const AI_HANDLERS = {
   standoff: (monster, player, gridMap, monsters, mData) =>
     EntityAI.updateCultist(monster, player, gridMap, monsters, mData),
   chase: (monster, player, gridMap, monsters, mData) => {
-    const minDmg = mData?.damageMin ?? (monster.type === 'giant_rat' ? CONFIG.RAT_DAMAGE_MIN : monster.type === 'crypt_skeleton' ? CONFIG.SKELETON_DAMAGE_MIN : CONFIG.BOSS_DAMAGE_MIN);
-    const maxDmg = mData?.damageMax ?? (monster.type === 'giant_rat' ? CONFIG.RAT_DAMAGE_MAX : monster.type === 'crypt_skeleton' ? CONFIG.SKELETON_DAMAGE_MAX : CONFIG.BOSS_DAMAGE_MAX);
-    const moveCadence = mData?.moveCadence ?? (monster.type === 'giant_rat' ? CONFIG.RAT_MOVE_CADENCE_SEC : monster.type === 'crypt_skeleton' ? CONFIG.SKELETON_MOVE_CADENCE_SEC : CONFIG.BOSS_MOVE_CADENCE_SEC);
+    // Catalog is authoritative; generic guards only cover an unknown monster type.
+    const minDmg = mData?.damageMin ?? 1;
+    const maxDmg = mData?.damageMax ?? minDmg;
+    const moveCadence = mData?.moveCadence ?? 1.0;
     return EntityAI.updateMeleeMonster(monster, player, gridMap, monsters, minDmg, maxDmg, moveCadence);
   },
 };
@@ -127,7 +128,7 @@ export class EntityAI {
 
       // Dispatch via AI_HANDLERS map driven by catalog metadata
       const mData = MONSTERS_CATALOG[monster.type] || (monster.type === 'boss_overlord' ? MONSTERS_CATALOG.abyssal_overlord : null);
-      const aiType = mData?.aiType || (monster.type?.includes('cultist') ? 'standoff' : 'chase');
+      const aiType = mData?.aiType || 'chase';
       const handler = AI_HANDLERS[aiType] || AI_HANDLERS.chase;
       const action = handler(monster, player, gridMap, monsters, mData);
       if (action) results.push(action);
@@ -217,8 +218,8 @@ export class EntityAI {
     // 1. Attack if in range (<= 5) with LOS
     if (dist <= 5 && hasLOS && cultist.attackCooldown <= 0) {
       cultist.attackCooldown = cultist.attackCadence || 2.0;
-      const minDmg = mData?.damageMin ?? (cultist.type === 'elite_cultist' ? 14 : CONFIG.CULTIST_DAMAGE_MIN);
-      const maxDmg = mData?.damageMax ?? (cultist.type === 'elite_cultist' ? 22 : CONFIG.CULTIST_DAMAGE_MAX);
+      const minDmg = mData?.damageMin ?? 1;
+      const maxDmg = mData?.damageMax ?? minDmg;
       const damage = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
       // LOK-12 damage-intercept seam: dodge / fortify / mitigation / bubble absorb.
       const hit = CombatSystem.applyIncomingDamage(player, damage, cultist);
@@ -257,7 +258,7 @@ export class EntityAI {
 
     // 2. Reposition / Standoff management
     if ((cultist.moveCooldown || 0) <= 0) {
-      cultist.moveCooldown = (cultist.moveCadence || mData?.moveCadence || CONFIG.CULTIST_MOVE_CADENCE_SEC) + (Math.random() * 0.3 - 0.1);
+      cultist.moveCooldown = (cultist.moveCadence || mData?.moveCadence || 1.0) + (Math.random() * 0.3 - 0.1);
 
       const standoffMin = mData?.standoffMin ?? CONFIG.CULTIST_STANDOFF_MIN;
       const standoffMax = mData?.standoffMax ?? CONFIG.CULTIST_STANDOFF_MAX;

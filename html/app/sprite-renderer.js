@@ -382,8 +382,10 @@ const ITEM_RENDERERS = {
     ctx.fill();
   },
   weapon: (ctx, cx, cy, u, item) => {
-    const affinity = item?.vocationAffinity;
-    const renderer = WEAPON_RENDERERS[affinity] || (item?.item_id?.includes('bow') ? WEAPON_RENDERERS.archer : item?.item_id?.includes('hammer') ? WEAPON_RENDERERS.paladin : WEAPON_RENDERERS.default);
+    // Catalog-driven: prefer the item's explicit `renderKey`, then its
+    // vocation affinity, then the neutral sword fallback.
+    const key = item?.renderKey || item?.vocationAffinity;
+    const renderer = WEAPON_RENDERERS[key] || WEAPON_RENDERERS.default;
     renderer(ctx, cx, cy, u);
   },
   spell: (ctx, cx, cy, u) => {

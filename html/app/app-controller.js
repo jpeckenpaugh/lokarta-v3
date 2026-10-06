@@ -875,7 +875,7 @@ export class LokartaApp {
       isAggroed: false,
       moveCooldown: 0,
       attackCooldown: 0,
-      attackCadence: s.attackCadence || (s.type === 'giant_rat' ? CONFIG.RAT_ATTACK_CADENCE_SEC : s.type === 'crypt_skeleton' ? CONFIG.SKELETON_ATTACK_CADENCE_SEC : CONFIG.CULTIST_ATTACK_CADENCE_SEC),
+      attackCadence: s.attackCadence ?? 1.5,
       visible: false,
       anim: createAnimState(s.facing || 'down'),
     }));

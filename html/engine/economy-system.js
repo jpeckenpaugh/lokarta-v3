@@ -19,7 +19,7 @@ const DEFAULTS = {
   passiveRecovery: { intervalSec: 10, hpPerTick: 1, mpPerTick: 1 },
   springs: { hpPerSec: 5, mpPerSec: 5 },
   temple: { healCostPerHp: 1, healCostPerMp: 1, reviveAt: 'town_temple', reviveCostPct: 0 },
-  shop: { sellRatePct: 50, buyMarkupPct: 0, upgradeBaseCost: 40, upgradeCostPerRank: 35, maxRank: 5, pawnFallbackValuePerStat: 8 },
+  // Shop tunables are catalog-owned (economy.json "shop"); no JS duplication.
 };
 
 function cfg(path, fallback) {
@@ -173,7 +173,7 @@ export class EconomySystem {
 
   /** Shop config. */
   static shopConfig() {
-    const s = cfg('shop', DEFAULTS.shop);
+    const s = cfg('shop', {});
     return {
       sellRatePct: Number(s.sellRatePct) || 0,
       buyMarkupPct: Number(s.buyMarkupPct) || 0,

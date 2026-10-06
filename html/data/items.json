@@ -4,6 +4,7 @@
     "name": "Health Potion",
     "type": "consumable",
     "stat_bonus": 30,
+    "effect": { "kind": "restore", "resource": "hp", "amount": 30 },
     "icon": "🧪",
     "svgCode": "1F9EA",
     "actionKey": "use_health_potion",
@@ -15,6 +16,7 @@
     "name": "Mana Potion",
     "type": "consumable",
     "stat_bonus": 40,
+    "effect": { "kind": "restore", "resource": "mp", "amount": 40 },
     "icon": "🔷",
     "svgCode": "2697",
     "actionKey": "use_mana_potion",
@@ -42,6 +44,7 @@
     "manaCost": 1,
     "range": 5,
     "vocationAffinity": "magician",
+    "renderKey": "default",
     "icon": "🪄",
     "svgCode": "1FA84",
     "actionKey": "wand_spark",
@@ -70,6 +73,7 @@
     "manaCost": 5,
     "range": 4,
     "vocationAffinity": "magician",
+    "renderKey": "default",
     "icon": "🦯",
     "svgCode": "1F9AF",
     "actionKey": "energy_beam",
@@ -96,6 +100,7 @@
     "icon": "🏹",
     "svgCode": "1F3F9",
     "actionKey": "bow_shot",
+    "renderKey": "archer",
     "grantedAmmo": {
       "item_id": "arrows",
       "quantity": 20
@@ -120,6 +125,7 @@
     "icon": "🏹",
     "svgCode": "1F3F9",
     "actionKey": "bow_shot",
+    "renderKey": "archer",
     "grantedAmmo": {
       "item_id": "arrows",
       "quantity": 20
@@ -241,6 +247,7 @@
     "range": 2.5,
     "cooldown": 0.8,
     "vocationAffinity": "fighter",
+    "renderKey": "default",
     "icon": "🗡️",
     "svgCode": "2694",
     "actionKey": "slash",
@@ -368,6 +375,7 @@
     "manaCost": 5,
     "cooldown": 1.2,
     "vocationAffinity": "paladin",
+    "renderKey": "paladin",
     "solidGear": true,
     "icon": "⚒️",
     "svgCode": "2692",
