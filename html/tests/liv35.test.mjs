@@ -21,6 +21,7 @@ import { FateGrantSystem } from '../engine/index.js';
 import { createPlayer } from '../engine/config.js';
 import { ModalManager } from '../app/modal-manager.js';
 import { CanvasRenderer } from '../app/canvas-renderer.js';
+import { readControllerSources } from './helpers/app-source.mjs';
 
 const APP_DIR = resolve(process.cwd(), 'html', 'app');
 
@@ -65,7 +66,7 @@ test('LIV-35 player VFX data + renderer wiring', async t => {
 
   await t.test('renderer exposes renderPlayerVfx and app-controller drives its timer', () => {
     assert.equal(typeof CanvasRenderer.prototype.renderPlayerVfx, 'function');
-    const controller = source('app-controller.js');
+    const controller = readControllerSources();
     assert.match(controller, /luminousPrayerVfxSec/, 'prayer VFX timer is set/decayed in the controller');
     assert.match(controller, /playerVfx\?\.luminousPrayer/, 'the timer duration is read from ui.json');
   });

@@ -20,6 +20,7 @@ import { resolve } from 'node:path';
 import { ITEMS_CATALOG, CARDS_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 import { GridMap, TILE_TYPES, CombatSystem, FateGrantSystem, applyItemRankUp, canUpgradeItem, createPlayer } from '../engine/index.js';
 import { HUDManager } from '../app/hud-manager.js';
+import { readControllerSources } from './helpers/app-source.mjs';
 
 function makeFloorGrid(w = 30, h = 30) {
   const g = new GridMap(w, h);
@@ -385,7 +386,7 @@ test('LIV-36 all four archer primaries paint the recharge overlay', async t => {
   }
 
   await t.test('controller dispatches every new archer action key', () => {
-    const controller = readFileSync(resolve(process.cwd(), 'html', 'app', 'app-controller.js'), 'utf8');
+    const controller = readControllerSources();
     for (const key of ['poison_tip', 'life_siphon', 'hunters_mark']) {
       assert.match(controller, new RegExp(`${key}:`), `${key} handler must be wired`);
     }
